@@ -1,0 +1,11 @@
+syntax: glob
+*.suo
+*.user
+*.sdf
+*.filters
+*/bin/*
+*/obj/*
+*/Debug/*
+*/Release/*
+*/ipch/*
+Packages/*
