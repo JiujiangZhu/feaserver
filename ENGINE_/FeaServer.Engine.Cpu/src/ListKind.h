@@ -1,5 +1,5 @@
 #pragma once
-namespace TimeServices { namespace Engine { namespace Core {
+namespace FeaServer { namespace Engine {
 	struct ListKind
 	{
 	public:
@@ -11,4 +11,4 @@ namespace TimeServices { namespace Engine { namespace Core {
 			}
 		};
 	};
-}}}
+}}

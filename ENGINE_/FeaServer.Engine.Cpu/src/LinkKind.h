@@ -1,5 +1,5 @@
 #pragma once
-namespace TimeServices { namespace Engine { namespace Core {
+namespace FeaServer { namespace Engine {
 	struct LinkKind
 	{
 	public:
@@ -18,4 +18,4 @@ namespace TimeServices { namespace Engine { namespace Core {
 			last = (last->NextLink = value->NextLink); value->NextLink = nullptr; // paranoia
 		}
 	};
-}}}
+}}

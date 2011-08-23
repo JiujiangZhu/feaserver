@@ -1,5 +1,5 @@
 #pragma once
-#include "Core\CuContext.h"
+#include "CuContext.h"
 using namespace System;
 namespace FeaServer { namespace Engine {
 	class Engine

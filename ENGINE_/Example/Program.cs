@@ -2,13 +2,13 @@
 using FeaServer.Engine;
 namespace Example
 {
-    class Program
+    public class Program
     {
         static void Main(string[] args)
         {
-            using (var engine = EngineFactory.Create(null, EngineProvider.CUDA))
+            var elementTypes = new[] { new SampleElementType() };
+            using (var engine = EngineFactory.Create(elementTypes, EngineProvider.Cpu))
             {
-                //engine.ElementTypes
             }
         }
     }

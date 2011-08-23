@@ -2,10 +2,10 @@
 {
     public enum EngineProvider
     {
-        CUDA,
-        OpenCL,
-        ATIStreams,
-        CPU,
+        Cpu,
+        Cuda,
         Managed,
+        OpenCL_App,
+        OpenCL_Cuda,
     }
 }

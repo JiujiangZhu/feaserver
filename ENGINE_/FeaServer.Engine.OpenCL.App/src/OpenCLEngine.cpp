@@ -1,25 +1,19 @@
 #pragma once
-#include "Core\CuContext.h"
-#include "Engine.h"
+#include "OpenCLElementTypeCollection.h"
 using namespace System;
 using namespace System::Collections::Generic;
 namespace FeaServer { namespace Engine {
-	public ref class CudaEngine : IEngine
+	public ref class OpenCLEngine : IEngine
 	{
 	private:
-		void* _context;
 		ElementTypeCollection^ _elementTypes;
 
 	public:
-		CudaEngine()
-			: _context(new CuContext()), _elementTypes(nullptr) {
-			if (!((CuContext*)_context)->Initialize())
-				throw gcnew Exception(L"Unable to initalize CuContext");
+		OpenCLEngine()
+			: _elementTypes(gcnew OpenCLElementTypeCollection()) {
 		}
-		~CudaEngine()
+		~OpenCLEngine()
 		{
-			((CuContext*)_context)->Dispose();
-			delete _context; _context = nullptr;
 		}
 
 #pragma region IEngine

@@ -18,6 +18,28 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\CpuContext.cpp" />
+    <ClCompile Include="src\CpuEngine.cpp" />
+    <ClCompile Include="src\Engine.cpp" />
+    <ClCompile Include="src\EngineXAdd.cpp" />
+    <ClCompile Include="src\EngineXHibernate.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\CpuContext.h" />
+    <ClInclude Include="src\CpuElementTypeCollection.h" />
+    <ClInclude Include="src\Engine.h" />
+    <ClInclude Include="src\LinkKind.h" />
+    <ClInclude Include="src\ListKind.h" />
+    <ClInclude Include="src\Slice.h" />
+    <ClInclude Include="src\SliceFractions.h" />
+    <ClInclude Include="src\SliceNode.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FeaServer.Engine\FeaServer.Engine.csproj">
+      <Project>{3122a91f-396a-4765-8431-654a7fc42796}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{3C575D0C-7027-4330-B107-6011DD4B3116}</ProjectGuid>
     <RootNamespace>TimeServicesEngineCpu</RootNamespace>
@@ -78,6 +100,8 @@
     <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
     <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Engines\bin\$(Platform)\$(Configuration)</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">bin\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -102,6 +126,9 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -138,22 +165,6 @@
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="Core\CpuContext.cpp" />
-    <ClCompile Include="CpuEngine.cpp" />
-    <ClCompile Include="Engine.cpp" />
-    <ClCompile Include="EngineXAdd.cpp" />
-    <ClCompile Include="EngineXHibernate.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Core\CpuContext.h" />
-    <ClInclude Include="Core\LinkKind.h" />
-    <ClInclude Include="Core\ListKind.h" />
-    <ClInclude Include="Core\Slice.h" />
-    <ClInclude Include="Core\SliceFractions.h" />
-    <ClInclude Include="Core\SliceNode.h" />
-    <ClInclude Include="Engine.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

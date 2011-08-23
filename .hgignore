@@ -8,4 +8,5 @@ syntax: glob
 */Debug/*
 */Release/*
 */ipch/*
-Packages/*
+packages/*
+*/TestResults/*

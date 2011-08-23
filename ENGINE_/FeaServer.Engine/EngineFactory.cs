@@ -18,21 +18,28 @@ namespace FeaServer.Engine
             Type engineType;
             switch (provider)
             {
-                case EngineProvider.CUDA:
-                    assembly = Assembly.LoadFile(Path.Combine(enginePath, "FeaServer.Engine.Cuda.dll"));
-                    engineType = assembly.GetType("FeaServer.Engine.CudaEngine", true);
-                    break;
-                case EngineProvider.ATIStreams:
-                    assembly = Assembly.LoadFile(Path.Combine(enginePath, "FeaServer.Engine.AtiStreams.dll"));
-                    engineType = assembly.GetType("FeaServer.Engine.CalEngine", true);
-                    break;
-                case EngineProvider.CPU:
+                case EngineProvider.Cpu:
                     assembly = Assembly.LoadFile(Path.Combine(enginePath, "FeaServer.Engine.Cpu.dll"));
                     engineType = assembly.GetType("FeaServer.Engine.CpuEngine", true);
                     break;
+                case EngineProvider.Cuda:
+                    assembly = Assembly.LoadFile(Path.Combine(enginePath, "FeaServer.Engine.Cuda.dll"));
+                    engineType = assembly.GetType("FeaServer.Engine.CudaEngine", true);
+                    break;
                 case EngineProvider.Managed:
+                    assembly = Assembly.LoadFile(Path.Combine(enginePath, "FeaServer.Engine.Managed.dll"));
+                    engineType = assembly.GetType("FeaServer.Engine.ManagedEngine", true);
+                    break;
+                case EngineProvider.OpenCL_App:
+                    assembly = Assembly.LoadFile(Path.Combine(enginePath, "FeaServer.Engine.OpenCL.App.dll"));
+                    engineType = assembly.GetType("FeaServer.Engine.OpenCLEngine", true);
+                    break;
+                case EngineProvider.OpenCL_Cuda:
+                    assembly = Assembly.LoadFile(Path.Combine(enginePath, "FeaServer.Engine.OpenCL.Cuda.dll"));
+                    engineType = assembly.GetType("FeaServer.Engine.OpenCLEngine", true);
+                    break;
                 default:
-                    throw new NotSupportedException();
+                    throw new NotImplementedException();
             }
             if (engineType == null)
                 throw new InvalidOperationException();
@@ -49,23 +56,16 @@ namespace FeaServer.Engine
         public static EngineProvider GetTightestProvider()
         {
             if (GetHasCUDA())
-                return EngineProvider.CUDA;
+                return EngineProvider.Cuda;
             if (GetHasOpenCL())
-                return EngineProvider.OpenCL;
-            if (GetHasCal())
-                return EngineProvider.ATIStreams;
-            return EngineProvider.Managed;
+                return EngineProvider.OpenCL_Cuda;
+            return EngineProvider.Cpu;
         }
 
         private static bool GetHasCUDA()
         {
             string cudaPath = (Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\NVIDIA Corporation\GPU Computing Toolkit\CUDA", "RootInstallDir", null) as string);
             return (!string.IsNullOrEmpty(cudaPath));
-        }
-
-        private static bool GetHasCal()
-        {
-            return false;
         }
 
         private static bool GetHasOpenCL()

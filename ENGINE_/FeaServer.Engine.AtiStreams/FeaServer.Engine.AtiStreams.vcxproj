@@ -79,6 +79,8 @@
     <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
     <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Example\bin\$(Platform)\$(Configuration)\Engines\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">bin\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -121,6 +123,7 @@
     <ClCompile>
       <AdditionalIncludeDirectories>$(ATISTREAMSDKROOT)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
     </ClCompile>
     <Link>
       <AdditionalDependencies>aticalrt64.lib;aticalcl64.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -148,19 +151,6 @@
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="Core\CalContext.cpp" />
-    <ClCompile Include="Core\CalModule.cpp" />
-    <ClCompile Include="Core\CalVersion.cpp" />
-    <ClCompile Include="CalEngine.cpp" />
-    <ClCompile Include="Engine.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Core\CalContext.h" />
-    <ClInclude Include="Core\CalModule.h" />
-    <ClInclude Include="Core\CalVersion.h" />
-    <ClInclude Include="Engine.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

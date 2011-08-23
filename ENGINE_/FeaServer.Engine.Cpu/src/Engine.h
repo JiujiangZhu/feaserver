@@ -1,12 +1,10 @@
 #pragma once
-#include "Core\CpuContext.h"
-#include "Core\LinkKind.h"
-#include "Core\ListKind.h"
-#include "Core\Slice.h"
+#include "CpuContext.h"
+#include "LinkKind.h"
+#include "ListKind.h"
+#include "Slice.h"
 using namespace System;
-namespace TimeServices { namespace Engine {
-	using namespace Core;
-
+namespace FeaServer { namespace Engine {
 	class Engine
 	{
 	private:

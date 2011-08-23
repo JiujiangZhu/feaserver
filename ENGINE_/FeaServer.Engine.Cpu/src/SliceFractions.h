@@ -1,7 +1,7 @@
 #pragma once
 #include "SliceNode.h"
 using namespace System::Collections::Generic;
-namespace TimeServices { namespace Engine { namespace Core {
+namespace FeaServer { namespace Engine {
 	struct SliceFractions //: SortedDictionary<unsigned long, Slice>
 	{
 	public:
@@ -17,4 +17,4 @@ namespace TimeServices { namespace Engine { namespace Core {
 		{
 		}
 	};
-}}}
+}}

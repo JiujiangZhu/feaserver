@@ -1,10 +1,10 @@
 #pragma once
 #include "SliceFractions.h"
 using namespace System::Collections::Generic;
-namespace TimeServices { namespace Engine { namespace Core {
+namespace FeaServer { namespace Engine {
 	struct Slice
 	{
 	public:
 		SliceFractions Fractions;
 	};
-}}}
+}}

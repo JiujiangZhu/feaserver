@@ -2,7 +2,7 @@
 #include "LinkKind.h"
 #include "ListKind.h"
 using namespace System::Collections::Generic;
-namespace TimeServices { namespace Engine { namespace Core {
+namespace FeaServer { namespace Engine {
 	struct SliceNode
 	{
 	public:
@@ -11,4 +11,4 @@ namespace TimeServices { namespace Engine { namespace Core {
 		ListKind::List* List;
 		LinkKind* Chain;
 	};
-}}}
+}}

@@ -1,6 +1,6 @@
 #pragma once
 using namespace System;
-namespace TimeServices { namespace Engine { namespace Core {
+namespace FeaServer { namespace Engine {
 	class CpuContext
 	{
 	private:
@@ -10,4 +10,4 @@ namespace TimeServices { namespace Engine { namespace Core {
 	};
 
 	static CpuContext s_context;
-}}}
+}}

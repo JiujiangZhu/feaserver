@@ -78,6 +78,8 @@
     <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
     <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Engines\bin\$(Platform)\$(Configuration)</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">bin\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -99,6 +101,8 @@
     </Midl>
     <ClCompile>
       <AdditionalIncludeDirectories>%CUDA_PATH%\include\</AdditionalIncludeDirectories>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>%CUDA_PATH%\lib\x64\</AdditionalLibraryDirectories>
@@ -142,18 +146,19 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Core\CuContext.cpp" />
-    <ClCompile Include="CudaEngine.cpp" />
-    <ClCompile Include="Engine.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Core\CuContext.h" />
-    <ClInclude Include="Engine.h" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\FeaServer.Engine\FeaServer.Engine.csproj">
       <Project>{3122a91f-396a-4765-8431-654a7fc42796}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\CuContext.cpp" />
+    <ClCompile Include="src\CudaEngine.cpp" />
+    <ClCompile Include="src\Engine.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\CuContext.h" />
+    <ClInclude Include="src\CudaElementTypeCollection.h" />
+    <ClInclude Include="src\Engine.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
