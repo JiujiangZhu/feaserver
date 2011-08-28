@@ -1,6 +1,6 @@
 ﻿using System;
 using FeaServer.Engine;
-namespace FeaServer.Engine.Tests.Mocks
+namespace Example.Mocks
 {
     public class MockElementType : IElementType
     {

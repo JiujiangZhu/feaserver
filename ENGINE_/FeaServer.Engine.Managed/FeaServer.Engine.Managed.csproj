@@ -63,6 +63,15 @@
     <CodeAnalysisIgnoreBuiltInRules>true</CodeAnalysisIgnoreBuiltInRules>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Time\Scheduler\SliceFractionCache.cs" />
+    <Compile Include="Time\Scheduler\ElementCollection.cs" />
+    <Compile Include="Time\Scheduler\HibernateCollection.cs" />
+    <Compile Include="Time\Scheduler\Element.cs" />
+    <Compile Include="Time\Scheduler\Hibernate.cs" />
+    <Compile Include="Time\Scheduler\SliceFractionCollection.cs" />
+    <Compile Include="Time\Scheduler\SliceNode.cs" />
+    <Compile Include="Time\Scheduler\Slice.cs" />
+    <Compile Include="Time\Scheduler\SliceCollection.cs" />
     <Compile Include="ManagedElementTypeCollection.cs" />
     <Compile Include="ManagedEngine.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -73,11 +73,16 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Abstract">
+      <HintPath>..\..\..\BCLCONTRIB-ABSTRACT\nuget\BclContrib-Abstract\lib\NET40\System.Abstract.dll</HintPath>
+    </Reference>
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Hold\IElementMetadata.cs" />
+    <Compile Include="ElementScheduleStyle.cs" />
     <Compile Include="ElementImage.cs" />
     <Compile Include="EngineProvider.cs" />
     <Compile Include="FromCoreEx\Threading\FrugalThreadPool.cs" />

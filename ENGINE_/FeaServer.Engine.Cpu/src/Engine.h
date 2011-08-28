@@ -78,7 +78,7 @@ namespace FeaServer { namespace Engine {
 			HibernateState::List* List;
 			LinkKind* Chain;
 		};
-		HibernateSegment _hibernateSegments[EngineSettings::MaxHibernateSegments];
+		HibernateSegment _hibernateSegments[EngineSettings::MaxHibernates];
 	};
 
 	static Engine s_engine(s_context);

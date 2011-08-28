@@ -16,7 +16,7 @@ namespace FeaServer.Engine
         /// </summary>
         /// <param name="time">The time.</param>
         /// <returns></returns>
-        public static ulong ParseTime(this decimal time)
+        public static ulong EncodeTime(this decimal time)
         {
             var integer = (int)Math.Truncate(time);
             var fraction = (decimal)time - integer;
@@ -28,7 +28,7 @@ namespace FeaServer.Engine
         /// </summary>
         /// <param name="time">The time.</param>
         /// <returns></returns>
-        public static decimal FormatTime(this ulong time)
+        public static decimal DecodeTime(this ulong time)
         {
             var integer = (ulong)(time >> TimePrecision.TimePrecisionBits);
             var fraction = (ulong)(time & TimePrecision.TimePrecisionMask);

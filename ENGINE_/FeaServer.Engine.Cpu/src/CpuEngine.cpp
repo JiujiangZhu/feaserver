@@ -28,6 +28,10 @@ namespace FeaServer { namespace Engine {
 			return nullptr;
 		}
 
+		virtual void LoadElements(IEnumerable<IElement^>^ elements, Int32 shard)
+		{
+		}
+
 		property ElementTypeCollection^ ElementTypes
 		{
 			virtual ElementTypeCollection^ get() { return _elementTypes; }

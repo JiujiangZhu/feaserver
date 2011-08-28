@@ -2,6 +2,8 @@ syntax: glob
 *.suo
 *.user
 *.sdf
+*.opensdf
+*.cubin
 *.filters
 */bin/*
 */obj/*
@@ -10,3 +12,5 @@ syntax: glob
 */ipch/*
 packages/*
 */TestResults/*
+
+*/tmpxft_*

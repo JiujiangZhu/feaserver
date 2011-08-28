@@ -11,7 +11,8 @@ namespace FeaServer.Engine
         public static IEngine Create(IEnumerable<IElementType> elementTypes) { return Create(elementTypes, GetTightestProvider()); }
         public static IEngine Create(IEnumerable<IElementType> elementTypes, EngineProvider provider)
         {
-            var enginePath = Environment.CurrentDirectory + "\\Engines\\";
+            //var enginePath = Environment.CurrentDirectory + "\\Engines\\";
+            var enginePath = @"C:\_APPLICATION\FEASERVER\ENGINE_\Engines\bin\x64\Debug";
             if (!Directory.Exists(enginePath))
                 Directory.CreateDirectory(enginePath);
             Assembly assembly;
