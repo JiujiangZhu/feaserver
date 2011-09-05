@@ -7,9 +7,9 @@ namespace FeaServer.Engine.Time.Scheduler
     {
         public SliceFractionCollection Fractions;
 
-        public Slice(int none)
+        public Slice xtor()
         {
-            Fractions = new SliceFractionCollection();
+            return this;
         }
     }
 }

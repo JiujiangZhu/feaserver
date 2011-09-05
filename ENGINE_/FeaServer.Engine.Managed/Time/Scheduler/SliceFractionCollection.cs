@@ -7,8 +7,8 @@ namespace FeaServer.Engine.Time.Scheduler
         {
             SliceNode node;
             if (!TryGetValue(fraction, out node))
-                Add(fraction, node = new SliceNode(0));
-            node.Elements.Add(element, null);
+                Add(fraction, node.xtor());
+            node.Elements.Add(element, 0);
         }
     }
 }

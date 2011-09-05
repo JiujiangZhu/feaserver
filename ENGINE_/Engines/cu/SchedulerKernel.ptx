@@ -1,0 +1,211 @@
+	.version 1.4
+	.target sm_11, map_f64_to_f32
+	// compiled with C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\bin/../open64/lib//be.exe
+	// nvopencc 4.0 built on 2011-05-13
+
+	//-----------------------------------------------------------
+	// Compiling C:/Users/Moreys/AppData/Local/Temp/tmpxft_000022ac_00000000-8_SchedulerKernel.cpp3.i (C:/Users/Moreys/AppData/Local/Temp/ccBI#.a05592)
+	//-----------------------------------------------------------
+
+	//-----------------------------------------------------------
+	// Options:
+	//-----------------------------------------------------------
+	//  Target:ptx, ISA:sm_11, Endian:little, Pointer Size:64
+	//  -O3	(Optimization level)
+	//  -g0	(Debug level)
+	//  -m2	(Report advisories)
+	//-----------------------------------------------------------
+
+	.file	1	"C:/Users/Moreys/AppData/Local/Temp/tmpxft_000022ac_00000000-7_SchedulerKernel.cudafe2.gpu"
+	.file	2	"c:\_application\feaserver\engine_\feaserver.engine.cuda\src\time\..\Core.h"
+	.file	3	"c:\_application\feaserver\engine_\feaserver.engine.cpu\src\time\scheduler\Element.hpp"
+	.file	4	"c:\_application\feaserver\engine_\feaserver.engine.cpu\src\time\scheduler\ElementList.hpp"
+	.file	5	"c:\_application\feaserver\engine_\feaserver.engine.cpu\src\time\scheduler\ElementCollection.hpp"
+	.file	6	"c:\_application\feaserver\engine_\feaserver.engine.cpu\src\time\scheduler\SliceNode.hpp"
+	.file	7	"c:\_application\feaserver\engine_\feaserver.engine.cpu\src\time\scheduler\SliceFractionCollection.hpp"
+	.file	8	"c:\_application\feaserver\engine_\feaserver.engine.cpu\src\time\scheduler\Slice.hpp"
+	.file	9	"c:\_application\feaserver\engine_\feaserver.engine.cpu\src\time\scheduler\Hibernate.hpp"
+	.file	10	"c:\_application\feaserver\engine_\feaserver.engine.cpu\src\time\scheduler\HibernateCollection.hpp"
+	.file	11	"c:\_application\feaserver\engine_\feaserver.engine.cpu\src\time\scheduler\SliceFractionCache.hpp"
+	.file	12	"c:\_application\feaserver\engine_\feaserver.engine.cuda\src\time\..\..\..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp"
+	.file	13	"c:\program files (x86)\microsoft visual studio 10.0\vc\include\codeanalysis\sourceannotations.h"
+	.file	14	"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v4.0/include\crt/device_runtime.h"
+	.file	15	"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v4.0/include\host_defines.h"
+	.file	16	"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v4.0/include\builtin_types.h"
+	.file	17	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\device_types.h"
+	.file	18	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\driver_types.h"
+	.file	19	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\surface_types.h"
+	.file	20	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\texture_types.h"
+	.file	21	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\vector_types.h"
+	.file	22	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\builtin_types.h"
+	.file	23	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\host_defines.h"
+	.file	24	"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v4.0/include\device_launch_parameters.h"
+	.file	25	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\crt\storage_class.h"
+	.file	26	"C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\include\time.h"
+	.file	27	"C:/_APPLICATION/FEASERVER/ENGINE_/FeaServer.Engine.Cuda/src/Time/SchedulerKernel.cu"
+	.file	28	"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v4.0/include\common_functions.h"
+	.file	29	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\math_functions.h"
+	.file	30	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\math_constants.h"
+	.file	31	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\device_functions.h"
+	.file	32	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\sm_11_atomic_functions.h"
+	.file	33	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\sm_12_atomic_functions.h"
+	.file	34	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\sm_13_double_functions.h"
+	.file	35	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\sm_20_atomic_functions.h"
+	.file	36	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\sm_20_intrinsics.h"
+	.file	37	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\surface_functions.h"
+	.file	38	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\texture_fetch_functions.h"
+	.file	39	"c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\math_functions_dbl_ptx1.h"
+
+
+	.entry _Z4Mainv
+	{
+	.reg .u16 %rh<4>;
+	.reg .u32 %r<10>;
+	.reg .u64 %rd<37>;
+	.reg .pred %p<16>;
+	.loc	27	8	0
+ //   4  //#include "..\..\..\FeaServer.Engine.Cpu\src\Time\Scheduler\HibernateCollection.hpp"
+ //   5  #include "..\..\..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp"
+ //   6  using namespace Time::Scheduler;
+ //   7  
+ //   8  __global__ void Main()
+$LDWbegin__Z4Mainv:
+	.loc	27	13	0
+ //   9  {
+ //  10  	Element e;
+ //  11  
+ //  12  	SliceCollection* s;
+ //  13  	s->Schedule(&e, 10);
+	mov.s64 	%rd1, %rd2;
+	ld.global.u64 	%rd3, [%rd1+160];
+	mov.u64 	%rd4, 0;
+	setp.eq.u64 	%p1, %rd3, %rd4;
+	@%p1 bra 	$Lt_0_27394;
+	.loc	12	73	0
+	mov.s16 	%rh1, 1;
+	st.global.s8 	[%rd1+176], %rh1;
+$Lt_0_27394:
+	.loc	27	14	0
+ //  14  	s->MoveNextSlice();
+	ld.global.u64 	%rd5, [%rd1+0];
+	add.u64 	%rd6, %rd5, 1;
+	st.global.u64 	[%rd1+0], %rd6;
+	mov.u64 	%rd7, 9;
+	setp.le.u64 	%p2, %rd6, %rd7;
+	@%p2 bra 	$Lt_0_17410;
+	mov.u64 	%rd8, 0;
+	st.global.u64 	[%rd1+0], %rd8;
+	.loc	12	13	0
+	ld.global.u64 	%rd9, [%rd1+32];
+	mov.s64 	%rd10, %rd9;
+	mov.u64 	%rd11, 0;
+	setp.ne.u64 	%p3, %rd9, %rd11;
+	@%p3 bra 	$Lt_0_28418;
+	.loc	4	206	0
+	mov.s32 	%r1, 0;
+	mov.u64 	%rd12, 0;
+	bra.uni 	$LDWendi__ZN4Time9Scheduler11ElementList12Enumerator_t8MoveNextEv_206_15;
+$Lt_0_28418:
+	.loc	4	209	0
+	mov.s64 	%rd12, %rd9;
+	.loc	4	210	0
+	ld.global.u64 	%rd13, [%rd9+16];
+	.loc	4	208	0
+	mov.u64 	%rd14, 0;
+	setp.eq.u64 	%p4, %rd9, %rd13;
+	selp.u64 	%rd10, %rd14, %rd13, %p4;
+	.loc	4	213	0
+	mov.s32 	%r1, 1;
+$LDWendi__ZN4Time9Scheduler11ElementList12Enumerator_t8MoveNextEv_206_15:
+	.loc	12	13	0
+	mov.u32 	%r2, 0;
+	setp.eq.s32 	%p5, %r1, %r2;
+	@%p5 bra 	$Lt_0_17410;
+$Lt_0_17154:
+	.loc	12	14	0
+	mov.u64 	%rd15, 0;
+	setp.ne.u64 	%p6, %rd10, %rd15;
+	@%p6 bra 	$Lt_0_29442;
+	.loc	4	206	0
+	mov.s32 	%r3, 0;
+	bra.uni 	$LDWendi__ZN4Time9Scheduler11ElementList12Enumerator_t8MoveNextEv_206_13;
+$Lt_0_29442:
+	.loc	4	210	0
+	ld.global.u64 	%rd16, [%rd10+16];
+	.loc	4	208	0
+	mov.u64 	%rd17, 0;
+	ld.global.u64 	%rd18, [%rd1+32];
+	setp.eq.u64 	%p7, %rd18, %rd16;
+	selp.u64 	%rd10, %rd17, %rd16, %p7;
+	.loc	4	213	0
+	mov.s32 	%r3, 1;
+$LDWendi__ZN4Time9Scheduler11ElementList12Enumerator_t8MoveNextEv_206_13:
+	.loc	12	14	0
+	mov.u32 	%r4, 0;
+	setp.ne.s32 	%p8, %r3, %r4;
+	@%p8 bra 	$Lt_0_17410;
+	sub.u64 	%rd19, %rd12, 156;
+	mov.u64 	%rd20, 159;
+	setp.gt.u64 	%p9, %rd19, %rd20;
+	@%p9 bra 	$Lt_0_17154;
+	.loc	12	22	0
+	ld.global.u64 	%rd21, [%rd12+16];
+	setp.ne.u64 	%p10, %rd21, %rd12;
+	@%p10 bra 	$Lt_0_30722;
+	mov.u64 	%rd22, 0;
+	st.global.u64 	[%rd1+32], %rd22;
+	bra.uni 	$Lt_0_30978;
+$Lt_0_30722:
+	ld.global.u64 	%rd23, [%rd12+24];
+	st.global.u64 	[%rd21+24], %rd23;
+	ld.global.u64 	%rd24, [%rd12+16];
+	ld.global.u64 	%rd25, [%rd12+24];
+	st.global.u64 	[%rd25+16], %rd24;
+	ld.global.u64 	%rd26, [%rd1+32];
+	setp.ne.u64 	%p11, %rd26, %rd12;
+	@%p11 bra 	$Lt_0_30978;
+	ld.global.u64 	%rd27, [%rd12+16];
+	st.global.u64 	[%rd1+32], %rd27;
+$Lt_0_30978:
+$Lt_0_30466:
+	mov.u64 	%rd28, 0;
+	st.global.u64 	[%rd12+8], %rd28;
+	mov.u64 	%rd29, 0;
+	st.global.u64 	[%rd12+16], %rd29;
+	mov.u64 	%rd30, 0;
+	st.global.u64 	[%rd12+24], %rd30;
+	ld.global.s32 	%r5, [%rd1+24];
+	sub.s32 	%r6, %r5, 1;
+	st.global.s32 	[%rd1+24], %r6;
+	ld.global.s32 	%r7, [%rd1+40];
+	add.s32 	%r8, %r7, 1;
+	st.global.s32 	[%rd1+40], %r8;
+	.loc	12	23	0
+	shr.u64 	%rd31, %rd19, 4;
+	mov.u64 	%rd32, 9;
+	setp.gt.u64 	%p12, %rd31, %rd32;
+	@%p12 bra 	$Lt_0_17154;
+	mov.u64 	%rd33, 0;
+	setp.ne.u64 	%p13, %rd31, %rd33;
+	@%p13 bra 	$Lt_0_17154;
+	ld.global.u64 	%rd34, [%rd1+160];
+	and.b64 	%rd35, %rd19, 4;
+	setp.le.u64 	%p14, %rd34, %rd35;
+	@%p14 bra 	$Lt_0_17154;
+	.loc	12	73	0
+	mov.s16 	%rh2, 1;
+	st.global.s8 	[%rd1+176], %rh2;
+	bra.uni 	$Lt_0_17154;
+$Lt_0_17410:
+$Lt_0_28930:
+$Lt_0_27906:
+	.loc	27	23	0
+ //  19  	//ElementList::Enumerator en;
+ //  20  	//l->GetEnumerator(&en);
+ //  21  	//HibernateCollection h;
+ //  22  	//h.DeHibernate(nullptr);
+ //  23  }
+	exit;
+$LDWend__Z4Mainv:
+	} // _Z4Mainv
+

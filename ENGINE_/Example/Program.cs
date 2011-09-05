@@ -8,9 +8,10 @@ namespace Example
         static void Main(string[] args)
         {
             var elementTypes = new[] { new MockElementType() };
-            using (var engine = EngineFactory.Create(elementTypes, EngineProvider.Managed))
+            using (var engine = EngineFactory.Create(elementTypes, EngineProvider.Cpu))
             {
-
+                engine.LoadTable(null, 1);
+                engine.EvaluateFrame(TimePrec.EncodeTime(10));
             }
         }
     }

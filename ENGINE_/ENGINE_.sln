@@ -4,6 +4,9 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FeaServer.Engine", "FeaServer.Engine\FeaServer.Engine.csproj", "{3122A91F-396A-4765-8431-654A7FC42796}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FeaServer.Engine.Cuda", "FeaServer.Engine.Cuda\FeaServer.Engine.Cuda.vcxproj", "{866B96CE-324A-4B70-B899-0F42E2909BB9}"
+	ProjectSection(ProjectDependencies) = postProject
+		{3C575D0C-7027-4330-B107-6011DD4B3116} = {3C575D0C-7027-4330-B107-6011DD4B3116}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FeaServer.Engine.Cpu", "FeaServer.Engine.Cpu\FeaServer.Engine.Cpu.vcxproj", "{3C575D0C-7027-4330-B107-6011DD4B3116}"
 EndProject
@@ -53,6 +56,7 @@ Global
 		{866B96CE-324A-4B70-B899-0F42E2909BB9}.Debug|Any CPU.ActiveCfg = Debug|x64
 		{866B96CE-324A-4B70-B899-0F42E2909BB9}.Debug|Any CPU.Build.0 = Debug|x64
 		{866B96CE-324A-4B70-B899-0F42E2909BB9}.Debug|Mixed Platforms.ActiveCfg = Debug|x64
+		{866B96CE-324A-4B70-B899-0F42E2909BB9}.Debug|Mixed Platforms.Build.0 = Debug|x64
 		{866B96CE-324A-4B70-B899-0F42E2909BB9}.Debug|x64.ActiveCfg = Debug|x64
 		{866B96CE-324A-4B70-B899-0F42E2909BB9}.Release|Any CPU.ActiveCfg = Release|x64
 		{866B96CE-324A-4B70-B899-0F42E2909BB9}.Release|Mixed Platforms.ActiveCfg = Release|x64
@@ -62,6 +66,7 @@ Global
 		{3C575D0C-7027-4330-B107-6011DD4B3116}.Debug|Any CPU.ActiveCfg = Debug|x64
 		{3C575D0C-7027-4330-B107-6011DD4B3116}.Debug|Any CPU.Build.0 = Debug|x64
 		{3C575D0C-7027-4330-B107-6011DD4B3116}.Debug|Mixed Platforms.ActiveCfg = Debug|x64
+		{3C575D0C-7027-4330-B107-6011DD4B3116}.Debug|Mixed Platforms.Build.0 = Debug|x64
 		{3C575D0C-7027-4330-B107-6011DD4B3116}.Debug|x64.ActiveCfg = Debug|x64
 		{3C575D0C-7027-4330-B107-6011DD4B3116}.Release|Any CPU.ActiveCfg = Release|x64
 		{3C575D0C-7027-4330-B107-6011DD4B3116}.Release|Mixed Platforms.ActiveCfg = Release|x64

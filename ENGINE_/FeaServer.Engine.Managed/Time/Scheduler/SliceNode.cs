@@ -1,13 +1,16 @@
 ﻿using System.Collections.Generic;
+using System.Runtime.InteropServices;
 namespace FeaServer.Engine.Time.Scheduler
 {
+    [StructLayout(LayoutKind.Sequential)]
     internal struct SliceNode
     {
         public ElementCollection Elements;
 
-        public SliceNode(int none)
+        public SliceNode xtor()
         {
-            Elements = new ElementCollection(0);
+            Elements.xtor();
+            return this;
         }
     }
 }

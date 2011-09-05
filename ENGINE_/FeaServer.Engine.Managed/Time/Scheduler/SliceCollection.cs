@@ -6,22 +6,23 @@ namespace FeaServer.Engine.Time.Scheduler
     {
         private ulong _currentSlice = 0;
         private Slice[] _slices = new Slice[EngineSettings.MaxTimeslices];
-        private HibernateCollection _hibernates = new HibernateCollection(0);
+        private HibernateCollection _hibernates;
         private SliceFractionCache _fractionCache = new SliceFractionCache();
 
         public SliceCollection()
         {
             for (int sliceIndex = 0; sliceIndex < _slices.Length; sliceIndex++)
-                _slices[sliceIndex] = new Slice(0);
+                _slices[sliceIndex].xtor();
+            _hibernates.xtor();
         }
 
         public void Schedule(Element element, ulong time)
         {
-            Console.WriteLine("Timeline: Add %d", TimePrecision.DecodeTime(time));
+            Console.WriteLine("Timeline: Add %d", TimePrec.DecodeTime(time));
             unchecked
             {
-                var slice = (ulong)(time >> TimePrecision.TimePrecisionBits);
-                var fraction = (ulong)(time & TimePrecision.TimePrecisionMask);
+                var slice = (ulong)(time >> TimePrec.TimePrecisionBits);
+                var fraction = (ulong)(time & TimePrec.TimePrecisionMask);
                 if (slice < EngineSettings.MaxTimeslices)
                 {
                     // first fraction
@@ -50,7 +51,7 @@ namespace FeaServer.Engine.Time.Scheduler
             if (_currentSlice >= EngineSettings.MaxTimeslices)
             {
                 _currentSlice = 0;
-                _hibernates.DeHibernate(Schedule);
+                _hibernates.DeHibernate(this);
             }
         }
 
@@ -58,7 +59,7 @@ namespace FeaServer.Engine.Time.Scheduler
 
         public bool EvaluateFrame(ulong frameTime, Action<SliceNode> evaluateNode)
         {
-            Console.WriteLine("Timeline: EvaluateFrame %d", TimePrecision.DecodeTime(frameTime));
+            Console.WriteLine("Timeline: EvaluateFrame %d", TimePrec.DecodeTime(frameTime));
             unchecked
             {
                 bool firstLoop = true;
@@ -68,7 +69,7 @@ namespace FeaServer.Engine.Time.Scheduler
                 {
                     if (!_fractionCache.BeginSlice(_slices[_currentSlice]))
                         // no fractions available, advance a wholeTime
-                        timeRemaining -= (long)TimePrecision.TimeScaler;
+                        timeRemaining -= (long)TimePrec.TimeScaler;
                     else
                     {
                         // first-time time adjust

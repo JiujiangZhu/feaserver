@@ -63,6 +63,8 @@
     <CodeAnalysisIgnoreBuiltInRules>true</CodeAnalysisIgnoreBuiltInRules>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="ManagedEngine+Shard.cs" />
+    <Compile Include="Time\Scheduler\ElementList.cs" />
     <Compile Include="Time\Scheduler\SliceFractionCache.cs" />
     <Compile Include="Time\Scheduler\ElementCollection.cs" />
     <Compile Include="Time\Scheduler\HibernateCollection.cs" />

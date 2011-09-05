@@ -1,7 +1,6 @@
 #pragma once
-#include "CuContext.h"
-#include "CudaElementTypeCollection.h"
-//#include "Engine.h"
+#include "CuContext.cpp"
+#include "CudaElementTypeCollection.cpp"
 using namespace System;
 using namespace System::Collections::Generic;
 namespace FeaServer { namespace Engine {
@@ -9,11 +8,11 @@ namespace FeaServer { namespace Engine {
 	{
 	private:
 		CuContext* _context;
-		ElementTypeCollection^ _elementTypes;
+		ElementTypeCollection^ _types;
 
 	public:
 		CudaEngine()
-			: _context(new CuContext()), _elementTypes(gcnew CudaElementTypeCollection()) {
+			: _context(new CuContext()), _types(gcnew CudaElementTypeCollection()) {
 			if (!_context->Initialize())
 				throw gcnew Exception(L"Unable to initalize CuContext");
 		}
@@ -25,18 +24,22 @@ namespace FeaServer { namespace Engine {
 
 #pragma region IEngine
 
-		virtual IEnumerable<IElement^>^ GetElements(Int32 shard)
+		virtual ElementTable^ GetTable(Int32 shard)
 		{
 			return nullptr;
 		}
 
-		virtual void LoadElements(IEnumerable<IElement^>^ elements, Int32 shard)
+		virtual void LoadTable(ElementTable^ table, Int32 shard)
 		{
 		}
 
-		property ElementTypeCollection^ ElementTypes
+		virtual void UnloadTable(Int32 shard)
 		{
-			virtual ElementTypeCollection^ get() { return _elementTypes; }
+		}
+
+		property ElementTypeCollection^ Types
+		{
+			virtual ElementTypeCollection^ get() { return _types; }
 		}
 
 		virtual void EvaluateFrame(UInt64 time)

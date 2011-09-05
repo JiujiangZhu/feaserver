@@ -1,13 +1,16 @@
 ﻿using System.Collections.Generic;
+using System.Runtime.InteropServices;
 namespace FeaServer.Engine.Time.Scheduler
 {
+    [StructLayout(LayoutKind.Sequential)]
     internal struct Hibernate
     {
         public ElementCollection Elements;
 
-        public Hibernate(int none)
+        public Hibernate xtor()
         {
-            Elements = new ElementCollection(0);
+            Elements.xtor();
+            return this;
         }
     }
 }

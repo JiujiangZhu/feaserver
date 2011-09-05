@@ -2,13 +2,13 @@ using System;
 namespace FeaServer.Engine
 {
     /// <summary>
-    /// TimePrecision
+    /// TimePrec
     /// </summary>
-    public static class TimePrecision
+    public static class TimePrec
     {
         public const int TimePrecisionBits = 4;
         public const ulong TimePrecisionMask = (1 << TimePrecisionBits) - 1;
-        public const ulong TimeScaler = (1 << TimePrecision.TimePrecisionBits);
+        public const ulong TimeScaler = (1 << TimePrec.TimePrecisionBits);
         private const decimal TimeScaleUnit = (1M / TimeScaler);
 
         /// <summary>
@@ -30,8 +30,8 @@ namespace FeaServer.Engine
         /// <returns></returns>
         public static decimal DecodeTime(this ulong time)
         {
-            var integer = (ulong)(time >> TimePrecision.TimePrecisionBits);
-            var fraction = (ulong)(time & TimePrecision.TimePrecisionMask);
+            var integer = (ulong)(time >> TimePrec.TimePrecisionBits);
+            var fraction = (ulong)(time & TimePrec.TimePrecisionMask);
             return integer + (fraction * TimeScaleUnit);
         }
     }

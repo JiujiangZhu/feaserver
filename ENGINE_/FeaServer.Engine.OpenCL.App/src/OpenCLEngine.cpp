@@ -6,11 +6,11 @@ namespace FeaServer { namespace Engine {
 	public ref class OpenCLEngine : IEngine
 	{
 	private:
-		ElementTypeCollection^ _elementTypes;
+		ElementTypeCollection^ _types;
 
 	public:
 		OpenCLEngine()
-			: _elementTypes(gcnew OpenCLElementTypeCollection()) {
+			: _types(gcnew OpenCLElementTypeCollection()) {
 		}
 		~OpenCLEngine()
 		{
@@ -18,18 +18,22 @@ namespace FeaServer { namespace Engine {
 
 #pragma region IEngine
 
-		virtual IEnumerable<IElement^>^ GetElements(Int32 shard)
+		virtual ElementTable^ GetTable(Int32 shard)
 		{
 			return nullptr;
 		}
 
-		virtual void LoadElements(IEnumerable<IElement^>^ elements, Int32 shard)
+		virtual void LoadTable(ElementTable^ table, Int32 shard)
 		{
 		}
 
-		property ElementTypeCollection^ ElementTypes
+		virtual void UnloadTable(Int32 shard)
 		{
-			virtual ElementTypeCollection^ get() { return _elementTypes; }
+		}
+
+		property ElementTypeCollection^ Types
+		{
+			virtual ElementTypeCollection^ get() { return _types; }
 		}
 
 		virtual void EvaluateFrame(UInt64 time)

@@ -4,9 +4,10 @@ namespace FeaServer.Engine
 {
 	public interface IEngine : IDisposable
 	{
-        IEnumerable<IElement> GetElements(int shard);
-        void LoadElements(IEnumerable<IElement> elements, int shard);
-        ElementTypeCollection ElementTypes { get; }
+        ElementTable GetTable(int shard);
+        void LoadTable(ElementTable table, int shard);
+        void UnloadTable(int shard);
+        ElementTypeCollection Types { get; }
         void EvaluateFrame(ulong time);
 	}
 }

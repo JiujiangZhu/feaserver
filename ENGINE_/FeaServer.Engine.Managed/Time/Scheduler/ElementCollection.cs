@@ -1,26 +1,31 @@
 ﻿using System.Collections.Generic;
 using System;
+using System.Runtime.InteropServices;
 namespace FeaServer.Engine.Time.Scheduler
 {
+    [StructLayout(LayoutKind.Sequential)]
     internal struct ElementCollection
     {
         internal class A { public Element E; public byte[] M = new byte[Element.MetadataSize]; }
-        private LinkedList<Element> _singles;
+        private ElementList _singles;
         private List<A> _multiples;
 
-        public ElementCollection(int none)
+        public ElementCollection xtor()
         {
-            _singles = new LinkedList<Element>();
             _multiples = new List<A>();
+            return this;
         }
 
-        public void Add(Element element, byte[] metadata)
+        public void Add(Element element, ulong time)
         {
+            var metadata = BitConverter.GetBytes(time);
             switch (element.ScheduleStyle)
             {
                 case ElementScheduleStyle.FirstWins:
+                    _singles.MergeFirstWins(element, metadata);
                     break;
                 case ElementScheduleStyle.LastWins:
+                    _singles.MergeLastWins(element, metadata);
                     break;
                 case ElementScheduleStyle.Multiple:
                     _multiples.Add(new A { E = element, M = metadata });
@@ -30,40 +35,53 @@ namespace FeaServer.Engine.Time.Scheduler
             }
         }
 
-        //public void Walk(Action<Element, byte[]> action)
-        //{
-        //    var singles = Singles;
-        //    if (singles.Count > 0)
-        //        foreach (var single in singles)
-        //            action(single, single.Metadata);
-        //    var multiples = Multiples;
-        //    if (multiples.Count > 0)
-        //        foreach (var multiple in multiples)
-        //            action(multiple.E, multiple.M);
-        //}
-
-        public void WalkAndRemove(Func<Element, byte[], object> predicate, Action<Element, byte[], object> action)
+        public void Clear()
         {
-            var singles = _singles;
-            if (singles.Count > 0)
-                foreach (var single in singles)
+            _singles.Clear();
+            _multiples.Clear();
+        }
+
+        public int Count
+        {
+            get { return _singles.Count + _multiples.Count; }
+        }
+
+        public IList<Element> ToList()
+        {
+            var list = new List<Element>();
+            foreach (var singles in _singles)
+                list.Add(singles);
+            foreach (var multiple in _multiples)
+                list.Add(multiple.E);
+            return list;
+        }
+
+        public void DeHibernate(SliceCollection slices)
+        {
+            if (_singles.Count > 0)
+                foreach (var single in _singles)
                 {
-                    var value = predicate(single, single.Metadata);
-                    if (value != null)
+                    var time = BitConverter.ToUInt64(single.Metadata, 0);
+                    if (time < EngineSettings.MaxTimeslicesTime)
+                        throw new Exception("paranoia");
+                    var newTime = (ulong)(time -= EngineSettings.MaxTimeslicesTime);
+                    if (newTime < EngineSettings.MaxTimeslicesTime)
                     {
-                        singles.Remove(single);
-                        action(single, single.Metadata, value);
+                        _singles.Remove(single);
+                        slices.Schedule(single, newTime);
                     }
                 }
-            var multiples = _multiples;
-            if (multiples.Count > 0)
-                foreach (var multiple in multiples)
+            if (_multiples.Count > 0)
+                foreach (var multiple in _multiples)
                 {
-                    var value = predicate(multiple.E, multiple.M);
-                    if (value != null)
+                    var time = BitConverter.ToUInt64(multiple.M, 0);
+                    if (time < EngineSettings.MaxTimeslicesTime)
+                        throw new Exception("paranoia");
+                    var newTime = (ulong)(time -= EngineSettings.MaxTimeslicesTime);
+                    if (newTime < EngineSettings.MaxTimeslicesTime)
                     {
-                        multiples.Remove(multiple);
-                        action(multiple.E, multiple.M, value);
+                        _multiples.Remove(multiple);
+                        slices.Schedule(multiple.E, newTime);
                     }
                 }
         }

@@ -9,7 +9,7 @@ namespace FeaServer.Engine
     {
         public static IEngine Create() { return Create(null, GetTightestProvider()); }
         public static IEngine Create(IEnumerable<IElementType> elementTypes) { return Create(elementTypes, GetTightestProvider()); }
-        public static IEngine Create(IEnumerable<IElementType> elementTypes, EngineProvider provider)
+        public static IEngine Create(IEnumerable<IElementType> types, EngineProvider provider)
         {
             //var enginePath = Environment.CurrentDirectory + "\\Engines\\";
             var enginePath = @"C:\_APPLICATION\FEASERVER\ENGINE_\Engines\bin\x64\Debug";
@@ -45,11 +45,11 @@ namespace FeaServer.Engine
             if (engineType == null)
                 throw new InvalidOperationException();
             var engine = (Activator.CreateInstance(engineType) as IEngine);
-            if (elementTypes != null)
+            if (types != null)
             {
-                var engineElementTypes = engine.ElementTypes;
-                foreach (var elementType in elementTypes)
-                    engineElementTypes.Add(elementType);
+                var engineTypes = engine.Types;
+                foreach (var type in types)
+                    engineTypes.Add(type);
             }
             return engine;
         }
