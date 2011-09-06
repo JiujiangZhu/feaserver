@@ -8,16 +8,19 @@ namespace FeaServer.Engine.Time.Scheduler
     {
         internal class A { public Element E; public byte[] M = new byte[Element.MetadataSize]; }
         private ElementList _singles;
-        private List<A> _multiples;
+        private System.LinkedList<ElementRef> _multiples;
 
         public ElementCollection xtor()
         {
-            _multiples = new List<A>();
+            Console.WriteLine("ElementCollection:xtor");
+            _singles = new ElementList();
+            _multiples = new System.LinkedList<ElementRef>();
             return this;
         }
 
         public void Add(Element element, ulong time)
         {
+            Console.WriteLine("ElementCollection:Add {0}", TimePrec.DecodeTime(time));
             var metadata = BitConverter.GetBytes(time);
             switch (element.ScheduleStyle)
             {
@@ -28,15 +31,18 @@ namespace FeaServer.Engine.Time.Scheduler
                     _singles.MergeLastWins(element, metadata);
                     break;
                 case ElementScheduleStyle.Multiple:
-                    _multiples.Add(new A { E = element, M = metadata });
+                    var elementRef = new ElementRef { Element = element, Metadata = metadata };
+                    _multiples.AddFirst(elementRef);
                     break;
                 default:
+                    Console.WriteLine("Warn:UNDEFINED");
                     throw new NotImplementedException();
             }
         }
 
         public void Clear()
         {
+            Console.WriteLine("ElementCollection:Clear");
             _singles.Clear();
             _multiples.Clear();
         }
@@ -48,16 +54,18 @@ namespace FeaServer.Engine.Time.Scheduler
 
         public IList<Element> ToList()
         {
+            Console.WriteLine("ElementCollection:ToList");
             var list = new List<Element>();
             foreach (var singles in _singles)
                 list.Add(singles);
             foreach (var multiple in _multiples)
-                list.Add(multiple.E);
+                list.Add(multiple.Element);
             return list;
         }
 
         public void DeHibernate(SliceCollection slices)
         {
+            Console.WriteLine("ElementCollection:DeHibernate");
             if (_singles.Count > 0)
                 foreach (var single in _singles)
                 {
@@ -74,14 +82,14 @@ namespace FeaServer.Engine.Time.Scheduler
             if (_multiples.Count > 0)
                 foreach (var multiple in _multiples)
                 {
-                    var time = BitConverter.ToUInt64(multiple.M, 0);
+                    var time = BitConverter.ToUInt64(multiple.Metadata, 0);
                     if (time < EngineSettings.MaxTimeslicesTime)
                         throw new Exception("paranoia");
                     var newTime = (ulong)(time -= EngineSettings.MaxTimeslicesTime);
                     if (newTime < EngineSettings.MaxTimeslicesTime)
                     {
                         _multiples.Remove(multiple);
-                        slices.Schedule(multiple.E, newTime);
+                        slices.Schedule(multiple.Element, newTime);
                     }
                 }
         }

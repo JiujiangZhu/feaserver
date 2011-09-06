@@ -1,7 +1,11 @@
 #pragma once
 
-#define trace(pattern,...)
-#define throw(type,...) __THROW
+#define trace(type,method,...) cuPrintf(#type":"method"\n",__VA_ARGS__)
+#define thrownew(type,...) __THROW
+#include "cuPrintf.cu"
+#include "..\..\..\FeaServer.Engine.Cpu\src\System\Falloc.h"
+#include "..\..\..\FeaServer.Engine.Cpu\src\System\LinkedList.h"
+#include "..\..\..\FeaServer.Engine.Cpu\src\System\SortedDictionary.h"
 
 //typedef enum {false, true} bool;
 typedef unsigned char byte;

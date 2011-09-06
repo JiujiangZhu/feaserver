@@ -40,7 +40,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <CharacterSet>MultiByte</CharacterSet>
     <CLRSupport>true</CLRSupport>
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -159,13 +159,14 @@
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\Element.hpp" />
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\ElementCollection.hpp" />
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\ElementList.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\ElementRef.hpp" />
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\Hibernate.hpp" />
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\HibernateCollection.hpp" />
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\Slice.hpp" />
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp" />
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceFractionCache.hpp" />
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceFractionCollection.hpp" />
-    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceNode.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceFraction.hpp" />
     <ClInclude Include="src\CudaElementTypeCollection.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -173,18 +174,24 @@
       <FileType>Document</FileType>
       <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ptx</NvccCompilation>
       <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Engines\cu\%(Filename).ptx</CompileOut>
-      <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_12,sm_12</CodeGeneration>
+      <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
       <CInterleavedPTX Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</CInterleavedPTX>
+    </CudaCompile>
+    <CudaCompile Include="src\Time\ControlKernel.cu">
+      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Engines\cu\%(Filename).ptx</CompileOut>
+      <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ptx</NvccCompilation>
+      <CInterleavedPTX Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</CInterleavedPTX>
+      <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
     </CudaCompile>
     <CudaCompile Include="src\Time\SchedulerKernel.cu">
       <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
       <CInterleavedPTX Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</CInterleavedPTX>
-      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Engines\cu\%(Filename).ptx</CompileOut>
-      <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ptx</NvccCompilation>
-      <GPUDebugInfo Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</GPUDebugInfo>
+      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Engines\cu\%(Filename).obj</CompileOut>
+      <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compile</NvccCompilation>
     </CudaCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\Engines\cu\ControlKernel.ptx" />
     <None Include="..\Engines\cu\MockElementKernel.ptx" />
     <None Include="..\Engines\cu\SchedulerKernel.ptx" />
     <None Include="src\Core.h" />

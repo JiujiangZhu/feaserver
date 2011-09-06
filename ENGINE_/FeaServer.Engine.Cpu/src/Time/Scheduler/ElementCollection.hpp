@@ -1,5 +1,6 @@
 #pragma once
 #include "ElementList.hpp"
+#include "ElementRef.hpp"
 namespace Time { namespace Scheduler {
 #ifdef _ELEMENTCOLLECTION
 
@@ -10,19 +11,19 @@ namespace Time { namespace Scheduler {
 	{
 	public:
 		ElementList _singles;
-        void* _multiples;
+        System::LinkedList<ElementRef> _multiples;
 
         __device__ struct ElementCollection_t* xtor()
         {
 			trace(ElementCollection, "xtor");
-            _multiples = nullptr; //new List<A>();
 			return this;
         }
 
         __device__ void Add(Element* element, ulong time)
         {
-			trace(ElementCollection, "Add");
+			trace(ElementCollection, "Add %d", TimePrec__DecodeTime(time));
             byte* metadata = (byte*)time;
+			ElementRef* elementRef;
             switch (element->ScheduleStyle)
             {
 				case FirstWins:
@@ -32,10 +33,12 @@ namespace Time { namespace Scheduler {
                     _singles.MergeLastWins(element, metadata);
                     break;
                 case Multiple:
-                    //_multiples.Add(new A { E = element, M = metadata });
+					elementRef = nullptr;
+                    _multiples.AddFirst(elementRef);
                     break;
                 default:
-                    throw(NotImplementedException);
+					trace(Warn, "UNDEFINED");
+                    thrownew(NotImplementedException);
             }
         }
 
@@ -43,12 +46,12 @@ namespace Time { namespace Scheduler {
         {
 			trace(ElementCollection, "Clear");
             _singles.Clear();
-            //_multiples.Clear();
+            _multiples.Clear();
         }
 
         __device__ int getCount()
         {
-            return _singles.getCount();// + _multiples.getCount();
+            return _singles.getCount() + _multiples.getCount();
         }
 
 		/*

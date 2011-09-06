@@ -2,7 +2,10 @@
 
 #define __device__
 #define trace(type,method,...) printf(#type":"method"\n",__VA_ARGS__)
-#define throw(type,...) throw;
+#define thrownew(type,...) throw;
+#include "System\Falloc.h"
+#include "System\LinkedList.h"
+#include "System\SortedDictionary.h"
 
 //typedef enum {false, true} bool;
 typedef unsigned char byte;

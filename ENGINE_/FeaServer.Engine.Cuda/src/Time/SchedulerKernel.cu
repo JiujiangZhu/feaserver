@@ -3,21 +3,27 @@
 #include "..\..\..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp"
 using namespace Time::Scheduler;
 
-__global__ void Main()
+__global__ void Schedule()
 {
 	Element e;
+	e.ScheduleStyle = Time::ElementScheduleStyle::Multiple;
 
-	SliceCollection* s;
-	s->Schedule(&e, 10);
-	s->MoveNextSlice();
+	SliceCollection s;
+	s.Schedule(&e, 10);
+	s.MoveNextSlice();
+}
 
-	//Element e;
-	//ElementList* l;
-	//l->AddFirst(&e);
-	//ElementList::Enumerator en;
-	//l->GetEnumerator(&en);
-	//HibernateCollection h;
-	//h.DeHibernate(nullptr);
+int main()
+{
+	//fallocHeapInitialize(nullptr, 0);
+
+	cudaPrintfInit();
+	Schedule<<<1, 1>>>();
+	cudaPrintfDisplay(stdout, true);
+	cudaPrintfEnd();
+	printf("\ndone.\n");
+	scanf("%c");
+    return 0;
 }
 
 #include "..\..\..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp"

@@ -6,7 +6,7 @@
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{8E27B21F-99FB-498A-9CEA-D950F3F40279}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>FeaServer.Engine.Managed</RootNamespace>
     <AssemblyName>FeaServer.Engine.Managed</AssemblyName>
@@ -62,8 +62,15 @@
     <CodeAnalysisRuleDirectories>;C:\Program Files (x86)\Microsoft Visual Studio 10.0\Team Tools\Static Analysis Tools\FxCop\\Rules</CodeAnalysisRuleDirectories>
     <CodeAnalysisIgnoreBuiltInRules>true</CodeAnalysisIgnoreBuiltInRules>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Program.cs" />
     <Compile Include="ManagedEngine+Shard.cs" />
+    <Compile Include="System\LinkedListNode.cs" />
+    <Compile Include="System\LinkedList.cs" />
+    <Compile Include="Time\Scheduler\ElementRef.cs" />
     <Compile Include="Time\Scheduler\ElementList.cs" />
     <Compile Include="Time\Scheduler\SliceFractionCache.cs" />
     <Compile Include="Time\Scheduler\ElementCollection.cs" />
@@ -71,7 +78,7 @@
     <Compile Include="Time\Scheduler\Element.cs" />
     <Compile Include="Time\Scheduler\Hibernate.cs" />
     <Compile Include="Time\Scheduler\SliceFractionCollection.cs" />
-    <Compile Include="Time\Scheduler\SliceNode.cs" />
+    <Compile Include="Time\Scheduler\SliceFraction.cs" />
     <Compile Include="Time\Scheduler\Slice.cs" />
     <Compile Include="Time\Scheduler\SliceCollection.cs" />
     <Compile Include="ManagedElementTypeCollection.cs" />

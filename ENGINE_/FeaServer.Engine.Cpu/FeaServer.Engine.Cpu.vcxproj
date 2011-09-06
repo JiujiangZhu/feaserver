@@ -29,13 +29,14 @@
     <ClInclude Include="src\Time\Scheduler\Element.hpp" />
     <ClInclude Include="src\Time\Scheduler\ElementCollection.hpp" />
     <ClInclude Include="src\Time\Scheduler\ElementList.hpp" />
+    <ClInclude Include="src\Time\Scheduler\ElementRef.hpp" />
     <ClInclude Include="src\Time\Scheduler\Hibernate.hpp" />
     <ClInclude Include="src\Time\Scheduler\HibernateCollection.hpp" />
     <ClInclude Include="src\Time\Scheduler\Slice.hpp" />
     <ClInclude Include="src\Time\Scheduler\SliceCollection.hpp" />
+    <ClInclude Include="src\Time\Scheduler\SliceFraction.hpp" />
     <ClInclude Include="src\Time\Scheduler\SliceFractionCache.hpp" />
     <ClInclude Include="src\Time\Scheduler\SliceFractionCollection.hpp" />
-    <ClInclude Include="src\Time\Scheduler\SliceNode.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\FeaServer.Engine\FeaServer.Engine.csproj">

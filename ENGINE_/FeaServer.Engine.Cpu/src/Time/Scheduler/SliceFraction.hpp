@@ -1,24 +1,24 @@
 #pragma once
 #include "ElementCollection.hpp"
 namespace Time { namespace Scheduler {
-#ifdef _SLICENODE
+#ifdef _SLICEFRACTION
 
 #else
-	#define SLICENODE
+	#define SLICEFRACTION
 
-	typedef struct SliceNode_t
+	typedef struct SliceFraction_t
 	{
 	public:
 		ElementCollection Elements;
 
-        __device__ struct SliceNode_t* xtor()
+        __device__ struct SliceFraction_t* xtor()
         {
-			trace(SliceNode, "xtor");
+			trace(SliceFraction, "xtor");
 			Elements.xtor();
 			return this;
         }
 
-	} SliceNode;
+	} SliceFraction;
 
 #endif
 }}

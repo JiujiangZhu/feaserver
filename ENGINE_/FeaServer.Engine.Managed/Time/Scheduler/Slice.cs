@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿using System;
 using System.Runtime.InteropServices;
 namespace FeaServer.Engine.Time.Scheduler
 {
@@ -9,6 +9,8 @@ namespace FeaServer.Engine.Time.Scheduler
 
         public Slice xtor()
         {
+            Console.WriteLine("Slice:xtor");
+            Fractions = new SliceFractionCollection();
             return this;
         }
     }

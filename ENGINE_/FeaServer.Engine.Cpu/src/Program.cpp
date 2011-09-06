@@ -6,13 +6,11 @@ using namespace Time::Scheduler;
 
 static void main()
 {
-	Element e;
+	//fallocHeapInitialize(nullptr, 0);
 
-	//HibernateCollection h;
-	//h.xtor();
-	//h.Hibernate(&e, 10);
-	//e.getNext(); e.getPrevious();
-	
+	//
+	Element e;
+	e.ScheduleStyle = Time::ElementScheduleStyle::Multiple;
 
 	SliceCollection* s = new SliceCollection();
 	s->Schedule(&e, 10);

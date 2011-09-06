@@ -9,13 +9,14 @@ namespace Time { namespace Scheduler {
 #elif defined(SLICECOLLECTION)
 	__device__ void ElementCollection::DeHibernate(SliceCollection* slices)
     {
+		trace(ElementCollection, "DeHibernate");
 		ElementList::Enumerator e;
         if (_singles.GetEnumerator(e))
 			for (Element* single = e.Current; !e.MoveNext(); )
             {
                 ulong time = (ulong)single->Metadata;
                 if (time < EngineSettings__MaxTimeslicesTime)
-                    throw(Exception, "paranoia");
+                    thrownew(Exception, "paranoia");
                 ulong newTime = (ulong)(time -= EngineSettings__MaxTimeslicesTime);
                 if (newTime < EngineSettings__MaxTimeslicesTime)
                 {
@@ -23,21 +24,20 @@ namespace Time { namespace Scheduler {
                     slices->Schedule(single, newTime);
                 }
             }
-		/*
-        if (_multiples.Count > 0)
-            foreach (var multiple in _multiples)
+		System::LinkedList<ElementRef>::Enumerator e2;
+		if (_multiples.GetEnumerator(e2))
+			for (ElementRef* multiple = e2.Current; !e2.MoveNext(); )
             {
-                var time = BitConverter.ToUInt64(multiple.M, 0);
-                if (time < EngineSettings.MaxTimeslicesTime)
-                    throw new Exception("paranoia");
-                var newTime = (ulong)(time -= EngineSettings.MaxTimeslicesTime);
-                if (newTime < EngineSettings.MaxTimeslicesTime)
+                ulong time = (ulong)(multiple->Metadata);
+                if (time < EngineSettings__MaxTimeslicesTime)
+                    thrownew(Exception, "paranoia");
+                ulong newTime = (ulong)(time -= EngineSettings__MaxTimeslicesTime);
+                if (newTime < EngineSettings__MaxTimeslicesTime)
                 {
-                    multiples.Remove(multiple);
-                    slices.Schedule(multiple.E, newTime);
+					_multiples.Remove(multiple);
+                    slices->Schedule(multiple->Element, newTime);
                 }
             }
-		*/
     }
 
 #else
@@ -85,6 +85,7 @@ namespace Time { namespace Scheduler {
 		/*
 		__device__ void ScheduleRange(IEnumerable<Tuple<Element, ulong>> elements)
         {
+			trace(SliceCollection, "ScheduleRange");
             foreach (var element in elements)
                 Schedule(element.Item1, element.Item2);
         }

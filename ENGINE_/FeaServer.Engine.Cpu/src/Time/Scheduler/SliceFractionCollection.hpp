@@ -1,12 +1,12 @@
 #pragma once
-#include "SliceNode.hpp"
+#include "SliceFraction.hpp"
 namespace Time { namespace Scheduler {
 #ifdef _SLICEFRACTIONCOLLECTION
 
 #else
 	#define SLICEFRACTIONCOLLECTION
 
-	class SliceFractionCollection
+	class SliceFractionCollection : public System::SortedDictionary<ulong, SliceFraction*>
 	{
 	public:
 		__device__ SliceFractionCollection()
@@ -16,10 +16,11 @@ namespace Time { namespace Scheduler {
 
 		__device__ void Schedule(Element* element, ulong fraction)
         {
-            SliceNode node;
-            //if (!TryGetValue(fraction, out node))
-            //    Add(fraction, node = new SliceNode(0));
-            node.Elements.Add(element, 0);
+			trace(SliceFractionCollection, "Schedule %d", TimePrec__DecodeTime(fraction));
+            SliceFraction* fraction2;
+            if (!TryGetValue(fraction, &fraction2))
+                Add(fraction, fraction2 = nullptr);
+            fraction2->Elements.Add(element, 0);
         }
 	};
 

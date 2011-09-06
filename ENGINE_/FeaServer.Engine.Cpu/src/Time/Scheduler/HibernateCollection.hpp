@@ -21,13 +21,14 @@ namespace Time { namespace Scheduler {
 
         __device__ void Hibernate(Element* element, ulong time)
         {
-			trace(HibernateCollection, "Hibernate");
+			trace(HibernateCollection, "Hibernate %d", TimePrec__DecodeTime(time));
             Scheduler::Hibernate* hibernate = &_hibernates[0];
             hibernate->Elements.Add(element, time);
         }
 
 		 __device__ void DeHibernate(SliceCollection* slices)
         {
+			trace(HibernateCollection, "DeHibernate");
             Scheduler::Hibernate* hibernate = &_hibernates[0];
             hibernate->Elements.DeHibernate(slices);
         }

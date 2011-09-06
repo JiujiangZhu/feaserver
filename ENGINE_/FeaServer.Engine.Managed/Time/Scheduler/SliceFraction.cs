@@ -1,14 +1,15 @@
-﻿using System.Collections.Generic;
+﻿using System;
 using System.Runtime.InteropServices;
 namespace FeaServer.Engine.Time.Scheduler
 {
     [StructLayout(LayoutKind.Sequential)]
-    internal struct SliceNode
+    internal struct SliceFraction
     {
         public ElementCollection Elements;
 
-        public SliceNode xtor()
+        public SliceFraction xtor()
         {
+            Console.WriteLine("SliceFraction:xtor");
             Elements.xtor();
             return this;
         }

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿using System;
 using System.Runtime.InteropServices;
 namespace FeaServer.Engine.Time.Scheduler
 {
@@ -9,6 +9,7 @@ namespace FeaServer.Engine.Time.Scheduler
 
         public Hibernate xtor()
         {
+            Console.WriteLine("Hibernate:xtor");
             Elements.xtor();
             return this;
         }

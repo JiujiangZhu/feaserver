@@ -41,7 +41,7 @@ namespace FeaServer.Engine.Time.Scheduler
             RequiresRebuild = false;
         }
 
-        public SliceNode MoveNextSliceFraction()
+        public SliceFraction MoveNextSliceFraction()
         {
             _minFraction = _currentFraction; //: fractions.Remove(fractionTime);
             _currentFraction = (_currentFractionIndex > 0 ? _fractions[--_currentFractionIndex] : ulong.MaxValue); //: repnz requires one less register

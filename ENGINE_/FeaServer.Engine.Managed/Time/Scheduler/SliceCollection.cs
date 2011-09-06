@@ -11,6 +11,7 @@ namespace FeaServer.Engine.Time.Scheduler
 
         public SliceCollection()
         {
+            Console.WriteLine("SliceCollection:ctor");
             for (int sliceIndex = 0; sliceIndex < _slices.Length; sliceIndex++)
                 _slices[sliceIndex].xtor();
             _hibernates.xtor();
@@ -18,7 +19,7 @@ namespace FeaServer.Engine.Time.Scheduler
 
         public void Schedule(Element element, ulong time)
         {
-            Console.WriteLine("Timeline: Add %d", TimePrec.DecodeTime(time));
+            Console.WriteLine("SliceCollection:Schedule {0}", TimePrec.DecodeTime(time));
             unchecked
             {
                 var slice = (ulong)(time >> TimePrec.TimePrecisionBits);
@@ -41,12 +42,14 @@ namespace FeaServer.Engine.Time.Scheduler
 
         public void ScheduleRange(IEnumerable<Tuple<Element, ulong>> elements)
         {
+            Console.WriteLine("SliceCollection:ScheduleRange");
             foreach (var element in elements)
                 Schedule(element.Item1, element.Item2);
         }
 
-        private void MoveNextSlice()
+        public void MoveNextSlice()
         {
+            Console.WriteLine("SliceCollection:MoveNextSlice {0}", _currentSlice);
             _currentSlice++;
             if (_currentSlice >= EngineSettings.MaxTimeslices)
             {
@@ -57,9 +60,9 @@ namespace FeaServer.Engine.Time.Scheduler
 
         #region Evaluate
 
-        public bool EvaluateFrame(ulong frameTime, Action<SliceNode> evaluateNode)
+        public bool EvaluateFrame(ulong frameTime, Action<SliceFraction> evaluateNode)
         {
-            Console.WriteLine("Timeline: EvaluateFrame %d", TimePrec.DecodeTime(frameTime));
+            Console.WriteLine("SliceCollection:EvaluateFrame {0}", TimePrec.DecodeTime(frameTime));
             unchecked
             {
                 bool firstLoop = true;
@@ -97,7 +100,7 @@ namespace FeaServer.Engine.Time.Scheduler
             }
         }
 
-        private bool EvaluateSlice(long time, out long elapsedTime, Action<SliceNode> evaluateNode)
+        private bool EvaluateSlice(long time, out long elapsedTime, Action<SliceFraction> evaluateNode)
         {
             //ulong lastFraction;
             ulong currentFraction;
