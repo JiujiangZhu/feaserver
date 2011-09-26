@@ -80,7 +80,7 @@ void fallocFreeChunk(fallocDeviceHeap *deviceHeap, void *obj) {
 //////////////////////
 // ALLOC
 
-fallocDeviceContext *fallocCreate(fallocDeviceHeap *deviceHeap) {
+fallocDeviceContext *fallocCreateCtx(fallocDeviceHeap *deviceHeap) {
 	if (sizeof(fallocDeviceContext) > HEAPCHUNK_SIZE)
 		throw;
 	fallocDeviceContext *context = (fallocDeviceContext*)fallocGetChunk(deviceHeap);
@@ -96,7 +96,7 @@ fallocDeviceContext *fallocCreate(fallocDeviceHeap *deviceHeap) {
 	return context;
 }
 
-void fallocDispose(fallocDeviceContext *t) {
+void fallocDisposeCtx(fallocDeviceContext *t) {
 	fallocDeviceHeap *deviceHeap = t->deviceHeap;
 	for (cpuFallocDeviceNode* node = t->allocNodes; node != nullptr; node = node->next)
 		fallocFreeChunk(deviceHeap, node);
@@ -157,7 +157,7 @@ extern "C" cpuFallocHeap cpuFallocInit(size_t bufferLen) {
     bufferLen = (bufferLen < chunkSize ? chunkSize : bufferLen);
     if ((bufferLen % chunkSize) > 0)
         bufferLen += (chunkSize - (bufferLen % chunkSize));
-	unsigned short chunks = bufferLen / chunkSize;
+	unsigned short chunks = (unsigned short)(bufferLen / chunkSize);
 	// Fix up bufferlen to include fallocDeviceHeap
 	bufferLen += sizeof(fallocDeviceHeap);
 	if ((bufferLen % 16) > 0)

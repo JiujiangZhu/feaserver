@@ -11,9 +11,10 @@ namespace Time { namespace Scheduler {
 	public:
 		SliceFractionCollection Fractions;
 
-        __device__ struct Slice_t* xtor()
+        __device__ struct Slice_t* xtor(fallocDeviceHeap* deviceHeap)
         {
 			trace(Slice, "xtor");
+			Fractions._falloCtx = fallocCreateCtx(deviceHeap);
 			return this;
         }
 

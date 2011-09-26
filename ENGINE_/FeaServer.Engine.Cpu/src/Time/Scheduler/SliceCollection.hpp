@@ -46,18 +46,19 @@ namespace Time { namespace Scheduler {
 	class SliceCollection
 	{
 	public:
+		fallocDeviceHeap* _deviceHeap;
 		ulong _currentSlice;
         Slice _slices[EngineSettings__MaxTimeslices];
         HibernateCollection _hibernates;
         SliceFractionCache _fractionCache;
 
-		__device__ SliceCollection()
-			: _currentSlice(0)
+		__device__ SliceCollection(fallocDeviceHeap* deviceHeap)
+			:  _deviceHeap(deviceHeap), _currentSlice(0)
 		{
 			trace(SliceCollection, "ctor");
 			for (int sliceIndex = 0; sliceIndex < EngineSettings__MaxTimeslices; sliceIndex++)
-				_slices[sliceIndex].xtor();
-			_hibernates.xtor();
+				_slices[sliceIndex].xtor(_deviceHeap);
+			_hibernates.xtor(_deviceHeap);
 		}
 
         __device__ void Schedule(Element* element, ulong time)

@@ -11,10 +11,10 @@ namespace Time { namespace Scheduler {
 	public:
         ElementCollection Elements;
 
-        __device__ struct Hibernate_t* xtor()
+        __device__ struct Hibernate_t* xtor(fallocDeviceContext* falloCtx)
         {
 			trace(Hibernate, "xtor");
-			Elements.xtor();
+			Elements.xtor(falloCtx);
 			return this;
         }
 

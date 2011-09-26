@@ -41,8 +41,8 @@ void *fallocGetChunk(fallocDeviceHeap *deviceHeap);
 void fallocFreeChunk(fallocDeviceHeap *deviceHeap, void *obj);
 // ALLOC
 typedef struct _cpuFallocDeviceContext fallocDeviceContext;
-fallocDeviceContext *fallocCreate(fallocDeviceHeap *deviceHeap);
-void fallocDispose(fallocDeviceContext *t);
+fallocDeviceContext *fallocCreateCtx(fallocDeviceHeap *deviceHeap);
+void fallocDisposeCtx(fallocDeviceContext *t);
 void *falloc(fallocDeviceContext *t, unsigned short bytes);
 
 

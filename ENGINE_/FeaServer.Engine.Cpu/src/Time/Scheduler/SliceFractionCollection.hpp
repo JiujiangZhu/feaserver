@@ -9,6 +9,9 @@ namespace Time { namespace Scheduler {
 	class SliceFractionCollection : public System::SortedDictionary<ulong, SliceFraction*>
 	{
 	public:
+		fallocDeviceContext* _falloCtx;
+
+	public:
 		__device__ SliceFractionCollection()
 		{
 			trace(SliceFractionCollection, "ctor");
@@ -19,7 +22,11 @@ namespace Time { namespace Scheduler {
 			trace(SliceFractionCollection, "Schedule %d", TimePrec__DecodeTime(fraction));
             SliceFraction* fraction2;
             if (!TryGetValue(fraction, &fraction2))
-                Add(fraction, fraction2 = nullptr);
+			{
+				fraction2 = (SliceFraction*)falloc(_falloCtx, sizeof(SliceFraction));
+				fraction2->xtor(_falloCtx);
+                Add(fraction, fraction2);
+			}
             fraction2->Elements.Add(element, 0);
         }
 	};

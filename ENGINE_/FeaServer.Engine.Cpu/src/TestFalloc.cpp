@@ -1,9 +1,8 @@
 #pragma once
 #include <stdio.h>
 #include "Core.h"
-//#include "System\cpuFalloc.cpp"
 
-static void main()
+static void xmain()
 {
 	cpuFallocHeap heap = cpuFallocInit(1);
 	fallocInit(heap.deviceHeap);
@@ -13,10 +12,10 @@ static void main()
 	fallocFreeChunk(heap.deviceHeap, obj);
 
 	// create/free alloc
-	fallocDeviceContext *ctx = fallocCreate(heap.deviceHeap);
+	fallocDeviceContext *ctx = fallocCreateCtx(heap.deviceHeap);
 	char *testString = (char *)falloc(ctx, 10);
 	int *testInteger = (int *)falloc(ctx, sizeof(int));
-	fallocDispose(ctx);
+	fallocDisposeCtx(ctx);
 
 	// free and exit
 	cpuFallocEnd(heap);

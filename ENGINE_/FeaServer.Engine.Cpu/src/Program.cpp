@@ -4,19 +4,22 @@
 #include "Time\Scheduler\SliceCollection.hpp"
 using namespace Time::Scheduler;
 
-static void xmain()
+static void main()
 {
-	//fallocHeapInitialize(nullptr, 0);
+	cpuFallocHeap heap = cpuFallocInit();
+	fallocInit(heap.deviceHeap);
 
 	//
 	Element e;
-	e.ScheduleStyle = Time::ElementScheduleStyle::Multiple;
+	e.ScheduleStyle = Time::Multiple;
 
-	SliceCollection* s = new SliceCollection();
+	SliceCollection* s = new SliceCollection(heap.deviceHeap);
 	s->Schedule(&e, 10);
 	s->MoveNextSlice();
-	//
-	printf("done."); scanf("%c");
+
+	// free and exit
+	cpuFallocEnd(heap);
+	printf("done."); scanf_s("%c");
 }
 
 #include "Time\Scheduler\SliceCollection.hpp"

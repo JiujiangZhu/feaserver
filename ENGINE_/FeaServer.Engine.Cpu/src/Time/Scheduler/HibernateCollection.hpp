@@ -9,13 +9,15 @@ namespace Time { namespace Scheduler {
 	typedef struct HibernateCollection_t
 	{
 	public:
+		fallocDeviceContext* _falloCtx;
 		Hibernate _hibernates[EngineSettings__MaxHibernates];
 
-        __device__ struct HibernateCollection_t* xtor()
+        __device__ struct HibernateCollection_t* xtor(fallocDeviceHeap* deviceHeap)
         {
 			trace(HibernateCollection, "xtor");
+			_falloCtx = fallocCreateCtx(deviceHeap);
             for (int hibernateIndex = 0; hibernateIndex < EngineSettings__MaxHibernates; hibernateIndex++)
-                _hibernates[hibernateIndex].xtor();
+                _hibernates[hibernateIndex].xtor(_falloCtx);
 			return this;
         }
 

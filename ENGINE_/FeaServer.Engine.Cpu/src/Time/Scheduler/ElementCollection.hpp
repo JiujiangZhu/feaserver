@@ -1,4 +1,5 @@
 #pragma once
+#include <memory.h>
 #include "ElementList.hpp"
 #include "ElementRef.hpp"
 namespace Time { namespace Scheduler {
@@ -10,12 +11,14 @@ namespace Time { namespace Scheduler {
 	typedef struct ElementCollection_t
 	{
 	public:
+		fallocDeviceContext* _falloCtx;
 		ElementList _singles;
         System::LinkedList<ElementRef> _multiples;
 
-        __device__ struct ElementCollection_t* xtor()
+        __device__ struct ElementCollection_t* xtor(fallocDeviceContext* falloCtx)
         {
 			trace(ElementCollection, "xtor");
+			_falloCtx = falloCtx;
 			return this;
         }
 
@@ -33,7 +36,11 @@ namespace Time { namespace Scheduler {
                     _singles.MergeLastWins(element, metadata);
                     break;
                 case Multiple:
-					elementRef = nullptr;
+					elementRef = (ElementRef*)falloc(_falloCtx, sizeof(ElementRef));
+					if (elementRef == nullptr)
+						thrownew(OutOfMemoryException);
+					elementRef->Element = element;
+					memcpy(elementRef->Metadata, metadata, MetadataSize);
                     _multiples.AddFirst(elementRef);
                     break;
                 default:
