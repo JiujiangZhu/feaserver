@@ -4,7 +4,7 @@
 #include "Time\Scheduler\SliceCollection.hpp"
 using namespace Time::Scheduler;
 
-static void main()
+static void xmain()
 {
 	//fallocHeapInitialize(nullptr, 0);
 

@@ -1,3 +1,4 @@
+//http://supercomputingblog.com/cuda/cuda-tutorial-1-getting-started/
 //http://people.eku.edu/ritchisong/301notes2.htm
 
 typedef struct {

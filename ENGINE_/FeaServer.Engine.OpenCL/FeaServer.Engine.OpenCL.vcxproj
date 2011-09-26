@@ -127,9 +127,27 @@
     <ClCompile Include="src\OpenCLElementTypeCollection.h" />
     <ClCompile Include="src\OpenCLEngine.cpp" />
     <ClCompile Include="src\Program.cpp" />
+    <ClCompile Include="src\Program2.cpp" />
+    <ClCompile Include="src\Program3.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\FFT.cl" />
+    <None Include="src\Time\SchedulerKernel.cl" />
+    <None Include="src\Time\Scheduler\Element.hpp" />
+    <None Include="src\Time\Scheduler\ElementCollection.hpp" />
+    <None Include="src\Time\Scheduler\ElementList.hpp" />
+    <None Include="src\Time\Scheduler\ElementRef.hpp" />
+    <None Include="src\Time\Scheduler\Hibernate.hpp" />
+    <None Include="src\Time\Scheduler\HibernateCollection.hpp" />
+    <None Include="src\Time\Scheduler\Slice.hpp" />
+    <None Include="src\Time\Scheduler\SliceCollection.hpp" />
+    <None Include="src\Time\Scheduler\SliceFraction.hpp" />
+    <None Include="src\Time\Scheduler\SliceFractionCache.hpp" />
+    <None Include="src\Time\Scheduler\SliceFractionCollection.hpp" />
+    <None Include="src\vector_add_kernel.cl" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Core.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

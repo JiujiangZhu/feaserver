@@ -168,6 +168,8 @@
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceFractionCollection.hpp" />
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceFraction.hpp" />
     <ClInclude Include="src\CudaElementTypeCollection.cpp" />
+    <ClInclude Include="src\System\LinkedList.h" />
+    <ClInclude Include="src\System\SortedDictionary.h" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="src\MockElementKernel.cu">
@@ -177,6 +179,11 @@
       <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
       <CInterleavedPTX Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</CInterleavedPTX>
     </CudaCompile>
+    <CudaCompile Include="src\System\cuFalloc.cu" />
+    <None Include="src\System\cuPrintf.cu">
+      <FileType>Document</FileType>
+    </None>
+    <CudaCompile Include="src\TestFalloc.cu" />
     <CudaCompile Include="src\Time\ControlKernel.cu">
       <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Engines\cu\%(Filename).ptx</CompileOut>
       <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ptx</NvccCompilation>
@@ -195,6 +202,8 @@
     <None Include="..\Engines\cu\MockElementKernel.ptx" />
     <None Include="..\Engines\cu\SchedulerKernel.ptx" />
     <None Include="src\Core.h" />
+    <None Include="src\System\cuFalloc.cuh" />
+    <None Include="src\System\cuPrintf.cuh" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

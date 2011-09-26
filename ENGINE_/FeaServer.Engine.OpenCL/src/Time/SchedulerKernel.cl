@@ -1,4 +1,3 @@
-/*
 #include <cuda.h>;
 #include "..\Core.h";
 #include "..\..\..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp"
@@ -22,9 +21,9 @@ int main()
 	Schedule<<<1, 1>>>();
 	cudaPrintfDisplay(stdout, true);
 	cudaPrintfEnd();
-	printf("\ndone.\n"); scanf("%c");
+	printf("\ndone.\n");
+	scanf("%c");
     return 0;
 }
 
 #include "..\..\..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp"
-*/
