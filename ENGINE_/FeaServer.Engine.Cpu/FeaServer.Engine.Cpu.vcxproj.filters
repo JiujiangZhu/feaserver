@@ -1,0 +1,70 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="src\CpuContext.cpp" />
+    <ClCompile Include="src\CpuEngine.cpp" />
+    <ClCompile Include="src\Program.cpp" />
+    <ClCompile Include="src\System\cpuFalloc.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TestFalloc.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\CpuElementTypeCollection.cpp" />
+    <ClInclude Include="src\Core.h" />
+    <ClInclude Include="src\Time\Scheduler\Hibernate.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\HibernateCollection.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\Slice.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\SliceCollection.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\SliceFractionCache.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\SliceFractionCollection.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\Element.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\ElementCollection.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\ElementList.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\ElementRef.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\SliceFraction.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\System\LinkedList.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\System\SortedDictionary.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\system\cpuFalloc.h">
+      <Filter>System</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Time">
+      <UniqueIdentifier>{e5d6f3d3-04c3-4ab8-8c28-b62aba5c2bb6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Time\Scheduler">
+      <UniqueIdentifier>{8fd0352c-18eb-4b75-b424-796a179df748}</UniqueIdentifier>
+      <Extensions>Time\Scheduler\*</Extensions>
+    </Filter>
+    <Filter Include="System">
+      <UniqueIdentifier>{4a6da77a-cdb9-4bdb-9380-a4a95207ce17}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

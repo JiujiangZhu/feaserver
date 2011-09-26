@@ -179,7 +179,9 @@
       <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
       <CInterleavedPTX Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</CInterleavedPTX>
     </CudaCompile>
-    <CudaCompile Include="src\System\cuFalloc.cu" />
+    <None Include="src\System\cuFalloc.cu">
+      <FileType>Document</FileType>
+    </None>
     <None Include="src\System\cuPrintf.cu">
       <FileType>Document</FileType>
     </None>

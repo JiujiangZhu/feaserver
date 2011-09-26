@@ -9,17 +9,32 @@
  *
 	#include "cuFalloc.cu"
  	
-	__global__ void testKernel(int val)
+	__global__ void TestFalloc(fallocDeviceHeap *deviceHeap)
 	{
-		cuFallocHeap(12);
+		fallocInit(deviceHeap);
+
+		// create/free heap
+		void *obj = fallocGetChunk(deviceHeap);
+		fallocFreeChunk(deviceHeap, obj);
+
+		// create/free alloc
+		fallocDeviceContext *ctx = fallocCreate(deviceHeap);
+		char *testString = (char *)falloc(ctx, 10);
+		int *testInteger = (int *)falloc(ctx, sizeof(int));
+		fallocDispose(ctx);
 	}
 
 	int main()
 	{
-		cudaFallocInit();
-		testKernel<<< 2, 3 >>>(10);
-		cudaFallocEnd();
-        return 0;
+		cudaFallocHeap heap = cudaFallocInit(1);
+
+		// test
+		TestFalloc<<<1, 1>>>(heap.deviceHeap);
+
+		// free and exit
+		cudaFallocEnd(heap);
+		printf("\ndone.\n"); // scanf("%c");
+		return 0;
 	}
  */
 
@@ -44,7 +59,7 @@ __device__ void *falloc(fallocDeviceContext *t, unsigned short bytes);
 // External function definitions for host-side code
 
 typedef struct {
-	void *deviceHeap;
+	fallocDeviceHeap *deviceHeap;
 	int length;
 } cudaFallocHeap;
 
@@ -64,7 +79,7 @@ typedef struct {
 //	Returns:
 //		cudaSuccess if all is well.
 //
-extern "C" cudaFallocHeap cudaFallocInit(size_t bufferLen=1048576, cudaError_t *error=0);   // 1-meg
+extern "C" cudaFallocHeap cudaFallocInit(size_t bufferLen=1048576, cudaError_t *error=nullptr);   // 1-meg
 
 //
 //	cudaFallocEnd

@@ -5,7 +5,7 @@ syntax: glob
 *.sdf
 *.opensdf
 *.cubin
-*.filters
+*.nvuser
 */bin/*
 */obj/*
 */Debug/*

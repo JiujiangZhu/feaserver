@@ -40,8 +40,7 @@ typedef struct _cuFallocDeviceContext {
 #define CUFALLOCNODE_MAGIC (unsigned short)0x7856
 #define CUFALLOCNODE_SIZE (HEAPCHUNK_SIZE - sizeof(cuFallocDeviceNode))
 
-__device__ static void fallocInit(fallocDeviceHeap *deviceHeap)
-{
+__device__ void fallocInit(fallocDeviceHeap *deviceHeap) {
 	if (threadIdx.x != 0)
 		return;
 	volatile cuFallocHeapChunk* chunk = (cuFallocHeapChunk*)((__int8*)deviceHeap + sizeof(fallocDeviceHeap));
@@ -58,7 +57,7 @@ __device__ static void fallocInit(fallocDeviceHeap *deviceHeap)
 	chunk->magic = CUFALLOC_MAGIC;
 }
 
-__device__ static void *fallocGetChunk(fallocDeviceHeap *deviceHeap) {
+__device__ void *fallocGetChunk(fallocDeviceHeap *deviceHeap) {
 	if (threadIdx.x != 0)
 		__THROW;
 	volatile cuFallocHeapChunk* chunk = deviceHeap->freeChunks;
@@ -71,7 +70,7 @@ __device__ static void *fallocGetChunk(fallocDeviceHeap *deviceHeap) {
 	return (void*)((short*)chunk + sizeof(cuFallocHeapChunk));
 }
 
-__device__ static void fallocFreeChunk(fallocDeviceHeap *deviceHeap, void *obj) {
+__device__ void fallocFreeChunk(fallocDeviceHeap *deviceHeap, void *obj) {
 	if (threadIdx.x != 0)
 		__THROW;
 	cuFallocHeapChunk* chunk = (cuFallocHeapChunk*)((__int8*)obj - sizeof(cuFallocHeapChunk));
@@ -170,7 +169,8 @@ extern "C" cudaFallocHeap cudaFallocInit(size_t bufferLen, cudaError_t *error) {
         bufferLen += (16 - (bufferLen % 16));
     // Allocate a print buffer on the device and zero it
 	fallocDeviceHeap *deviceHeap;
-    if ((*error = cudaMalloc((void **)&deviceHeap, bufferLen)) != cudaSuccess)
+	if ( ((error == nullptr) && (cudaMalloc((void **)&deviceHeap, bufferLen) != cudaSuccess)) ||
+		((error != nullptr) && ((*error = cudaMalloc((void **)&deviceHeap, bufferLen)) != cudaSuccess)) )
 		return heap;
     cudaMemset(deviceHeap, 0, bufferLen);
 	// transfer to deviceHeap
@@ -179,7 +179,8 @@ extern "C" cudaFallocHeap cudaFallocInit(size_t bufferLen, cudaError_t *error) {
 	hostHeap.chunks = chunks;
 	cudaMemcpy(deviceHeap, &hostHeap, sizeof(fallocDeviceHeap), cudaMemcpyHostToDevice);
 	// return deviceHeap
-	*error = cudaSuccess;
+	if (error != nullptr)
+		*error = cudaSuccess;
 	heap.deviceHeap = deviceHeap;
 	heap.length = (int)bufferLen;
     return heap;

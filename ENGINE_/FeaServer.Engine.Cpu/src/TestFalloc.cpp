@@ -5,7 +5,7 @@
 
 static void main()
 {
-	cpuFallocHeap heap = cpuFallocInit();
+	cpuFallocHeap heap = cpuFallocInit(1);
 	fallocInit(heap.deviceHeap);
 
 	// create/free heap
