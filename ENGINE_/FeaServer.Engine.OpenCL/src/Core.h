@@ -32,3 +32,4 @@ THE SOFTWARE.
 
 #define trace(type,method,...) printf(#type":"method"\n",__VA_ARGS__)
 #define thrownew(type,...) throw;
+#define assertR(r,type,...) { if (r != CL_SUCCESS) thrownew(type,__VA_ARGS__); }

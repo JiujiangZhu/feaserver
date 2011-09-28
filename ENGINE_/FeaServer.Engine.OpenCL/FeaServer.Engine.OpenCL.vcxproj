@@ -124,15 +124,14 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\ClContext.cpp" />
     <ClCompile Include="src\OpenCLElementTypeCollection.h" />
     <ClCompile Include="src\OpenCLEngine.cpp" />
     <ClCompile Include="src\Program.cpp" />
-    <ClCompile Include="src\Program2.cpp" />
-    <ClCompile Include="src\Program3.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="src\Time\Core.clh" />
     <None Include="src\Time\SchedulerKernel.cl" />
-    <None Include="src\vector_add_kernel.cl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Core.h" />

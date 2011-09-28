@@ -4,15 +4,16 @@
     <ClCompile Include="src\OpenCLElementTypeCollection.h" />
     <ClCompile Include="src\OpenCLEngine.cpp" />
     <ClCompile Include="src\Program.cpp" />
-    <ClCompile Include="src\Program2.cpp" />
-    <ClCompile Include="src\Program3.cpp" />
+    <ClCompile Include="src\ClContext.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Core.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\vector_add_kernel.cl" />
     <None Include="src\Time\SchedulerKernel.cl">
+      <Filter>Time</Filter>
+    </None>
+    <None Include="src\Time\Core.clh">
       <Filter>Time</Filter>
     </None>
   </ItemGroup>
