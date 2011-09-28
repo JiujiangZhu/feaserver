@@ -1,6 +1,8 @@
 #include <cuda.h>;
 #include "..\Core.h";
+/*
 #include "..\..\..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp"
+
 using namespace Time::Scheduler;
 
 __global__ void GetTable()
@@ -31,3 +33,4 @@ __global__ void UnloadTable()
 }
 
 #include "..\..\..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp"
+*/

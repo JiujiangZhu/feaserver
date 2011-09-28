@@ -1,10 +1,37 @@
-﻿using System;
+﻿#region License
+/*
+The MIT License
+
+Copyright (c) 2009 Sky Morey
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+#endregion
+using System;
 using System.Collections.Generic;
+
 namespace FeaServer.Engine.Time.Scheduler
 {
     internal class SliceCollection
     {
         private ulong _currentSlice = 0;
+        private byte _currentHibernate = 0;
         private Slice[] _slices = new Slice[EngineSettings.MaxTimeslices];
         private HibernateCollection _hibernates;
         private SliceFractionCache _fractionCache = new SliceFractionCache();
@@ -15,6 +42,13 @@ namespace FeaServer.Engine.Time.Scheduler
             for (int sliceIndex = 0; sliceIndex < _slices.Length; sliceIndex++)
                 _slices[sliceIndex].xtor();
             _hibernates.xtor();
+        }
+        public void Dispose()
+        {
+            Console.WriteLine("SliceCollection:Dispose");
+            for (int sliceIndex = 0; sliceIndex < _slices.Length; sliceIndex++)
+                _slices[sliceIndex].Dispose();
+            _hibernates.Dispose();
         }
 
         public void Schedule(Element element, ulong time)
@@ -50,11 +84,16 @@ namespace FeaServer.Engine.Time.Scheduler
         public void MoveNextSlice()
         {
             Console.WriteLine("SliceCollection:MoveNextSlice {0}", _currentSlice);
-            _currentSlice++;
-            if (_currentSlice >= EngineSettings.MaxTimeslices)
+            _slices[_currentSlice].Dispose();
+            if (++_currentSlice >= EngineSettings.MaxTimeslices)
             {
                 _currentSlice = 0;
                 _hibernates.DeHibernate(this);
+                if (++_currentHibernate >= EngineSettings.HibernatesTillReShuffle)
+                {
+                    _currentHibernate = 0;
+                    _hibernates.ReShuffle();
+                }
             }
         }
 

@@ -26,26 +26,23 @@ THE SOFTWARE.
 #pragma once
 #include <stdio.h>
 #include "Core.h"
-#include "Time\Scheduler\SliceCollection.hpp"
-using namespace Time::Scheduler;
+using namespace System;
 
-static void ymain()
+static void main()
 {
 	cpuFallocHeap heap = cpuFallocInit();
 	fallocInit(heap.deviceHeap);
+	fallocDeviceContext* ctx = fallocCreateCtx(heap.deviceHeap);
 
 	//
-	Element e;
-	e.ScheduleStyle = Time::Multiple;
-
-	SliceCollection* s = new SliceCollection(heap.deviceHeap);
-	s->Schedule(&e, 10);
-	s->MoveNextSlice();
-	s->Dispose();
+	int test = 5;
+	int test2 = 6;
+	TreeSet<int>* treeSet = TreeSet<int>::ctor(ctx);
+	treeSet->Add(&test);
+	treeSet->Add(&test2);
 
 	// free and exit
+	fallocDisposeCtx(ctx);
 	cpuFallocEnd(heap);
 	printf("done."); scanf_s("%c");
 }
-
-#include "Time\Scheduler\SliceCollection.hpp"

@@ -11,41 +11,7 @@
     <ClInclude Include="src\Core.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\FFT.cl" />
     <None Include="src\vector_add_kernel.cl" />
-    <None Include="src\Time\Scheduler\SliceFractionCollection.hpp">
-      <Filter>Time\Scheduler+Cpu</Filter>
-    </None>
-    <None Include="src\Time\Scheduler\SliceFractionCache.hpp">
-      <Filter>Time\Scheduler+Cpu</Filter>
-    </None>
-    <None Include="src\Time\Scheduler\SliceFraction.hpp">
-      <Filter>Time\Scheduler+Cpu</Filter>
-    </None>
-    <None Include="src\Time\Scheduler\SliceCollection.hpp">
-      <Filter>Time\Scheduler+Cpu</Filter>
-    </None>
-    <None Include="src\Time\Scheduler\Slice.hpp">
-      <Filter>Time\Scheduler+Cpu</Filter>
-    </None>
-    <None Include="src\Time\Scheduler\HibernateCollection.hpp">
-      <Filter>Time\Scheduler+Cpu</Filter>
-    </None>
-    <None Include="src\Time\Scheduler\Hibernate.hpp">
-      <Filter>Time\Scheduler+Cpu</Filter>
-    </None>
-    <None Include="src\Time\Scheduler\ElementList.hpp">
-      <Filter>Time\Scheduler+Cpu</Filter>
-    </None>
-    <None Include="src\Time\Scheduler\ElementRef.hpp">
-      <Filter>Time\Scheduler+Cpu</Filter>
-    </None>
-    <None Include="src\Time\Scheduler\ElementCollection.hpp">
-      <Filter>Time\Scheduler+Cpu</Filter>
-    </None>
-    <None Include="src\Time\Scheduler\Element.hpp">
-      <Filter>Time\Scheduler+Cpu</Filter>
-    </None>
     <None Include="src\Time\SchedulerKernel.cl">
       <Filter>Time</Filter>
     </None>
@@ -54,8 +20,11 @@
     <Filter Include="Time">
       <UniqueIdentifier>{d7dfdcd3-0bfa-426d-98c1-f8d565f19239}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Time\Scheduler+Cpu">
+    <Filter Include="Time\Scheduler">
       <UniqueIdentifier>{4925ff83-060b-42b2-85a5-e9bcb47f865b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System">
+      <UniqueIdentifier>{1dc7c325-0d8b-4823-bd4a-3776623de226}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

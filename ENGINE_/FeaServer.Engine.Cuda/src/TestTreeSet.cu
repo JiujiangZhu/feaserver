@@ -23,29 +23,35 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 #pragma endregion
-#pragma once
-#include <stdio.h>
-#include "Core.h"
-#include "Time\Scheduler\SliceCollection.hpp"
-using namespace Time::Scheduler;
+#include <cuda.h>;
+#include "Core.h";
+#include "System\cuFalloc.cu"
+using namespace System;
 
-static void ymain()
+__global__ void TestTreeSet(fallocDeviceHeap *deviceHeap)
 {
-	cpuFallocHeap heap = cpuFallocInit();
-	fallocInit(heap.deviceHeap);
+	fallocInit(deviceHeap);
+	fallocDeviceContext* ctx = fallocCreateCtx(deviceHeap);
 
 	//
-	Element e;
-	e.ScheduleStyle = Time::Multiple;
+	int test = 5;
+	int test2 = 6;
+	TreeSet<int>* treeSet = TreeSet<int>::ctor(ctx);
+	treeSet->Add(&test);
+	treeSet->Add(&test2);
 
-	SliceCollection* s = new SliceCollection(heap.deviceHeap);
-	s->Schedule(&e, 10);
-	s->MoveNextSlice();
-	s->Dispose();
-
-	// free and exit
-	cpuFallocEnd(heap);
-	printf("done."); scanf_s("%c");
+	fallocDisposeCtx(ctx);
 }
 
-#include "Time\Scheduler\SliceCollection.hpp"
+int main()
+{
+	cudaFallocHeap heap = cudaFallocInit(2048);
+
+	// test
+	TestTreeSet<<<1, 1>>>(heap.deviceHeap);
+
+	// free and exit
+	cudaFallocEnd(heap);
+	printf("\ndone.\n"); // scanf("%c");
+    return 0;
+}

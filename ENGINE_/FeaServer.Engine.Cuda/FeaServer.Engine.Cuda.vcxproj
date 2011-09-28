@@ -170,6 +170,7 @@
     <ClInclude Include="src\CudaElementTypeCollection.cpp" />
     <ClInclude Include="src\System\LinkedList.h" />
     <ClInclude Include="src\System\SortedDictionary.h" />
+    <ClInclude Include="src\System\TreeSet.h" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="src\MockElementKernel.cu">
@@ -186,12 +187,7 @@
       <FileType>Document</FileType>
     </None>
     <CudaCompile Include="src\TestFalloc.cu" />
-    <CudaCompile Include="src\Time\ControlKernel.cu">
-      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Engines\cu\%(Filename).ptx</CompileOut>
-      <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ptx</NvccCompilation>
-      <CInterleavedPTX Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</CInterleavedPTX>
-      <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
-    </CudaCompile>
+    <CudaCompile Include="src\TestTreeSet.cu" />
     <CudaCompile Include="src\Time\SchedulerKernel.cu">
       <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
       <CInterleavedPTX Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</CInterleavedPTX>

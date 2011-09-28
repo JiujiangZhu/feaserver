@@ -45,16 +45,17 @@
     <ClInclude Include="src\System\SortedDictionary.h">
       <Filter>System</Filter>
     </ClInclude>
+    <ClInclude Include="src\System\TreeSet.h">
+      <Filter>System</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="src\MockElementKernel.cu" />
     <CudaCompile Include="src\Time\SchedulerKernel.cu">
       <Filter>Time</Filter>
     </CudaCompile>
-    <CudaCompile Include="src\Time\ControlKernel.cu">
-      <Filter>Time</Filter>
-    </CudaCompile>
     <CudaCompile Include="src\TestFalloc.cu" />
+    <CudaCompile Include="src\TestTreeSet.cu" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Time">
