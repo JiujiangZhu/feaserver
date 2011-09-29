@@ -29,7 +29,7 @@ THE SOFTWARE.
 #include "Time\Scheduler\SliceCollection.hpp"
 using namespace Time::Scheduler;
 
-static void ymain()
+static void main()
 {
 	cpuFallocHeap heap = cpuFallocInit();
 	fallocInit(heap.deviceHeap);
@@ -38,10 +38,10 @@ static void ymain()
 	Element e;
 	e.ScheduleStyle = Time::Multiple;
 
-	//SliceCollection* s = new SliceCollection(heap.deviceHeap);
-	//s->Schedule(&e, 10);
-	//s->MoveNextSlice();
-	//s->Dispose();
+	SliceCollection s; s.xtor(heap.deviceHeap);
+	s.Schedule(&e, 10);
+	s.MoveNextSlice();
+	s.Dispose();
 
 	// free and exit
 	cpuFallocEnd(heap);

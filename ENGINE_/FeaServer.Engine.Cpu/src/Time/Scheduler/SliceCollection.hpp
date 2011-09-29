@@ -71,7 +71,7 @@ namespace Time { namespace Scheduler {
 
 	class SliceCollection
 	{
-	public:
+	private:
 		fallocDeviceHeap* _deviceHeap;
 		ulong _currentSlice;
 		char _currentHibernate;
@@ -79,6 +79,7 @@ namespace Time { namespace Scheduler {
         HibernateCollection _hibernates;
         SliceFractionCache _fractionCache;
 
+	public:
 		__device__ void xtor(fallocDeviceHeap* deviceHeap)
 		{
 			trace(SliceCollection, "xtor");
@@ -100,33 +101,22 @@ namespace Time { namespace Scheduler {
         __device__ void Schedule(Element* element, ulong time)
         {
             trace(SliceCollection, "Schedule %d", TimePrec__DecodeTime(time));
+            ulong slice = (ulong)(time >> TimePrec__TimePrecisionBits);
+            ulong fraction = (ulong)(time & TimePrec__TimePrecisionMask);
+            if (slice < EngineSettings__MaxTimeslices)
             {
-                ulong slice = (ulong)(time >> TimePrec__TimePrecisionBits);
-                ulong fraction = (ulong)(time & TimePrec__TimePrecisionMask);
-                if (slice < EngineSettings__MaxTimeslices)
-                {
-                    // first fraction
-                    if (slice == 0)
-                        _fractionCache.EnsureCache(fraction);
-                    // roll timeslice for index
-                    slice += _currentSlice;
-                    if (slice >= EngineSettings__MaxTimeslices)
-                        slice -= EngineSettings__MaxTimeslices;
-                    _slices[slice].Fractions.Schedule(element, fraction);
-                }
-                else
-                    _hibernates.Hibernate(element, time);
+                // first fraction
+                if (slice == 0)
+                    _fractionCache.EnsureCache(fraction);
+                // roll timeslice for index
+                slice += _currentSlice;
+                if (slice >= EngineSettings__MaxTimeslices)
+                    slice -= EngineSettings__MaxTimeslices;
+                _slices[slice].Fractions.Schedule(element, fraction);
             }
+            else
+                _hibernates.Hibernate(element, time);
         }
-
-		/*
-		__device__ void ScheduleRange(IEnumerable<Tuple<Element, ulong>> elements)
-        {
-			trace(SliceCollection, "ScheduleRange");
-            foreach (var element in elements)
-                Schedule(element.Item1, element.Item2);
-        }
-		*/
 
         __device__ void MoveNextSlice()
         {

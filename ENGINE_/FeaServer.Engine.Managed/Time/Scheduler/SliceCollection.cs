@@ -54,31 +54,21 @@ namespace FeaServer.Engine.Time.Scheduler
         public void Schedule(Element element, ulong time)
         {
             Console.WriteLine("SliceCollection:Schedule {0}", TimePrec.DecodeTime(time));
-            unchecked
+            var slice = (ulong)(time >> TimePrec.TimePrecisionBits);
+            var fraction = (ulong)(time & TimePrec.TimePrecisionMask);
+            if (slice < EngineSettings.MaxTimeslices)
             {
-                var slice = (ulong)(time >> TimePrec.TimePrecisionBits);
-                var fraction = (ulong)(time & TimePrec.TimePrecisionMask);
-                if (slice < EngineSettings.MaxTimeslices)
-                {
-                    // first fraction
-                    if (slice == 0)
-                        _fractionCache.EnsureCache(fraction);
-                    // roll timeslice for index
-                    slice += _currentSlice;
-                    if (slice >= EngineSettings.MaxTimeslices)
-                        slice -= EngineSettings.MaxTimeslices;
-                    _slices[slice].Fractions.Schedule(element, fraction);
-                }
-                else
-                    _hibernates.Hibernate(element, time);
+                // first fraction
+                if (slice == 0)
+                    _fractionCache.EnsureCache(fraction);
+                // roll timeslice for index
+                slice += _currentSlice;
+                if (slice >= EngineSettings.MaxTimeslices)
+                    slice -= EngineSettings.MaxTimeslices;
+                _slices[slice].Fractions.Schedule(element, fraction);
             }
-        }
-
-        public void ScheduleRange(IEnumerable<Tuple<Element, ulong>> elements)
-        {
-            Console.WriteLine("SliceCollection:ScheduleRange");
-            foreach (var element in elements)
-                Schedule(element.Item1, element.Item2);
+            else
+                _hibernates.Hibernate(element, time);
         }
 
         public void MoveNextSlice()
@@ -102,41 +92,38 @@ namespace FeaServer.Engine.Time.Scheduler
         public bool EvaluateFrame(ulong frameTime, Action<SliceFraction> evaluateNode)
         {
             Console.WriteLine("SliceCollection:EvaluateFrame {0}", TimePrec.DecodeTime(frameTime));
-            unchecked
+            bool firstLoop = true;
+            _fractionCache.BeginFrame();
+            long timeRemaining = (long)frameTime;
+            while (timeRemaining <= 0)
             {
-                bool firstLoop = true;
-                _fractionCache.BeginFrame();
-                long timeRemaining = (long)frameTime;
-                while (timeRemaining <= 0)
+                if (!_fractionCache.BeginSlice(_slices[_currentSlice]))
+                    // no fractions available, advance a wholeTime
+                    timeRemaining -= (long)TimePrec.TimeScaler;
+                else
                 {
-                    if (!_fractionCache.BeginSlice(_slices[_currentSlice]))
-                        // no fractions available, advance a wholeTime
-                        timeRemaining -= (long)TimePrec.TimeScaler;
-                    else
+                    // first-time time adjust
+                    if (firstLoop)
                     {
-                        // first-time time adjust
-                        if (firstLoop)
-                        {
-                            firstLoop = false;
-                            //time += (long)_fractionCache.CurrentFraction;
-                        }
-                        long elapsedTime;
-                        if (!EvaluateSlice(timeRemaining, out elapsedTime, evaluateNode))
-                        {
-                            // slice not completely evaluated, continue with same slice next frame
-                            _fractionCache.EndFrame();
-                            return false;
-                        }
-                        // advance an elapsedTime
-                        timeRemaining -= elapsedTime;
+                        firstLoop = false;
+                        //time += (long)_fractionCache.CurrentFraction;
                     }
-                    _fractionCache.EndSlice();
-                    // advance a slice
-                    MoveNextSlice();
+                    long elapsedTime;
+                    if (!EvaluateSlice(timeRemaining, out elapsedTime, evaluateNode))
+                    {
+                        // slice not completely evaluated, continue with same slice next frame
+                        _fractionCache.EndFrame();
+                        return false;
+                    }
+                    // advance an elapsedTime
+                    timeRemaining -= elapsedTime;
                 }
-                _fractionCache.EndFrame();
-                return true;
+                _fractionCache.EndSlice();
+                // advance a slice
+                MoveNextSlice();
             }
+            _fractionCache.EndFrame();
+            return true;
         }
 
         private bool EvaluateSlice(long time, out long elapsedTime, Action<SliceFraction> evaluateNode)

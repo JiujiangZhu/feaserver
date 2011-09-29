@@ -169,7 +169,6 @@
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceFraction.hpp" />
     <ClInclude Include="src\CudaElementTypeCollection.cpp" />
     <ClInclude Include="src\System\LinkedList.h" />
-    <ClInclude Include="src\System\SortedDictionary.h" />
     <ClInclude Include="src\System\TreeSet.h" />
   </ItemGroup>
   <ItemGroup>

@@ -28,7 +28,7 @@ THE SOFTWARE.
 #include "Core.h"
 using namespace System;
 
-static void main()
+static void amain()
 {
 	cpuFallocHeap heap = cpuFallocInit();
 	fallocInit(heap.deviceHeap);
@@ -37,9 +37,9 @@ static void main()
 	//
 	int test = 5;
 	int test2 = 6;
-	//TreeSet<int>* treeSet = TreeSet<int>::ctor(ctx);
-	//treeSet->Add(&test);
-	//treeSet->Add(&test2);
+	TreeSet<int> treeSet; treeSet.xtor(ctx);
+	treeSet.Add(&test);
+	treeSet.Add(&test2);
 
 	// free and exit
 	fallocDisposeCtx(ctx);

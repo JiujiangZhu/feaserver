@@ -49,9 +49,6 @@
     <ClInclude Include="src\System\LinkedList.h">
       <Filter>System</Filter>
     </ClInclude>
-    <ClInclude Include="src\System\SortedDictionary.h">
-      <Filter>System</Filter>
-    </ClInclude>
     <ClInclude Include="src\system\cpuFalloc.h">
       <Filter>System</Filter>
     </ClInclude>

@@ -31,7 +31,6 @@
     <ClInclude Include="src\CpuElementTypeCollection.cpp" />
     <ClInclude Include="src\system\cpuFalloc.h" />
     <ClInclude Include="src\System\LinkedList.h" />
-    <ClInclude Include="src\System\SortedDictionary.h" />
     <ClInclude Include="src\System\TreeSet.h" />
     <ClInclude Include="src\Time\Scheduler\Element.hpp" />
     <ClInclude Include="src\Time\Scheduler\ElementCollection.hpp" />

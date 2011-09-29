@@ -45,7 +45,7 @@ namespace Time { namespace Scheduler {
         __device__ void xtor(fallocDeviceContext* falloCtx)
         {
 			trace(ElementCollection, "xtor");
-			_falloCtx = _falloCtx;
+			_falloCtx = falloCtx;
         }
 
         __device__ void Add(Element* element, ulong time)

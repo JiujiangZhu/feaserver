@@ -37,7 +37,7 @@ namespace System {
 		struct _Node* right;
 	} Node;
 
-	__device__ Node* CreateNode(fallocDeviceContext* deviceCtx, void* item, bool isRed /*true*/)
+	__device__ static Node* CreateNode(fallocDeviceContext* deviceCtx, void* item, bool isRed /*true*/)
 	{
 		Node* node = (Node*)falloc(deviceCtx, sizeof(Node));
 		node->item = item;
@@ -47,10 +47,10 @@ namespace System {
 	}
 
 	// red calcs
-	__device__ bool IsRed(Node* t) { return ((t != nullptr) && t->isRed); }
-	__device__ bool Is4Node(Node* t) { return (IsRed(t->left) && IsRed(t->right)); }
+	__device__ static bool IsRed(Node* t) { return ((t != nullptr) && t->isRed); }
+	__device__ static bool Is4Node(Node* t) { return (IsRed(t->left) && IsRed(t->right)); }
 
-	__device__ void Split4Node(Node* t)
+	__device__ static void Split4Node(Node* t)
 	{
 		t->isRed = true;
 		t->left->isRed = false;
@@ -58,7 +58,7 @@ namespace System {
 	}
 
 	// rotation
-	__device__ Node* RotateLeft(Node* t)
+	__device__ static Node* RotateLeft(Node* t)
 	{
 		Node* right = t->right;
 		t->right = right->left;
@@ -66,7 +66,7 @@ namespace System {
 		return right;
 	}
 
-	__device__ Node* RotateLeftRight(Node* t)
+	__device__ static Node* RotateLeftRight(Node* t)
 	{
 		Node* left = t->left;
 		Node* right = left->right;
@@ -77,7 +77,7 @@ namespace System {
 		return right;
 	}
  
-	__device__ Node* RotateRight(Node* t)
+	__device__ static Node* RotateRight(Node* t)
 	{
 		Node* left = t->left;
 		t->left = left->right;
@@ -85,7 +85,7 @@ namespace System {
 		return left;
 	}
  
-	__device__ Node* RotateRightLeft(Node* t)
+	__device__ static Node* RotateRightLeft(Node* t)
 	{
 		Node* right = t->right;
 		Node* left = right->left;
@@ -107,24 +107,24 @@ namespace System {
 	} TreeRotation;
 
 	// weird red calcs
-	__device__ bool IsBlack(Node* t) { return ((t != nullptr) && !t->isRed); }
-	__device__ bool IsNullOrBlack(Node* t) { return (t != nullptr ? !t->isRed : true); }
-	__device__ bool Is2Node(Node* t) { return ((IsBlack(t) && IsNullOrBlack(t->left)) && IsNullOrBlack(t->right)); }
+	__device__ static bool IsBlack(Node* t) { return ((t != nullptr) && !t->isRed); }
+	__device__ static bool IsNullOrBlack(Node* t) { return (t != nullptr ? !t->isRed : true); }
+	__device__ static bool Is2Node(Node* t) { return ((IsBlack(t) && IsNullOrBlack(t->left)) && IsNullOrBlack(t->right)); }
 
-	__device__ TreeRotation RotationNeeded(Node* parent, Node* current, Node* sibling)
+	__device__ static TreeRotation RotationNeeded(Node* parent, Node* current, Node* sibling)
 	{
 		if (IsRed(sibling->left))
 			return (parent->left == current ? TreeRotation_RightLeftRotation : TreeRotation_RightRotation);
 		return (parent->left == current ? TreeRotation_LeftRotation : TreeRotation_LeftRightRotation);
 	}
 
-	__device__ Node* GetSibling(Node* node, Node* parent)
+	__device__ static Node* GetSibling(Node* node, Node* parent)
 	{
 		return (parent->left == node ? parent->right : parent->left);
 	}
 
 	// split merge
-	__device__ void Merge2Nodes(Node* parent, Node* child1, Node* child2)
+	__device__ static void Merge2Nodes(Node* parent, Node* child1, Node* child2)
 	{
 		parent->isRed = false;
 		child1->isRed = true;
@@ -173,6 +173,7 @@ namespace System {
 			ReplaceChildOfNodeOrRoot(greatGrandParent, grandParent, node);
 		}
 
+	public:
 		__device__ Node* FindNode(T item)
 		{
 			int num;
@@ -189,11 +190,9 @@ namespace System {
 	public:
 		//__device__ TreeSet(fallocDeviceContext* deviceCtx)
 		//	: _deviceCtx(deviceCtx) { }
-		__device__ static TreeSet* ctor(fallocDeviceContext* deviceCtx)
+		__device__ void xtor(fallocDeviceContext* deviceCtx)
 		{
-			TreeSet* treeSet = (TreeSet*)falloc(deviceCtx, sizeof(TreeSet));
-			treeSet->_deviceCtx = deviceCtx;
-			return treeSet;
+			_deviceCtx = deviceCtx;
 		}
 
 		__device__ void Add(T* item)

@@ -37,10 +37,10 @@ __global__ void Schedule(fallocDeviceHeap* deviceHeap)
 	Element e;
 	e.ScheduleStyle = Time::ElementScheduleStyle::Multiple;
 
-	SliceCollection s(deviceHeap);
-	s.Schedule(&e, 10);
-	//.MoveNextSlice();
-	s.Dispose();
+	SliceCollection* s = nullptr;
+	s->Schedule(&e, 10);
+	s->MoveNextSlice();
+	s->Dispose();
 }
 
 int main()
