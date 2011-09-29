@@ -38,10 +38,10 @@ static void ymain()
 	Element e;
 	e.ScheduleStyle = Time::Multiple;
 
-	SliceCollection* s = new SliceCollection(heap.deviceHeap);
-	s->Schedule(&e, 10);
-	s->MoveNextSlice();
-	s->Dispose();
+	//SliceCollection* s = new SliceCollection(heap.deviceHeap);
+	//s->Schedule(&e, 10);
+	//s->MoveNextSlice();
+	//s->Dispose();
 
 	// free and exit
 	cpuFallocEnd(heap);

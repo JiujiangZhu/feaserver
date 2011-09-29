@@ -32,19 +32,18 @@ namespace Time { namespace Scheduler {
 #else
 	#define HIBERNATECOLLECTION
 	class SliceCollection;
-	typedef struct HibernateCollection_t
+	typedef struct
 	{
 	public:
 		fallocDeviceContext* _falloCtx;
 		Hibernate _hibernates[EngineSettings__MaxHibernates];
 
-        __device__ struct HibernateCollection_t* xtor(fallocDeviceHeap* deviceHeap)
+        __device__ void xtor(fallocDeviceHeap* deviceHeap)
         {
 			trace(HibernateCollection, "xtor");
 			_falloCtx = fallocCreateCtx(deviceHeap);
             for (int hibernateIndex = 0; hibernateIndex < EngineSettings__MaxHibernates; hibernateIndex++)
                 _hibernates[hibernateIndex].xtor(_falloCtx);
-			return this;
         }
 		__device__ void Dispose()
 		{

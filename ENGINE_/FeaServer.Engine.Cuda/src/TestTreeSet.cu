@@ -23,6 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 #pragma endregion
+/*
 #include <cuda.h>;
 #include "Core.h";
 #include "System\cuFalloc.cu"
@@ -52,6 +53,7 @@ int main()
 
 	// free and exit
 	cudaFallocEnd(heap);
-	printf("\ndone.\n"); // scanf("%c");
+	printf("\ndone.\n"); // scanf_s("%c");
     return 0;
 }
+*/

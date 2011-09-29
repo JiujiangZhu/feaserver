@@ -23,33 +23,40 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 #pragma endregion
-/*
+
 #include <cuda.h>;
 #include "..\Core.h";
+#include "..\System\cuFalloc.cu"
 #include "..\..\..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp"
 using namespace Time::Scheduler;
 
-__global__ void Schedule()
+__global__ void Schedule(fallocDeviceHeap* deviceHeap)
 {
+	fallocInit(deviceHeap);
+
 	Element e;
 	e.ScheduleStyle = Time::ElementScheduleStyle::Multiple;
 
-	SliceCollection s;
+	SliceCollection s(deviceHeap);
 	s.Schedule(&e, 10);
-	s.MoveNextSlice();
+	//.MoveNextSlice();
+	s.Dispose();
 }
 
 int main()
 {
-	//fallocHeapInitialize(nullptr, 0);
-
+	cudaFallocHeap heap = cudaFallocInit();
 	cudaPrintfInit();
-	Schedule<<<1, 1>>>();
+
+	// schedule
+	Schedule<<<1, 1>>>(heap.deviceHeap);
+
+	// free and exit
 	cudaPrintfDisplay(stdout, true);
 	cudaPrintfEnd();
-	printf("\ndone.\n"); scanf("%c");
+	cudaFallocEnd(heap);
+	printf("\ndone.\n"); scanf_s("%c");
     return 0;
 }
 
 #include "..\..\..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp"
-*/

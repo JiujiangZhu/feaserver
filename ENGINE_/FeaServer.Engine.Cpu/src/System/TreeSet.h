@@ -173,6 +173,7 @@ namespace System {
 			ReplaceChildOfNodeOrRoot(greatGrandParent, grandParent, node);
 		}
 
+	public:
 		__device__ Node* FindNode(T item)
 		{
 			int num;
@@ -189,11 +190,9 @@ namespace System {
 	public:
 		//__device__ TreeSet(fallocDeviceContext* deviceCtx)
 		//	: _deviceCtx(deviceCtx) { }
-		__device__ static TreeSet* ctor(fallocDeviceContext* deviceCtx)
+		__device__ void xtor(fallocDeviceContext* deviceCtx)
 		{
-			TreeSet* treeSet = (TreeSet*)falloc(deviceCtx, sizeof(TreeSet));
-			treeSet->_deviceCtx = deviceCtx;
-			return treeSet;
+			_deviceCtx = deviceCtx;
 		}
 
 		__device__ void Add(T* item)

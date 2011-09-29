@@ -28,7 +28,7 @@ THE SOFTWARE.
 #include "Core.h";
 #include "System\cuFalloc.cu"
 
-__global__ void TestFalloc(fallocDeviceHeap *deviceHeap)
+__global__ void TestFalloc(fallocDeviceHeap* deviceHeap)
 {
 	fallocInit(deviceHeap);
 
@@ -37,9 +37,9 @@ __global__ void TestFalloc(fallocDeviceHeap *deviceHeap)
 	fallocFreeChunk(deviceHeap, obj);
 
 	// create/free alloc
-	fallocDeviceContext *ctx = fallocCreateCtx(deviceHeap);
-	char *testString = (char *)falloc(ctx, 10);
-	int *testInteger = (int *)falloc(ctx, sizeof(int));
+	fallocDeviceContext* ctx = fallocCreateCtx(deviceHeap);
+	char* testString = (char *)falloc(ctx, 10);
+	int* testInteger = (int *)falloc(ctx, sizeof(int));
 	fallocDisposeCtx(ctx);
 }
 

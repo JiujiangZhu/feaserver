@@ -79,10 +79,12 @@ namespace Time { namespace Scheduler {
         HibernateCollection _hibernates;
         SliceFractionCache _fractionCache;
 
-		__device__ SliceCollection(fallocDeviceHeap* deviceHeap)
-			:  _deviceHeap(deviceHeap), _currentSlice(0), _currentHibernate(0)
+		__device__ void xtor(fallocDeviceHeap* deviceHeap)
 		{
-			trace(SliceCollection, "ctor");
+			trace(SliceCollection, "xtor");
+			_deviceHeap = deviceHeap;
+			_currentSlice = 0;
+			_currentHibernate = 0;
 			for (int sliceIndex = 0; sliceIndex < EngineSettings__MaxTimeslices; sliceIndex++)
 				_slices[sliceIndex].xtor(_deviceHeap);
 			_hibernates.xtor(_deviceHeap);

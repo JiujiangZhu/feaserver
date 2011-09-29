@@ -27,16 +27,43 @@ THE SOFTWARE.
 
 namespace System {
 	template <typename TKey, typename TValue>
+	struct KeyValuePair
+	{
+		TKey key;
+		TValue value;
+	};
+
+	template <typename TKey, typename TValue>
 	class SortedDictionary
 	{
 	protected:
+		fallocDeviceContext* _deviceCtx;
+		TreeSet<KeyValuePair<TKey, TValue>> _set;
+
+	public:
+		//__device__ SortedDictionary(fallocDeviceContext* deviceCtx)
+		//	: _deviceCtx(deviceCtx) { }
+		__device__ static SortedDictionary* ctor(fallocDeviceContext* deviceCtx)
+		{
+			SortedDictionary* dictionary = (SortedDictionary*)falloc(deviceCtx, sizeof(SortedDictionary));
+			dictionary->_deviceCtx = dictionary->_set._deviceCtx = deviceCtx;
+			return dictionary;
+		}
+
+	protected:
 		__device__ bool TryGetValue(TKey key, TValue* value)
 		{
+			KeyValuePair<TKey, TValue> pair;
+			pair.key = key; //memcpy(&pair.key, &key, sizeof(key));
+			//x* node = _set.FindNode(pair);
 			return false;
 		}
 
 		__device__ void Add(TKey key, TValue value)
 		{
+			KeyValuePair<TKey, TValue>* pair = (KeyValuePair<TKey, TValue>*)falloc(_deviceCtx, sizeof(KeyValuePair<TKey, TValue>));
+			pair.key = key; //memcpy(&pair.key, &key, sizeof(key));
+			_set.Add(pair);
 		}
 	};
 }

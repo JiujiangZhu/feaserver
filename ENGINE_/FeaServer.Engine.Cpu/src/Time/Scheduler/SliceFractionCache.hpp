@@ -33,13 +33,15 @@ namespace Time { namespace Scheduler {
 
 	class SliceFractionCache
 	{
-	public:
+	private:
 		SliceFractionCollection* _sliceFractions;
         ulong _fractions[EngineSettings__MaxWorkingFractions];
         int _currentFractionIndex;
         ulong _minFraction;
         ulong _maxFraction;
         ulong _currentFraction;
+
+	public:
 		bool RequiresRebuild;
 
 		__device__ void EnsureCache(ulong fraction)

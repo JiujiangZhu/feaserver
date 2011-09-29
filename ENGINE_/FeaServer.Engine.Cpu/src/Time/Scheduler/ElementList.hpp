@@ -31,9 +31,9 @@ namespace Time { namespace Scheduler {
 
 #else
 	#define ELEMENTLIST
+
 	class ElementList : public System::LinkedList<Element>
 	{
-
 	public:
 		__device__ void MergeFirstWins(Element* element, byte* metadata)
         {

@@ -33,19 +33,19 @@ namespace Time { namespace Scheduler {
 
 #else
 	#define ELEMENTCOLLECTION
+
 	class SliceCollection;
-	typedef struct ElementCollection_t
+	typedef struct
 	{
 	public:
 		fallocDeviceContext* _falloCtx;
 		ElementList _singles;
         System::LinkedList<ElementRef> _multiples;
 
-        __device__ struct ElementCollection_t* xtor(fallocDeviceContext* falloCtx)
+        __device__ void xtor(fallocDeviceContext* falloCtx)
         {
 			trace(ElementCollection, "xtor");
-			_falloCtx = falloCtx;
-			return this;
+			_falloCtx = _falloCtx;
         }
 
         __device__ void Add(Element* element, ulong time)
@@ -68,8 +68,7 @@ namespace Time { namespace Scheduler {
 					elementRef->Element = element;
 					if (metadata != nullptr)
 						memcpy(elementRef->Metadata, metadata, MetadataSize);
-					//else
-					//	memset(elementRef->Metadata, 0, MetadataSize);
+					//else memset(elementRef->Metadata, 0, MetadataSize);
                     _multiples.AddFirst(elementRef);
                     break;
                 default:

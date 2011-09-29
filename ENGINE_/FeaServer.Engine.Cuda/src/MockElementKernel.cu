@@ -23,6 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 #pragma endregion
+/*
 //http://supercomputingblog.com/cuda/cuda-tutorial-1-getting-started/
 //http://people.eku.edu/ritchisong/301notes2.htm
 
@@ -42,3 +43,4 @@ __global__ void Box(char **lookup)
 	Element0 *element0 = (Element0 *)lookup[0][x];
 	int s = element0->state;
 }
+*/

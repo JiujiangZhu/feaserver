@@ -69,4 +69,6 @@ namespace Time {
 	#define EngineSettings__MaxHibernates 1
 	#define EngineSettings__MaxWorkingFractions 10
 	#define EngineSettings__MaxTimeslicesTime (ulong)(EngineSettings__MaxTimeslices << TimePrec__TimePrecisionBits)
+	// fixed settings
+	#define EngineSettings__HibernatesTillReShuffle 3
 }

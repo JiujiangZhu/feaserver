@@ -31,7 +31,7 @@ THE SOFTWARE.
 #include "System\cpuFalloc.h"
 #include "System\LinkedList.h"
 #include "System\TreeSet.h"
-#include "System\SortedDictionary.h"
+//#include "System\SortedDictionary.h"
 
 //typedef enum {false, true} bool;
 typedef unsigned char byte;

@@ -32,16 +32,15 @@ namespace Time { namespace Scheduler {
 #else
 	#define SLICEFRACTION
 
-	typedef struct SliceFraction_t
+	typedef struct
 	{
 	public:
 		ElementCollection Elements;
 
-        __device__ struct SliceFraction_t* xtor(fallocDeviceContext* falloCtx)
+        __device__ void xtor(fallocDeviceContext* falloCtx)
         {
 			trace(SliceFraction, "xtor");
 			Elements.xtor(falloCtx);
-			return this;
         }
 
 	} SliceFraction;

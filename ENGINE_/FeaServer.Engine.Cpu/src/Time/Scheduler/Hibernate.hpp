@@ -32,16 +32,15 @@ namespace Time { namespace Scheduler {
 #else
 	#define HIBERNATE
 
-	typedef struct Hibernate_t
+	typedef struct
 	{
 	public:
         ElementCollection Elements;
 
-        __device__ struct Hibernate_t* xtor(fallocDeviceContext* falloCtx)
+        __device__ void xtor(fallocDeviceContext* falloCtx)
         {
 			trace(Hibernate, "xtor");
 			Elements.xtor(falloCtx);
-			return this;
         }
 
 	} Hibernate;

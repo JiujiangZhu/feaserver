@@ -32,21 +32,24 @@ namespace Time { namespace Scheduler {
 #else
 	#define SLICE
 
-	typedef struct Slice_t
+	typedef struct
 	{
+	private:
+		fallocDeviceContext* _deviceCtx;
+
 	public:
 		SliceFractionCollection Fractions;
 
-        __device__ struct Slice_t* xtor(fallocDeviceHeap* deviceHeap)
+        __device__ void xtor(fallocDeviceHeap* deviceHeap)
         {
 			trace(Slice, "xtor");
-			Fractions._falloCtx = fallocCreateCtx(deviceHeap);
-			return this;
+			_deviceCtx = fallocCreateCtx(deviceHeap);
+			Fractions.xtor(_deviceCtx);
         }
 		__device__ void Dispose()
 		{
 			trace(Slice, "Dispose");
-			fallocDisposeCtx(Fractions._falloCtx);
+			fallocDisposeCtx(_deviceCtx);
 		}
 
 	} Slice;
