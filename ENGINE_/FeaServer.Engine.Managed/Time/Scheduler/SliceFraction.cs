@@ -33,11 +33,10 @@ namespace FeaServer.Engine.Time.Scheduler
     {
         public ElementCollection Elements;
 
-        public SliceFraction xtor()
+        public void xtor()
         {
             Console.WriteLine("SliceFraction:xtor");
             Elements.xtor();
-            return this;
         }
     }
 }

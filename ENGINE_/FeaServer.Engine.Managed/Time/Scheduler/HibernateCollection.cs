@@ -34,13 +34,12 @@ namespace FeaServer.Engine.Time.Scheduler
     {
         private Hibernate[] _hibernates;
 
-        public HibernateCollection xtor()
+        public void xtor()
         {
             Console.WriteLine("HibernateCollection:xtor");
             _hibernates = new Hibernate[EngineSettings.MaxHibernates];
             for (int hibernateIndex = 0; hibernateIndex < _hibernates.Length; hibernateIndex++)
                 _hibernates[hibernateIndex].xtor();
-            return this;
         }
         public void Dispose()
         {

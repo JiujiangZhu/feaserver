@@ -54,12 +54,12 @@ typedef struct _cpuFallocDeviceNode {
 	unsigned short magic;
 } cpuFallocDeviceNode;
 
-typedef struct _cpuFallocDeviceContext {
+typedef struct _cpuFallocContext {
 	cpuFallocDeviceNode node;
 	cpuFallocDeviceNode *allocNodes;
 	cpuFallocDeviceNode *availableNodes;
 	fallocDeviceHeap *deviceHeap;
-} fallocDeviceContext;
+} fallocContext;
 
 // All our headers are prefixed with a magic number so we know they're ready
 #define CPUFALLOC_MAGIC (unsigned short)0x3412        // Not a valid ascii character
@@ -105,13 +105,13 @@ void fallocFreeChunk(fallocDeviceHeap *deviceHeap, void *obj) {
 //////////////////////
 // ALLOC
 
-fallocDeviceContext *fallocCreateCtx(fallocDeviceHeap *deviceHeap) {
-	if (sizeof(fallocDeviceContext) > HEAPCHUNK_SIZE)
+fallocContext *fallocCreateCtx(fallocDeviceHeap *deviceHeap) {
+	if (sizeof(fallocContext) > HEAPCHUNK_SIZE)
 		throw;
-	fallocDeviceContext *context = (fallocDeviceContext*)fallocGetChunk(deviceHeap);
+	fallocContext *context = (fallocContext*)fallocGetChunk(deviceHeap);
 	context->deviceHeap = deviceHeap;
 	context->node.next = context->node.nextAvailable = nullptr;
-	unsigned short freeOffset = context->node.freeOffset = sizeof(fallocDeviceContext);
+	unsigned short freeOffset = context->node.freeOffset = sizeof(fallocContext);
 	context->node.magic = CPUFALLOCNODE_MAGIC;
 	context->allocNodes = (cpuFallocDeviceNode*)context;
 	context->availableNodes = (cpuFallocDeviceNode*)context;
@@ -121,13 +121,13 @@ fallocDeviceContext *fallocCreateCtx(fallocDeviceHeap *deviceHeap) {
 	return context;
 }
 
-void fallocDisposeCtx(fallocDeviceContext *t) {
+void fallocDisposeCtx(fallocContext *t) {
 	fallocDeviceHeap *deviceHeap = t->deviceHeap;
 	for (cpuFallocDeviceNode* node = t->allocNodes; node != nullptr; node = node->next)
 		fallocFreeChunk(deviceHeap, node);
 }
 
-void *falloc(fallocDeviceContext* t, unsigned short bytes) {
+void *falloc(fallocContext* t, unsigned short bytes) {
 	if (bytes > CPUFALLOCNODE_SIZE)
 		throw;
 	// find or add available node
@@ -161,6 +161,17 @@ void *falloc(fallocDeviceContext* t, unsigned short bytes) {
 	return obj;
 }
 
+void fallocPush(fallocContext* t, void* item, unsigned short bytes) {
+	if (bytes > CPUFALLOCNODE_SIZE)
+		throw;
+	memcpy(nullptr, item, bytes);
+}
+
+void* fallocPop(fallocContext* t, void* item, unsigned short bytes) {
+	if (bytes > CPUFALLOCNODE_SIZE)
+		throw;
+	memcpy(nullptr, item, bytes);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // HOST SIDE

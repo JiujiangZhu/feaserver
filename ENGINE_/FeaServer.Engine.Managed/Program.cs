@@ -32,7 +32,7 @@ namespace FeaServer.Engine
     {
         static void Main(string[] args)
         {
-            Element e = new Element(null) { ScheduleStyle = ElementScheduleStyle.Multiple };
+            Element e = new Element { ScheduleStyle = ElementScheduleStyle.Multiple };
 
             var s = new SliceCollection();
             s.Schedule(e, 10);

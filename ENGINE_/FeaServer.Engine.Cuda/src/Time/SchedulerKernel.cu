@@ -23,7 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 #pragma endregion
-
+/*
 #include <cuda.h>;
 #include "..\Core.h";
 #include "..\System\cuFalloc.cu"
@@ -60,3 +60,4 @@ int main()
 }
 
 #include "..\..\..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp"
+*/

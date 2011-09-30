@@ -32,7 +32,7 @@ static void amain()
 {
 	cpuFallocHeap heap = cpuFallocInit();
 	fallocInit(heap.deviceHeap);
-	fallocDeviceContext* ctx = fallocCreateCtx(heap.deviceHeap);
+	fallocContext* ctx = fallocCreateCtx(heap.deviceHeap);
 
 	//
 	int test = 5;

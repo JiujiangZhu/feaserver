@@ -37,12 +37,12 @@ namespace FeaServer.Tests.Scheduler
         [TestMethod]
         public void AddZ_FirstWins_Moves_To_First_Element()
         {
-            var time0 = new ElementCollection().xtor();
-            var element0 = new Element(MockElement.FirstWins);
+            var time0 = new ElementCollection(); time0.xtor();
+            var element0 = new Element { ScheduleStyle = ElementScheduleStyle.FirstWins }; //(MockElement.FirstWins);
             time0.Add(element0, 0);
             //
-            var time1 = new ElementCollection().xtor();
-            var element1 = new Element(MockElement.FirstWins);
+            var time1 = new ElementCollection(); time1.xtor();
+            var element1 = new Element { ScheduleStyle = ElementScheduleStyle.FirstWins }; //(MockElement.FirstWins);
             time1.Add(element1, 0);
 
             Assert.AreEqual(time0.Count, 1);
@@ -52,12 +52,12 @@ namespace FeaServer.Tests.Scheduler
         [TestMethod]
         public void AddZ_LastWins_Moves_To_Last_Element()
         {
-            var time0 = new ElementCollection().xtor();
-            var element0 = new Element(MockElement.LastWins);
+            var time0 = new ElementCollection(); time0.xtor();
+            var element0 = new Element { ScheduleStyle = ElementScheduleStyle.LastWins }; //(MockElement.LastWins);
             time0.Add(element0, 0);
             //
-            var time1 = new ElementCollection().xtor();
-            var element1 = new Element(MockElement.LastWins);
+            var time1 = new ElementCollection(); time1.xtor();
+            var element1 = new Element { ScheduleStyle = ElementScheduleStyle.LastWins }; //(MockElement.LastWins);
             time1.Add(element1, 0);
 
             Assert.AreEqual(time0.Count, 0);
@@ -68,12 +68,12 @@ namespace FeaServer.Tests.Scheduler
         [TestMethod]
         public void AddZ_Multiple_Keeps_All_Elements()
         {
-            var time0 = new ElementCollection().xtor();
-            var element0 = new Element(MockElement.Multiple);
+            var time0 = new ElementCollection(); time0.xtor();
+            var element0 = new Element { ScheduleStyle = ElementScheduleStyle.Multiple }; //(MockElement.Multiple);
             time0.Add(element0, 0);
             //
-            var time1 = new ElementCollection().xtor();
-            var element1 = new Element(MockElement.Multiple);
+            var time1 = new ElementCollection(); time1.xtor();
+            var element1 = new Element { ScheduleStyle = ElementScheduleStyle.Multiple }; //(MockElement.Multiple);
             time1.Add(element1, 0);
 
             Assert.AreEqual(time0.Count, 1);

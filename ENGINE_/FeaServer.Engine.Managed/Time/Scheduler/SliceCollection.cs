@@ -89,6 +89,18 @@ namespace FeaServer.Engine.Time.Scheduler
 
         #region Evaluate
 
+        public void EvaluateFrameBegin(ulong frameTime)
+        {
+            Console.WriteLine("SliceCollection:EvaluateFrameBegin {0}", TimePrec.DecodeTime(frameTime));
+        }
+
+        public void EvaluateFrameEnd()
+        {
+            Console.WriteLine("SliceCollection:EvaluateFrameEnd");
+        }
+
+
+
         public bool EvaluateFrame(ulong frameTime, Action<SliceFraction> evaluateNode)
         {
             Console.WriteLine("SliceCollection:EvaluateFrame {0}", TimePrec.DecodeTime(frameTime));

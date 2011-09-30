@@ -38,11 +38,11 @@ namespace Time { namespace Scheduler {
 	typedef struct
 	{
 	public:
-		fallocDeviceContext* _falloCtx;
+		fallocContext* _falloCtx;
 		ElementList _singles;
         System::LinkedList<ElementRef> _multiples;
 
-        __device__ void xtor(fallocDeviceContext* falloCtx)
+        __device__ void xtor(fallocContext* falloCtx)
         {
 			trace(ElementCollection, "xtor");
 			_falloCtx = falloCtx;

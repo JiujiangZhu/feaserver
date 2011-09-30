@@ -35,8 +35,7 @@ static void main()
 	fallocInit(heap.deviceHeap);
 
 	//
-	Element e;
-	e.ScheduleStyle = Time::Multiple;
+	Element e; e.ScheduleStyle = Time::Multiple;
 
 	SliceCollection s; s.xtor(heap.deviceHeap);
 	s.Schedule(&e, 10);

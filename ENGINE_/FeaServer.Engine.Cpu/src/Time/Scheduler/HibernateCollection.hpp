@@ -35,7 +35,7 @@ namespace Time { namespace Scheduler {
 	typedef struct
 	{
 	public:
-		fallocDeviceContext* _falloCtx;
+		fallocContext* _falloCtx;
 		Hibernate _hibernates[EngineSettings__MaxHibernates];
 
         __device__ void xtor(fallocDeviceHeap* deviceHeap)

@@ -37,7 +37,7 @@ namespace Time { namespace Scheduler {
 	public:
 		ElementCollection Elements;
 
-        __device__ void xtor(fallocDeviceContext* falloCtx)
+        __device__ void xtor(fallocContext* falloCtx)
         {
 			trace(SliceFraction, "xtor");
 			Elements.xtor(falloCtx);

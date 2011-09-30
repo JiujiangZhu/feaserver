@@ -44,10 +44,10 @@ THE SOFTWARE.
 		fallocFreeChunk(heap.deviceHeap, obj);
 
 		// create/free alloc
-		fallocDeviceContext *ctx = fallocCreate(heap.deviceHeap);
+		fallocContext *ctx = fallocCreateCtx(heap.deviceHeap);
 		char *testString = (char *)falloc(ctx, 10);
 		int *testInteger = (int *)falloc(ctx, sizeof(int));
-		fallocDispose(ctx);
+		fallocDisposeCtx(ctx);
 
 		// free and exit
 		cpuFallocEnd(heap);
@@ -65,11 +65,12 @@ void fallocInit(fallocDeviceHeap *deviceHeap);
 void *fallocGetChunk(fallocDeviceHeap *deviceHeap);
 void fallocFreeChunk(fallocDeviceHeap *deviceHeap, void *obj);
 // ALLOC
-typedef struct _cpuFallocDeviceContext fallocDeviceContext;
-fallocDeviceContext *fallocCreateCtx(fallocDeviceHeap *deviceHeap);
-void fallocDisposeCtx(fallocDeviceContext *t);
-void *falloc(fallocDeviceContext *t, unsigned short bytes);
-
+typedef struct _cpuFallocContext fallocContext;
+fallocContext *fallocCreateCtx(fallocDeviceHeap *deviceHeap);
+void fallocDisposeCtx(fallocContext *t);
+void *falloc(fallocContext *t, unsigned short bytes);
+// STACK
+typedef struct _cpuFallocStack fallocStack;
 
 ///////////////////////////////////////////////////////////////////////////////
 // HOST SIDE

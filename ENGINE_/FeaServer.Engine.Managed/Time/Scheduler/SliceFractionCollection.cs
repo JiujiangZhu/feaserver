@@ -40,7 +40,10 @@ namespace FeaServer.Engine.Time.Scheduler
             Console.WriteLine("SliceFractionCollection:Schedule {0}", TimePrec.DecodeTime(fraction));
             SliceFraction fraction2;
             if (!TryGetValue(fraction, out fraction2))
-                Add(fraction, fraction2.xtor());
+            {
+                fraction2.xtor();
+                Add(fraction, fraction2);
+            }
             fraction2.Elements.Add(element, 0);
         }
     }

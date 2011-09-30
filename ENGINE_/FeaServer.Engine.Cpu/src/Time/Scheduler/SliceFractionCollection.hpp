@@ -33,11 +33,11 @@ namespace Time { namespace Scheduler {
 	#define SLICEFRACTIONCOLLECTION
 
 	typedef struct { ulong key; SliceFraction* value; } SliceFractionPair;
-	class SliceFractionCollection //: public System::SortedDictionary<ulong, SliceFraction*>
+	class SliceFractionCollection
 	{
 	private:
 		System::TreeSet<SliceFractionPair> _set;
-		fallocDeviceContext* _deviceCtx;
+		fallocContext* _fallocCtx;
 
 		__device__ bool TryGetValue(ulong key, SliceFraction** value)
 		{
@@ -52,17 +52,17 @@ namespace Time { namespace Scheduler {
 
 		__device__ void Add(ulong key, SliceFraction* value)
 		{
-			SliceFractionPair* pair = (SliceFractionPair*)falloc(_deviceCtx, sizeof(SliceFractionPair));
+			SliceFractionPair* pair = (SliceFractionPair*)falloc(_fallocCtx, sizeof(SliceFractionPair));
 			pair->key = key; pair->value = value;
 			_set.Add(pair);
 		}
 
 	public:
-		__device__ void xtor(fallocDeviceContext* deviceCtx)
+		__device__ void xtor(fallocContext* fallocCtx)
 		{
 			trace(SliceFractionCollection, "xtor");
-			_deviceCtx = deviceCtx;
-			_set.xtor(deviceCtx);
+			_fallocCtx = fallocCtx;
+			_set.xtor(fallocCtx);
 		}
 
 		__device__ void Schedule(Element* element, ulong fraction)
@@ -71,8 +71,8 @@ namespace Time { namespace Scheduler {
             SliceFraction* fraction2;
             if (!TryGetValue(fraction, &fraction2))
 			{
-				fraction2 = (SliceFraction*)falloc(_deviceCtx, sizeof(SliceFraction));
-				fraction2->xtor(_deviceCtx);
+				fraction2 = (SliceFraction*)falloc(_fallocCtx, sizeof(SliceFraction));
+				fraction2->xtor(_fallocCtx);
                 Add(fraction, fraction2);
 			}
             fraction2->Elements.Add(element, 0);

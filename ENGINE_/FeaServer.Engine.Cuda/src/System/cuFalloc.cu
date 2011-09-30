@@ -53,12 +53,12 @@ typedef struct _cuFallocDeviceNode {
 	unsigned short magic;
 } cuFallocDeviceNode;
 
-typedef struct _cuFallocDeviceContext {
+typedef struct _cuFallocContext {
 	cuFallocDeviceNode node;
 	cuFallocDeviceNode *allocNodes;
 	cuFallocDeviceNode *availableNodes;
 	fallocDeviceHeap *deviceHeap;
-} fallocDeviceContext;
+} fallocContext;
 
 // All our headers are prefixed with a magic number so we know they're ready
 #define CUFALLOC_MAGIC (unsigned short)0x3412        // Not a valid ascii character
@@ -110,13 +110,13 @@ __device__ void fallocFreeChunk(fallocDeviceHeap *deviceHeap, void *obj) {
 //////////////////////
 // ALLOC
 
-__device__ static fallocDeviceContext *fallocCreateCtx(fallocDeviceHeap *deviceHeap) {
-	if (sizeof(fallocDeviceContext) > HEAPCHUNK_SIZE)
+__device__ static fallocContext *fallocCreateCtx(fallocDeviceHeap *deviceHeap) {
+	if (sizeof(fallocContext) > HEAPCHUNK_SIZE)
 		__THROW;
-	fallocDeviceContext *context = (fallocDeviceContext*)fallocGetChunk(deviceHeap);
+	fallocContext *context = (fallocContext*)fallocGetChunk(deviceHeap);
 	context->deviceHeap = deviceHeap;
 	context->node.next = context->node.nextAvailable = nullptr;
-	unsigned short freeOffset = context->node.freeOffset = sizeof(fallocDeviceContext);
+	unsigned short freeOffset = context->node.freeOffset = sizeof(fallocContext);
 	context->node.magic = CUFALLOCNODE_MAGIC;
 	context->allocNodes = (cuFallocDeviceNode*)context;
 	context->availableNodes = (cuFallocDeviceNode*)context;
@@ -126,13 +126,13 @@ __device__ static fallocDeviceContext *fallocCreateCtx(fallocDeviceHeap *deviceH
 	return context;
 }
 
-__device__ static void fallocDisposeCtx(fallocDeviceContext *t) {
+__device__ static void fallocDisposeCtx(fallocContext *t) {
 	fallocDeviceHeap *deviceHeap = t->deviceHeap;
 	for (cuFallocDeviceNode* node = t->allocNodes; node != nullptr; node = node->next)
 		fallocFreeChunk(deviceHeap, node);
 }
 
-__device__ static void *falloc(fallocDeviceContext* t, unsigned short bytes) {
+__device__ static void *falloc(fallocContext* t, unsigned short bytes) {
 	if (bytes > CUFALLOCNODE_SIZE)
 		__THROW;
 	// find or add available node

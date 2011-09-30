@@ -36,12 +36,11 @@ namespace FeaServer.Engine.Time.Scheduler
         private ElementList _singles;
         private System.LinkedList<ElementRef> _multiples;
 
-        public ElementCollection xtor()
+        public void xtor()
         {
             Console.WriteLine("ElementCollection:xtor");
             _singles = new ElementList();
             _multiples = new System.LinkedList<ElementRef>();
-            return this;
         }
 
         public void Add(Element element, ulong time)

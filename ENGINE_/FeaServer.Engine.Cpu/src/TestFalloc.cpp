@@ -37,7 +37,7 @@ static void xmain()
 	fallocFreeChunk(heap.deviceHeap, obj);
 
 	// create/free alloc
-	fallocDeviceContext* ctx = fallocCreateCtx(heap.deviceHeap);
+	fallocContext* ctx = fallocCreateCtx(heap.deviceHeap);
 	char* testString = (char *)falloc(ctx, 10);
 	int* testInteger = (int *)falloc(ctx, sizeof(int));
 	fallocDisposeCtx(ctx);

@@ -37,9 +37,9 @@ namespace System {
 		struct _Node* right;
 	} Node;
 
-	__device__ static Node* CreateNode(fallocDeviceContext* deviceCtx, void* item, bool isRed /*true*/)
+	__device__ static Node* CreateNode(fallocContext* fallocCtx, void* item, bool isRed /*true*/)
 	{
-		Node* node = (Node*)falloc(deviceCtx, sizeof(Node));
+		Node* node = (Node*)falloc(fallocCtx, sizeof(Node));
 		node->item = item;
 		node->isRed = isRed;
 		node->left = node->right = nullptr;
@@ -140,7 +140,7 @@ namespace System {
 		unsigned __int32 _count;
 		Node* _root;
 		unsigned __int16 _version;
-		fallocDeviceContext* _deviceCtx;
+		fallocContext* _fallocCtx;
 
 	private:
 		__device__ void ReplaceChildOfNodeOrRoot(Node* parent, Node* child, Node* newChild)
@@ -188,18 +188,18 @@ namespace System {
 
 
 	public:
-		//__device__ TreeSet(fallocDeviceContext* deviceCtx)
-		//	: _deviceCtx(deviceCtx) { }
-		__device__ void xtor(fallocDeviceContext* deviceCtx)
+		//__device__ TreeSet(fallocContext* fallocCtx)
+		//	: _fallocCtx(fallocCtx) { }
+		__device__ void xtor(fallocContext* fallocCtx)
 		{
-			_deviceCtx = deviceCtx;
+			_fallocCtx = fallocCtx;
 		}
 
 		__device__ void Add(T* item)
 		{
 			if (_root == nullptr)
 			{
-				_root = CreateNode(_deviceCtx, item, false);
+				_root = CreateNode(_fallocCtx, item, false);
 				_count = 1;
 			}
 			else
@@ -229,7 +229,7 @@ namespace System {
 					node = root;
 					root = (num < 0 ? root->left : root->right);
 				}
-				current = CreateNode(_deviceCtx, item, true);
+				current = CreateNode(_fallocCtx, item, true);
 				if (num > 0)
 					node->right = current;
 				else

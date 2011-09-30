@@ -35,7 +35,7 @@ namespace Time { namespace Scheduler {
 	typedef struct
 	{
 	private:
-		fallocDeviceContext* _deviceCtx;
+		fallocContext* _fallocCtx;
 
 	public:
 		SliceFractionCollection Fractions;
@@ -43,13 +43,13 @@ namespace Time { namespace Scheduler {
         __device__ void xtor(fallocDeviceHeap* deviceHeap)
         {
 			trace(Slice, "xtor");
-			_deviceCtx = fallocCreateCtx(deviceHeap);
-			Fractions.xtor(_deviceCtx);
+			_fallocCtx = fallocCreateCtx(deviceHeap);
+			Fractions.xtor(_fallocCtx);
         }
 		__device__ void Dispose()
 		{
 			trace(Slice, "Dispose");
-			fallocDisposeCtx(_deviceCtx);
+			fallocDisposeCtx(_fallocCtx);
 		}
 
 	} Slice;

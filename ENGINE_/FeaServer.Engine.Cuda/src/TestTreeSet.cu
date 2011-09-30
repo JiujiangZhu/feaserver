@@ -32,7 +32,7 @@ using namespace System;
 __global__ void TestTreeSet(fallocDeviceHeap *deviceHeap)
 {
 	fallocInit(deviceHeap);
-	fallocDeviceContext* ctx = fallocCreateCtx(deviceHeap);
+	fallocContext* ctx = fallocCreateCtx(deviceHeap);
 
 	//
 	int test = 5;

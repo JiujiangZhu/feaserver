@@ -1,7 +1,7 @@
 #include "Core.clh"
 
 __kernel void Test() {
-	printf("Test");
+	//printf("Test");
 }
 
 /*

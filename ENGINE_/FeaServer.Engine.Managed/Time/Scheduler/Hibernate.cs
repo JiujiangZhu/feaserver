@@ -33,11 +33,10 @@ namespace FeaServer.Engine.Time.Scheduler
     {
         public ElementCollection Elements;
 
-        public Hibernate xtor()
+        public void xtor()
         {
             Console.WriteLine("Hibernate:xtor");
             Elements.xtor();
-            return this;
         }
     }
 }

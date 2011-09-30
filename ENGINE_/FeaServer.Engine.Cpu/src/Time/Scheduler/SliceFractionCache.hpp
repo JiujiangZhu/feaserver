@@ -44,6 +44,13 @@ namespace Time { namespace Scheduler {
 	public:
 		bool RequiresRebuild;
 
+		//__device__ SliceFraction MoveNextSliceFraction()
+  //      {
+  //          _minFraction = _currentFraction; //: fractions.Remove(fractionTime);
+  //          _currentFraction = (_currentFractionIndex > 0 ? _fractions[--_currentFractionIndex] : ulong.MaxValue); //: repnz requires one less register
+  //          return _sliceFractions[_minFraction];
+  //      }
+
 		__device__ void EnsureCache(ulong fraction)
         {
             if (fraction < _maxFraction)
