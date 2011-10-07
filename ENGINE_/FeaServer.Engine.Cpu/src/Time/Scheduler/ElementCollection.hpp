@@ -38,14 +38,14 @@ namespace Time { namespace Scheduler {
 	typedef struct
 	{
 	public:
-		fallocContext* _falloCtx;
+		fallocContext* _fallocCtx;
 		ElementList _singles;
         System::LinkedList<ElementRef> _multiples;
 
         __device__ void xtor(fallocContext* falloCtx)
         {
 			trace(ElementCollection, "xtor");
-			_falloCtx = falloCtx;
+			_fallocCtx = falloCtx;
         }
 
         __device__ void Add(Element* element, ulong time)
@@ -62,7 +62,7 @@ namespace Time { namespace Scheduler {
                     _singles.MergeLastWins(element, metadata);
                     break;
                 case Multiple:
-					elementRef = (ElementRef*)falloc(_falloCtx, sizeof(ElementRef));
+					elementRef = (ElementRef*)falloc(_fallocCtx, sizeof(ElementRef));
 					if (elementRef == nullptr)
 						thrownew(OutOfMemoryException);
 					elementRef->Element = element;

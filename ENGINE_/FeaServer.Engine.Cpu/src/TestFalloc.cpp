@@ -38,8 +38,8 @@ static void xmain()
 
 	// create/free alloc
 	fallocContext* ctx = fallocCreateCtx(heap.deviceHeap);
-	char* testString = (char *)falloc(ctx, 10);
-	int* testInteger = (int *)falloc(ctx, sizeof(int));
+	char* testString = (char* )falloc(ctx, 10);
+	int* testInteger = (int* )falloc(ctx, sizeof(int));
 	fallocDisposeCtx(ctx);
 
 	// free and exit

@@ -40,13 +40,13 @@ THE SOFTWARE.
 		fallocInit(heap.deviceHeap);
 
 		// create/free heap
-		void *obj = fallocGetChunk(heap.deviceHeap);
+		void* obj = fallocGetChunk(heap.deviceHeap);
 		fallocFreeChunk(heap.deviceHeap, obj);
 
 		// create/free alloc
-		fallocContext *ctx = fallocCreateCtx(heap.deviceHeap);
-		char *testString = (char *)falloc(ctx, 10);
-		int *testInteger = (int *)falloc(ctx, sizeof(int));
+		fallocContext* ctx = fallocCreateCtx(heap.deviceHeap);
+		char* testString = (char* )falloc(ctx, 10);
+		int* testInteger = (int* )falloc(ctx, sizeof(int));
 		fallocDisposeCtx(ctx);
 
 		// free and exit
@@ -61,23 +61,29 @@ THE SOFTWARE.
 // External function definitions for device-side code
 
 typedef struct _cpuFallocDeviceHeap fallocDeviceHeap;
-void fallocInit(fallocDeviceHeap *deviceHeap);
-void *fallocGetChunk(fallocDeviceHeap *deviceHeap);
-void fallocFreeChunk(fallocDeviceHeap *deviceHeap, void *obj);
+void fallocInit(fallocDeviceHeap* deviceHeap);
+void* fallocGetChunk(fallocDeviceHeap* deviceHeap);
+void fallocFreeChunk(fallocDeviceHeap* deviceHeap, void* obj);
 // ALLOC
 typedef struct _cpuFallocContext fallocContext;
-fallocContext *fallocCreateCtx(fallocDeviceHeap *deviceHeap);
-void fallocDisposeCtx(fallocContext *t);
-void *falloc(fallocContext *t, unsigned short bytes);
-// STACK
-typedef struct _cpuFallocStack fallocStack;
+fallocContext* fallocCreateCtx(fallocDeviceHeap* deviceHeap);
+void fallocDisposeCtx(fallocContext* ctx);
+void* falloc(fallocContext* ctx, unsigned short bytes);
+template <typename T> T* falloc(fallocContext* ctx);
+bool fallocAtStart(fallocContext* ctx);
+void fallocPush(fallocContext* ctx, unsigned short bytes);
+template <typename T> void fallocPush(fallocContext* ctx, T t);
+void* fallocPop(fallocContext* ctx, unsigned short bytes);
+template <typename T> T fallocPop(fallocContext* ctx);
+//template <typename T> void fallocEnqueue(fallocContext* ctx, T t);
+//template <typename T> T fallocDequeue(fallocContext* ctx);
 
 ///////////////////////////////////////////////////////////////////////////////
 // HOST SIDE
 // External function definitions for host-side code
 
 typedef struct {
-	fallocDeviceHeap *deviceHeap;
+	fallocDeviceHeap* deviceHeap;
 	int length;
 } cpuFallocHeap;
 

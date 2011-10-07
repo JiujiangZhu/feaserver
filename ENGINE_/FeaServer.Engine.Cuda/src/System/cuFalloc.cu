@@ -38,7 +38,7 @@ const static int FALLOCNODE_SLACK = 0x10;
 // NOTE: It *must* be size-aligned to the maximum entity size (size_t)
 typedef struct __align__(8) _cuFallocHeapChunk {
     unsigned short magic;				// Magic number says we're valid
-    volatile struct _cuFallocHeapChunk *next;	// Next chunk pointer
+    volatile struct _cuFallocHeapChunk* next;	// Next chunk pointer
 } cuFallocHeapChunk;
 
 typedef struct __align__(8) _cuFallocDeviceHeap {
@@ -47,17 +47,17 @@ typedef struct __align__(8) _cuFallocDeviceHeap {
 } fallocDeviceHeap;
 
 typedef struct _cuFallocDeviceNode {
-	struct _cuFallocDeviceNode *next;
-	struct _cuFallocDeviceNode *nextAvailable;
+	struct _cuFallocDeviceNode* next;
+	struct _cuFallocDeviceNode* nextAvailable;
 	unsigned short freeOffset;
 	unsigned short magic;
 } cuFallocDeviceNode;
 
 typedef struct _cuFallocContext {
 	cuFallocDeviceNode node;
-	cuFallocDeviceNode *allocNodes;
-	cuFallocDeviceNode *availableNodes;
-	fallocDeviceHeap *deviceHeap;
+	cuFallocDeviceNode* allocNodes;
+	cuFallocDeviceNode* availableNodes;
+	fallocDeviceHeap* deviceHeap;
 } fallocContext;
 
 // All our headers are prefixed with a magic number so we know they're ready
@@ -65,7 +65,7 @@ typedef struct _cuFallocContext {
 #define CUFALLOCNODE_MAGIC (unsigned short)0x7856
 #define CUFALLOCNODE_SIZE (HEAPCHUNK_SIZE - sizeof(cuFallocDeviceNode))
 
-__device__ void fallocInit(fallocDeviceHeap *deviceHeap) {
+__device__ void fallocInit(fallocDeviceHeap* deviceHeap) {
 	if (threadIdx.x != 0)
 		return;
 	volatile cuFallocHeapChunk* chunk = (cuFallocHeapChunk*)((__int8*)deviceHeap + sizeof(fallocDeviceHeap));
@@ -82,7 +82,7 @@ __device__ void fallocInit(fallocDeviceHeap *deviceHeap) {
 	chunk->magic = CUFALLOC_MAGIC;
 }
 
-__device__ void *fallocGetChunk(fallocDeviceHeap *deviceHeap) {
+__device__ void* fallocGetChunk(fallocDeviceHeap* deviceHeap) {
 	if (threadIdx.x != 0)
 		__THROW;
 	volatile cuFallocHeapChunk* chunk = deviceHeap->freeChunks;
@@ -95,7 +95,7 @@ __device__ void *fallocGetChunk(fallocDeviceHeap *deviceHeap) {
 	return (void*)((short*)chunk + sizeof(cuFallocHeapChunk));
 }
 
-__device__ void fallocFreeChunk(fallocDeviceHeap *deviceHeap, void *obj) {
+__device__ void fallocFreeChunk(fallocDeviceHeap* deviceHeap, void* obj) {
 	if (threadIdx.x != 0)
 		__THROW;
 	cuFallocHeapChunk* chunk = (cuFallocHeapChunk*)((__int8*)obj - sizeof(cuFallocHeapChunk));
@@ -110,10 +110,10 @@ __device__ void fallocFreeChunk(fallocDeviceHeap *deviceHeap, void *obj) {
 //////////////////////
 // ALLOC
 
-__device__ static fallocContext *fallocCreateCtx(fallocDeviceHeap *deviceHeap) {
+__device__ static fallocContext* fallocCreateCtx(fallocDeviceHeap* deviceHeap) {
 	if (sizeof(fallocContext) > HEAPCHUNK_SIZE)
 		__THROW;
-	fallocContext *context = (fallocContext*)fallocGetChunk(deviceHeap);
+	fallocContext* context = (fallocContext*)fallocGetChunk(deviceHeap);
 	context->deviceHeap = deviceHeap;
 	context->node.next = context->node.nextAvailable = nullptr;
 	unsigned short freeOffset = context->node.freeOffset = sizeof(fallocContext);
@@ -126,39 +126,39 @@ __device__ static fallocContext *fallocCreateCtx(fallocDeviceHeap *deviceHeap) {
 	return context;
 }
 
-__device__ static void fallocDisposeCtx(fallocContext *t) {
-	fallocDeviceHeap *deviceHeap = t->deviceHeap;
-	for (cuFallocDeviceNode* node = t->allocNodes; node != nullptr; node = node->next)
+__device__ static void fallocDisposeCtx(fallocContext* ctx) {
+	fallocDeviceHeap* deviceHeap = ctx->deviceHeap;
+	for (cuFallocDeviceNode* node = ctx->allocNodes; node != nullptr; node = node->next)
 		fallocFreeChunk(deviceHeap, node);
 }
 
-__device__ static void *falloc(fallocContext* t, unsigned short bytes) {
+__device__ static void* falloc(fallocContext* ctx, unsigned short bytes) {
 	if (bytes > CUFALLOCNODE_SIZE)
 		__THROW;
 	// find or add available node
-	cuFallocDeviceNode *node;
+	cuFallocDeviceNode* node;
 	unsigned short freeOffset;
 	unsigned char hasFreeSpace;
-	cuFallocDeviceNode *lastNode;
-	for (lastNode = (cuFallocDeviceNode*)t, node = t->availableNodes; node != nullptr; lastNode = node, node = node->nextAvailable)
+	cuFallocDeviceNode* lastNode;
+	for (lastNode = (cuFallocDeviceNode*)ctx, node = ctx->availableNodes; node != nullptr; lastNode = node, node = node->nextAvailable)
 		 if (hasFreeSpace = ((freeOffset = (node->freeOffset + bytes)) <= HEAPCHUNK_SIZE))
 			 break;
 	if ((node == nullptr) || !hasFreeSpace) {
 		// add node
-		node = (cuFallocDeviceNode*)fallocGetChunk(t->deviceHeap);
-		node->next = t->allocNodes;
-		node->nextAvailable = t->availableNodes;
+		node = (cuFallocDeviceNode*)fallocGetChunk(ctx->deviceHeap);
+		node->next = ctx->allocNodes;
+		node->nextAvailable = ctx->availableNodes;
 		freeOffset = node->freeOffset = sizeof(cuFallocDeviceNode); 
 		node->magic = CUFALLOCNODE_MAGIC;
-		t->allocNodes = node;
-		t->availableNodes = node;
+		ctx->allocNodes = node;
+		ctx->availableNodes = node;
 	}
-	void *obj = (__int8*)node + node->freeOffset;
+	void* obj = (__int8*)node + node->freeOffset;
 	node->freeOffset = freeOffset;
 	// close node
 	if ((freeOffset + FALLOCNODE_SLACK) > HEAPCHUNK_SIZE) {
-		if (lastNode == (cuFallocDeviceNode*)t)
-			t->availableNodes = node->nextAvailable;
+		if (lastNode == (cuFallocDeviceNode*)ctx)
+			ctx->availableNodes = node->nextAvailable;
 		else
 			lastNode->nextAvailable = node->nextAvailable;
 		node->nextAvailable = nullptr;
@@ -177,7 +177,7 @@ __device__ static void *falloc(fallocContext* t, unsigned short bytes) {
 //  returns a pointer to it for when a kernel is called. It's up to the caller
 //  to free it.
 //
-extern "C" cudaFallocHeap cudaFallocInit(size_t bufferLen, cudaError_t *error) {
+extern "C" cudaFallocHeap cudaFallocInit(size_t bufferLen, cudaError_t* error) {
 	cudaFallocHeap heap; memset(&heap, 0, sizeof(cudaFallocHeap));
 	// Fix up chunkSize to include cpuFallocHeapChunk
 	int chunkSize = sizeof(cuFallocHeapChunk) + HEAPCHUNK_SIZE;
@@ -193,9 +193,9 @@ extern "C" cudaFallocHeap cudaFallocInit(size_t bufferLen, cudaError_t *error) {
 	if ((bufferLen % 16) > 0)
         bufferLen += (16 - (bufferLen % 16));
     // Allocate a print buffer on the device and zero it
-	fallocDeviceHeap *deviceHeap;
-	if ( ((error == nullptr) && (cudaMalloc((void **)&deviceHeap, bufferLen) != cudaSuccess)) ||
-		((error != nullptr) && ((*error = cudaMalloc((void **)&deviceHeap, bufferLen)) != cudaSuccess)) )
+	fallocDeviceHeap* deviceHeap;
+	if ( ((error == nullptr) && (cudaMalloc((void**)&deviceHeap, bufferLen) != cudaSuccess)) ||
+		((error != nullptr) && ((*error = cudaMalloc((void**)&deviceHeap, bufferLen)) != cudaSuccess)) )
 		return heap;
     cudaMemset(deviceHeap, 0, bufferLen);
 	// transfer to deviceHeap

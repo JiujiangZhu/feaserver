@@ -39,7 +39,7 @@ const static int FALLOCNODE_SLACK = 0x10;
 // NOTE: It *must* be size-aligned to the maximum entity size (size_t)
 typedef struct _cpuFallocHeapChunk {
     unsigned short magic;				// Magic number says we're valid
-    volatile struct _cpuFallocHeapChunk *next;	// Next chunk pointer
+    volatile struct _cpuFallocHeapChunk* next;	// Next chunk pointer
 } cpuFallocHeapChunk;
 
 typedef struct _cpuFallocDeviceHeap {
@@ -48,17 +48,17 @@ typedef struct _cpuFallocDeviceHeap {
 } fallocDeviceHeap;
 
 typedef struct _cpuFallocDeviceNode {
-	struct _cpuFallocDeviceNode *next;
-	struct _cpuFallocDeviceNode *nextAvailable;
+	struct _cpuFallocDeviceNode* next;
+	struct _cpuFallocDeviceNode* nextAvailable;
 	unsigned short freeOffset;
 	unsigned short magic;
 } cpuFallocDeviceNode;
 
 typedef struct _cpuFallocContext {
 	cpuFallocDeviceNode node;
-	cpuFallocDeviceNode *allocNodes;
-	cpuFallocDeviceNode *availableNodes;
-	fallocDeviceHeap *deviceHeap;
+	cpuFallocDeviceNode* allocNodes;
+	cpuFallocDeviceNode* availableNodes;
+	fallocDeviceHeap* deviceHeap;
 } fallocContext;
 
 // All our headers are prefixed with a magic number so we know they're ready
@@ -66,7 +66,7 @@ typedef struct _cpuFallocContext {
 #define CPUFALLOCNODE_MAGIC (unsigned short)0x7856
 #define CPUFALLOCNODE_SIZE (HEAPCHUNK_SIZE - sizeof(cpuFallocDeviceNode))
 
-void fallocInit(fallocDeviceHeap *deviceHeap) {
+void fallocInit(fallocDeviceHeap* deviceHeap) {
 	volatile cpuFallocHeapChunk* chunk = (cpuFallocHeapChunk*)((__int8*)deviceHeap + sizeof(fallocDeviceHeap));
 	deviceHeap->freeChunks = chunk;
 	unsigned short chunks = deviceHeap->chunks;
@@ -81,7 +81,7 @@ void fallocInit(fallocDeviceHeap *deviceHeap) {
 	chunk->magic = CPUFALLOC_MAGIC;
 }
 
-void *fallocGetChunk(fallocDeviceHeap *deviceHeap) {
+void* fallocGetChunk(fallocDeviceHeap* deviceHeap) {
 	volatile cpuFallocHeapChunk* chunk = deviceHeap->freeChunks;
 	if (chunk == nullptr)
 		return nullptr;
@@ -92,7 +92,7 @@ void *fallocGetChunk(fallocDeviceHeap *deviceHeap) {
 	return (void*)((__int8*)chunk + sizeof(cpuFallocHeapChunk));
 }
 
-void fallocFreeChunk(fallocDeviceHeap *deviceHeap, void *obj) {
+void fallocFreeChunk(fallocDeviceHeap* deviceHeap, void* obj) {
 	cpuFallocHeapChunk* chunk = (cpuFallocHeapChunk*)((__int8*)obj - sizeof(cpuFallocHeapChunk));
 	if (chunk->magic != CPUFALLOC_MAGIC)
 		throw;
@@ -105,10 +105,10 @@ void fallocFreeChunk(fallocDeviceHeap *deviceHeap, void *obj) {
 //////////////////////
 // ALLOC
 
-fallocContext *fallocCreateCtx(fallocDeviceHeap *deviceHeap) {
+fallocContext* fallocCreateCtx(fallocDeviceHeap* deviceHeap) {
 	if (sizeof(fallocContext) > HEAPCHUNK_SIZE)
 		throw;
-	fallocContext *context = (fallocContext*)fallocGetChunk(deviceHeap);
+	fallocContext* context = (fallocContext*)fallocGetChunk(deviceHeap);
 	context->deviceHeap = deviceHeap;
 	context->node.next = context->node.nextAvailable = nullptr;
 	unsigned short freeOffset = context->node.freeOffset = sizeof(fallocContext);
@@ -121,57 +121,95 @@ fallocContext *fallocCreateCtx(fallocDeviceHeap *deviceHeap) {
 	return context;
 }
 
-void fallocDisposeCtx(fallocContext *t) {
-	fallocDeviceHeap *deviceHeap = t->deviceHeap;
-	for (cpuFallocDeviceNode* node = t->allocNodes; node != nullptr; node = node->next)
+void fallocDisposeCtx(fallocContext* ctx) {
+	fallocDeviceHeap* deviceHeap = ctx->deviceHeap;
+	for (cpuFallocDeviceNode* node = ctx->allocNodes; node != nullptr; node = node->next)
 		fallocFreeChunk(deviceHeap, node);
 }
 
-void *falloc(fallocContext* t, unsigned short bytes) {
+void* falloc(fallocContext* ctx, unsigned short bytes) {
 	if (bytes > CPUFALLOCNODE_SIZE)
 		throw;
 	// find or add available node
-	cpuFallocDeviceNode *node;
+	cpuFallocDeviceNode* node;
 	unsigned short freeOffset;
 	unsigned char hasFreeSpace;
-	cpuFallocDeviceNode *lastNode;
-	for (lastNode = (cpuFallocDeviceNode*)t, node = t->availableNodes; node != nullptr; lastNode = node, node = node->nextAvailable)
+	cpuFallocDeviceNode* lastNode;
+	for (lastNode = (cpuFallocDeviceNode*)ctx, node = ctx->availableNodes; node != nullptr; lastNode = node, node = node->nextAvailable)
 		 if (hasFreeSpace = ((freeOffset = (node->freeOffset + bytes)) <= HEAPCHUNK_SIZE))
 			 break;
 	if ((node == nullptr) || !hasFreeSpace) {
 		// add node
-		node = (cpuFallocDeviceNode*)fallocGetChunk(t->deviceHeap);
-		node->next = t->allocNodes;
-		node->nextAvailable = t->availableNodes;
+		node = (cpuFallocDeviceNode*)fallocGetChunk(ctx->deviceHeap);
+		node->next = ctx->allocNodes;
+		node->nextAvailable = ctx->availableNodes;
 		freeOffset = node->freeOffset = sizeof(cpuFallocDeviceNode); 
 		node->magic = CPUFALLOCNODE_MAGIC;
-		t->allocNodes = node;
-		t->availableNodes = node;
+		ctx->allocNodes = node;
+		ctx->availableNodes = node;
 	}
-	void *obj = (__int8*)node + node->freeOffset;
+	void* obj = (__int8*)node + node->freeOffset;
 	node->freeOffset = freeOffset;
 	// close node
 	if ((freeOffset + FALLOCNODE_SLACK) > HEAPCHUNK_SIZE) {
-		if (lastNode == (cpuFallocDeviceNode*)t)
-			t->availableNodes = node->nextAvailable;
+		if (lastNode == (cpuFallocDeviceNode*)ctx)
+			ctx->availableNodes = node->nextAvailable;
 		else
 			lastNode->nextAvailable = node->nextAvailable;
 		node->nextAvailable = nullptr;
 	}
 	return obj;
 }
+template <typename T> T* falloc(fallocContext* ctx) { return (T*)falloc(ctx, sizeof(T)); }
 
-void fallocPush(fallocContext* t, void* item, unsigned short bytes) {
-	if (bytes > CPUFALLOCNODE_SIZE)
-		throw;
-	memcpy(nullptr, item, bytes);
+bool fallocAtStart(fallocContext* ctx) {
+	return true;
 }
 
-void* fallocPop(fallocContext* t, void* item, unsigned short bytes) {
+void fallocPush(fallocContext* ctx, unsigned short bytes) {
 	if (bytes > CPUFALLOCNODE_SIZE)
 		throw;
-	memcpy(nullptr, item, bytes);
+	return nullptr;
 }
+template <typename T> void fallocPush(fallocContext* ctx, T t) {
+	Node* p = (Node*)fallocPush(ctx, sizeof(Node*));
+	p = node;
+}
+
+void* fallocPop(fallocContext* ctx, unsigned short bytes) {
+	if (bytes > CPUFALLOCNODE_SIZE)
+		throw;
+	return nullptr;
+}
+template <typename T> T fallocPop(fallocContext* ctx) {
+}
+
+//void fallocPush(fallocContext* ctx, void* item, unsigned short bytes) {
+//	if (bytes > CPUFALLOCNODE_SIZE)
+//		throw;
+//	memcpy(nullptr, item, bytes);
+//}
+//void* fallocPop(fallocContext* ctx, unsigned short bytes) {
+//	if (bytes > CPUFALLOCNODE_SIZE)
+//		throw;
+//}
+//void fallocEnqueue(fallocContext* ctx, void* item, unsigned short bytes) {
+//	if (bytes > CPUFALLOCNODE_SIZE)
+//		throw;
+//	memcpy(nullptr, item, bytes);
+//}
+//
+//void* fallocDequeue(fallocContext* ctx, unsigned short bytes) {
+//	if (bytes > CPUFALLOCNODE_SIZE)
+//		throw;
+//}
+
+
+
+
+//template <typename T> T fallocPop(fallocContext* ctx) { return fallocPop(ctx, sizeof(T)); }
+//template <typename T> void fallocEnqueue(fallocContext* ctx, T t) { fallocEnqueue(ctx, sizeof(T)); }
+//template <typename T> T fallocDequeue(fallocContext* ctx) { return fallocDequeue(ctx, sizeof(T)); }
 
 ///////////////////////////////////////////////////////////////////////////////
 // HOST SIDE
@@ -199,7 +237,7 @@ extern "C" cpuFallocHeap cpuFallocInit(size_t bufferLen) {
 	if ((bufferLen % 16) > 0)
         bufferLen += (16 - (bufferLen % 16));
     // Allocate a print buffer on the device and zero it
-	fallocDeviceHeap *deviceHeap;
+	fallocDeviceHeap* deviceHeap;
     if ((deviceHeap = (fallocDeviceHeap*)malloc(bufferLen)) == nullptr)
 		return heap;
     memset(deviceHeap, 0, bufferLen);

@@ -27,5 +27,17 @@
     <Filter Include="System">
       <UniqueIdentifier>{1dc7c325-0d8b-4823-bd4a-3776623de226}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Time\LoadStore">
+      <UniqueIdentifier>{8cc0cb48-da56-40bc-b7d1-d58dc18decb4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Time\Query">
+      <UniqueIdentifier>{4dec1474-407a-4996-b502-f3f2b1642bef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Time\Work">
+      <UniqueIdentifier>{f0e9a071-e7ce-4338-9de6-1984ad98fe48}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Time\Plan">
+      <UniqueIdentifier>{20cdb690-c3c1-4341-829c-e8f6ea7df3ef}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

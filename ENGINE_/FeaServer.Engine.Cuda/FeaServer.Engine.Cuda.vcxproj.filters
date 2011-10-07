@@ -67,6 +67,18 @@
     <Filter Include="System">
       <UniqueIdentifier>{e9f04abd-64fe-4719-aef3-8b66206759cc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Time\LoadStore+Cpu">
+      <UniqueIdentifier>{82856d7a-825e-4950-97a6-2541ce578c48}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Time\Query+Cpu">
+      <UniqueIdentifier>{728fe1ba-6bef-4e79-8dd1-916197f0aea9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Time\Work+Cpu">
+      <UniqueIdentifier>{c05fe8dc-8900-478d-a5de-ccc1e5873cde}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Time\Plan+Cpu">
+      <UniqueIdentifier>{372024e5-337c-4bc0-9b44-762d28800a17}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Engines\cu\MockElementKernel.ptx">

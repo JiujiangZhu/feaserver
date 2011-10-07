@@ -28,11 +28,15 @@ THE SOFTWARE.
 #include "Core.h"
 using namespace System;
 
-static void amain()
+//template void fallocPush<Node*>(fallocContext* ctx, Node* t);
+template class TreeSet<int>;
+
+static void main()
 {
 	cpuFallocHeap heap = cpuFallocInit();
 	fallocInit(heap.deviceHeap);
 	fallocContext* ctx = fallocCreateCtx(heap.deviceHeap);
+	fallocContext* stack = fallocCreateCtx(heap.deviceHeap);
 
 	//
 	int test = 5;
@@ -41,7 +45,11 @@ static void amain()
 	treeSet.Add(&test);
 	treeSet.Add(&test2);
 
+	treeSet.EnumeratorStart(stack);
+	treeSet.EnumeratorEnd(stack);
+
 	// free and exit
+	fallocDisposeCtx(stack);
 	fallocDisposeCtx(ctx);
 	cpuFallocEnd(heap);
 	printf("done."); scanf_s("%c");

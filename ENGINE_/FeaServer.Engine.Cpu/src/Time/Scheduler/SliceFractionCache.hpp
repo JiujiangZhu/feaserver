@@ -34,6 +34,7 @@ namespace Time { namespace Scheduler {
 	class SliceFractionCache
 	{
 	private:
+		fallocContext* _fallocCtx;
 		SliceFractionCollection* _sliceFractions;
         ulong _fractions[EngineSettings__MaxWorkingFractions];
         int _currentFractionIndex;
@@ -43,6 +44,17 @@ namespace Time { namespace Scheduler {
 
 	public:
 		bool RequiresRebuild;
+
+		__device__ void xtor(fallocDeviceHeap* deviceHeap)
+		{
+			trace(SliceFractionCache, "xtor");
+			_fallocCtx = fallocCreateCtx(deviceHeap);
+		}
+		__device__ void Dispose()
+		{
+			trace(SliceFractionCache, "Dispose");
+			fallocDisposeCtx(_fallocCtx);
+		}
 
 		//__device__ SliceFraction MoveNextSliceFraction()
   //      {

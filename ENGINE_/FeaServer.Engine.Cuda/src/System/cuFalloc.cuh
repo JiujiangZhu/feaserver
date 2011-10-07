@@ -34,18 +34,18 @@ THE SOFTWARE.
  *
 	#include "cuFalloc.cu"
  	
-	__global__ void TestFalloc(fallocDeviceHeap *deviceHeap)
+	__global__ void TestFalloc(fallocDeviceHeap* deviceHeap)
 	{
 		fallocInit(deviceHeap);
 
 		// create/free heap
-		void *obj = fallocGetChunk(deviceHeap);
+		void* obj = fallocGetChunk(deviceHeap);
 		fallocFreeChunk(deviceHeap, obj);
 
 		// create/free alloc
-		fallocContext *ctx = fallocCreateCtx(deviceHeap);
-		char *testString = (char *)falloc(ctx, 10);
-		int *testInteger = (int *)falloc(ctx, sizeof(int));
+		fallocContext* ctx = fallocCreateCtx(deviceHeap);
+		char* testString = (char* )falloc(ctx, 10);
+		int* testInteger = (int* )falloc(ctx, sizeof(int));
 		fallocDisposeCtx(ctx);
 	}
 
@@ -69,14 +69,14 @@ THE SOFTWARE.
 // External function definitions for device-side code
 
 typedef struct _cuFallocDeviceHeap fallocDeviceHeap;
-__device__ void fallocInit(fallocDeviceHeap *deviceHeap);
-__device__ void *fallocGetChunk(fallocDeviceHeap *deviceHeap);
-__device__ void fallocFreeChunk(fallocDeviceHeap *deviceHeap, void *obj);
+__device__ void fallocInit(fallocDeviceHeap* deviceHeap);
+__device__ void* fallocGetChunk(fallocDeviceHeap* deviceHeap);
+__device__ void fallocFreeChunk(fallocDeviceHeap* deviceHeap, void* obj);
 // ALLOC
 typedef struct _cuFallocContext fallocContext;
-__device__ fallocContext *fallocCreateCtx(fallocDeviceHeap *deviceHeap);
-__device__ void fallocDisposeCtx(fallocContext *t);
-__device__ void *falloc(fallocContext *t, unsigned short bytes);
+__device__ fallocContext* fallocCreateCtx(fallocDeviceHeap* deviceHeap);
+__device__ void fallocDisposeCtx(fallocContext* ctx);
+__device__ void* falloc(fallocContext* ctx, unsigned short bytes);
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -84,7 +84,7 @@ __device__ void *falloc(fallocContext *t, unsigned short bytes);
 // External function definitions for host-side code
 
 typedef struct {
-	fallocDeviceHeap *deviceHeap;
+	fallocDeviceHeap* deviceHeap;
 	int length;
 } cudaFallocHeap;
 
@@ -104,7 +104,7 @@ typedef struct {
 //	Returns:
 //		cudaSuccess if all is well.
 //
-extern "C" cudaFallocHeap cudaFallocInit(size_t bufferLen=1048576, cudaError_t *error=nullptr);   // 1-meg
+extern "C" cudaFallocHeap cudaFallocInit(size_t bufferLen=1048576, cudaError_t* error=nullptr);   // 1-meg
 
 //
 //	cudaFallocEnd

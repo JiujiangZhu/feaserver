@@ -39,7 +39,7 @@ namespace FeaServer { namespace Engine {
 		ClContext()
 			: _context(nullptr)  { }
 
-		static void ContextNotifyHandler(const char *errinfo, const void *private_info, size_t cb, void *user_data)
+		static void ContextNotifyHandler(const char* errinfo, const void* private_info, size_t cb, void* user_data)
 		{
 		}
 

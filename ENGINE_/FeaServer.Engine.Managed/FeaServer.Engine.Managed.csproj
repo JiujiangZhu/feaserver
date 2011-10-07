@@ -94,6 +94,12 @@
   <ItemGroup>
     <Reference Include="System" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Time\LoadStore\" />
+    <Folder Include="Time\Plan\" />
+    <Folder Include="Time\Query\" />
+    <Folder Include="Time\Work\" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

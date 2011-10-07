@@ -35,20 +35,20 @@ namespace Time { namespace Scheduler {
 	typedef struct
 	{
 	public:
-		fallocContext* _falloCtx;
+		fallocContext* _fallocCtx;
 		Hibernate _hibernates[EngineSettings__MaxHibernates];
 
         __device__ void xtor(fallocDeviceHeap* deviceHeap)
         {
 			trace(HibernateCollection, "xtor");
-			_falloCtx = fallocCreateCtx(deviceHeap);
+			_fallocCtx = fallocCreateCtx(deviceHeap);
             for (int hibernateIndex = 0; hibernateIndex < EngineSettings__MaxHibernates; hibernateIndex++)
-                _hibernates[hibernateIndex].xtor(_falloCtx);
+                _hibernates[hibernateIndex].xtor(_fallocCtx);
         }
 		__device__ void Dispose()
 		{
 			trace(HibernateCollection, "Dispose");
-			fallocDisposeCtx(_falloCtx);
+			fallocDisposeCtx(_fallocCtx);
 		}
 
         __device__ void Hibernate(Element* element, ulong time)

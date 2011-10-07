@@ -5,7 +5,7 @@ __kernel void Test() {
 }
 
 /*
-__kernel void vectorAdd(__global const float *a, __global const float *b, __global float *c)
+__kernel void vectorAdd(__global const float* a, __global const float* b, __global float* c)
 {
 	int nIndex = get_global_id(0);
 	c[nIndex] = a[nIndex] + b[nIndex];

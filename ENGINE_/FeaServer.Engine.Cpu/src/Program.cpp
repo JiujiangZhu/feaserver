@@ -29,7 +29,7 @@ THE SOFTWARE.
 #include "Time\Scheduler\SliceCollection.hpp"
 using namespace Time::Scheduler;
 
-static void main()
+static void zmain()
 {
 	cpuFallocHeap heap = cpuFallocInit();
 	fallocInit(heap.deviceHeap);

@@ -89,6 +89,7 @@ namespace Time { namespace Scheduler {
 			for (int sliceIndex = 0; sliceIndex < EngineSettings__MaxTimeslices; sliceIndex++)
 				_slices[sliceIndex].xtor(_deviceHeap);
 			_hibernates.xtor(_deviceHeap);
+			_fractionCache.xtor(_deviceHeap);
 		}
 		__device__ void Dispose()
 		{
@@ -96,6 +97,7 @@ namespace Time { namespace Scheduler {
 			for (int sliceIndex = 0; sliceIndex < EngineSettings__MaxTimeslices; sliceIndex++)
 				_slices[sliceIndex].Dispose();
 			_hibernates.Dispose();
+			_fractionCache.Dispose();
 		}
 
         __device__ void Schedule(Element* element, ulong time)

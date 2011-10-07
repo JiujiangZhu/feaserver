@@ -29,7 +29,7 @@ THE SOFTWARE.
 #include "System\cuFalloc.cu"
 using namespace System;
 
-__global__ void TestTreeSet(fallocDeviceHeap *deviceHeap)
+__global__ void TestTreeSet(fallocDeviceHeap* deviceHeap)
 {
 	fallocInit(deviceHeap);
 	fallocContext* ctx = fallocCreateCtx(deviceHeap);

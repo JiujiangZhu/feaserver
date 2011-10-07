@@ -76,9 +76,9 @@ int main()
 	cl_int r;
 
 	// allocate host vectors and device memory
-	float *a = new float[dimension];
-	float *b = new float[dimension];
-	float *c = new float[dimension];
+	float* a = new float[dimension];
+	float* b = new float[dimension];
+	float* c = new float[dimension];
 	cl_mem deviceMemA = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, dimension * sizeof(cl_float), a, &r); assertR(r, "Exception", "clCreateBuffer.0");
 	cl_mem deviceMemB = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, dimension * sizeof(cl_float), b, &r); assertR(r, "Exception", "clCreateBuffer.2");
 	cl_mem deviceMemC = clCreateBuffer(context, CL_MEM_WRITE_ONLY, dimension * sizeof(cl_float), nullptr, &r); assertR(r, "Exception", "clCreateBuffer.2");
@@ -87,9 +87,9 @@ int main()
 	cl_kernel kernel = clCreateKernel(program, "vectorAdd", &r); assertR(r, "Exception", "clCreateKernel");
 
 	// setup parameter values
-	r = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&deviceMemA); assertR(r, "Exception", "clSetKernelArg.0");
-	r = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&deviceMemB); assertR(r, "Exception", "clSetKernelArg.1");
-	r = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&deviceMemC); assertR(r, "Exception", "clSetKernelArg.2");
+	r = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&deviceMemA); assertR(r, "Exception", "clSetKernelArg.0");
+	r = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*)&deviceMemB); assertR(r, "Exception", "clSetKernelArg.1");
+	r = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void*)&deviceMemC); assertR(r, "Exception", "clSetKernelArg.2");
 
 	// execute kernel
 	r = clEnqueueNDRangeKernel(command_queue, kernel, 1, nullptr, &dimension, 0, 0, nullptr, nullptr); assertR(r, "Exception", "clEnqueueNDRangeKernel");

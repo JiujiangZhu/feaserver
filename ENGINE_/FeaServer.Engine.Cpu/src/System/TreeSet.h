@@ -251,7 +251,8 @@ namespace System {
 
 		__device__ bool Contains(T* item)
 		{
-			return (FindNode(item) != nullptr);
+			return false;
+			//return (FindNode(item) != nullptr);
 		}
 
 
@@ -366,6 +367,38 @@ namespace System {
 				_root->isRed = false;
 			_version++;
 			return flag;
+		}
+
+	//////////////////////////
+	// ENUMERATE
+	private:
+		Node* _current;
+
+	public:
+		__device__ void EnumeratorStart(fallocContext* ctx)
+		{
+			_current = nullptr;
+			for (Node* node = _root; node != nullptr; node = node->left)
+				//fallocPush<Node*>(ctx, node);
+			{
+				Node* p = (Node*)fallocPush(ctx, sizeof(Node*));
+				p = node;
+			}
+		}
+
+		__device__ void EnumeratorEnd(fallocContext* ctx) { }
+
+		__device__ bool EnumeratorMoveNext(fallocContext* ctx)
+		{
+			if (fallocAtStart(ctx))
+			{
+				_current = nullptr;
+				return false;
+			}
+			//_current = fallocPop<Node*>(ctx);
+			//for (Node* node = _current->right; node != nullptr; node = node->left)
+			//	fallocPush<Node*>(ctx, node);
+			return true;
 		}
 
 	};
