@@ -381,12 +381,15 @@ namespace System {
 	private:
 		Node<T>* _current;
 		T defaultT;
+		void* _enumeratorMark;
+		unsigned short _enumeratorMark2;
 
 	public:
 		T Current;
 
 		__device__ void EnumeratorBegin(fallocContext* ctx)
 		{
+			fallocMark(ctx, _enumeratorMark, _enumeratorMark2);
 			_current = nullptr;
 			for (Node<T>* node = _root; node != nullptr; node = node->left)
 				fallocPush<Node<T>*>(ctx, node);
@@ -398,7 +401,7 @@ namespace System {
 
 		__device__ bool EnumeratorMoveNext(fallocContext* ctx)
 		{
-			if (fallocAtStart(ctx))
+			if (fallocAtMark(ctx, _enumeratorMark, _enumeratorMark2))
 			{
 				_current = nullptr;
 				Current = defaultT;

@@ -70,7 +70,8 @@ fallocContext* fallocCreateCtx(fallocDeviceHeap* deviceHeap);
 void fallocDisposeCtx(fallocContext* ctx);
 void* falloc(fallocContext* ctx, unsigned short bytes, bool alloc = true);
 void* fallocRetract(fallocContext* ctx, unsigned short bytes);
-bool fallocAtStart(fallocContext* ctx);
+void fallocMark(fallocContext* ctx, void* &mark, unsigned short &mark2);
+bool fallocAtMark(fallocContext* ctx, void* mark, unsigned short mark2);
 template <typename T> T* falloc(fallocContext* ctx) { return (T*)falloc(ctx, sizeof(T), true); }
 template <typename T> void fallocPush(fallocContext* ctx, T t) { *((T*)falloc(ctx, sizeof(T), false)) = t; }
 template <typename T> T fallocPop(fallocContext* ctx) { return *((T*)fallocRetract(ctx, sizeof(T))); }

@@ -42,7 +42,7 @@ static void main()
 	fallocInit(heap.deviceHeap);
 	fallocContext* ctx = fallocCreateCtx(heap.deviceHeap);
 	fallocContext* stack = fallocCreateCtx(heap.deviceHeap);
-
+	falloc(stack, 70, false);
 	//
 	TreeSet<int> treeSet; treeSet.xtor(0, ctx);
 	treeSet.Add(5);
@@ -50,6 +50,7 @@ static void main()
 	treeSet.Add(1);
 	treeSet.Add(2);
 	treeSet.Add(7);
+	treeSet.Add(10);
 
 	//
 	treeSet.EnumeratorBegin(stack);

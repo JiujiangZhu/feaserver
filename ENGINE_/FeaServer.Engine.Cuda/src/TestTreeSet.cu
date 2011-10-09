@@ -42,6 +42,7 @@ __global__ void TestTreeSet(fallocDeviceHeap* deviceHeap)
 	fallocInit(deviceHeap);
 	fallocContext* ctx = fallocCreateCtx(deviceHeap);
 	fallocContext* stack = fallocCreateCtx(deviceHeap);
+	falloc(stack, 70, false);
 
 	//
 	TreeSet<int> treeSet; treeSet.xtor(0, ctx);
@@ -50,6 +51,7 @@ __global__ void TestTreeSet(fallocDeviceHeap* deviceHeap)
 	treeSet.Add(1);
 	treeSet.Add(2);
 	treeSet.Add(7);
+	treeSet.Add(10);
 
 	//
 	treeSet.EnumeratorBegin(stack);

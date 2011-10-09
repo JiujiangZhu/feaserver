@@ -31,7 +31,7 @@ THE SOFTWARE.
 
 // This is the smallest amount of memory, per-thread, which is allowed.
 // It is also the largest amount of space a single printf() can take up
-const static int HEAPCHUNK_SIZE = 256;
+const static int HEAPCHUNK_SIZE = 128;
 const static int FALLOCNODE_SLACK = 0x10;
 
 // This is the header preceeding all printf entries.
@@ -63,7 +63,6 @@ typedef struct _cuFallocContext {
 // All our headers are prefixed with a magic number so we know they're ready
 #define CUFALLOC_MAGIC (unsigned short)0x3412        // Not a valid ascii character
 #define CUFALLOCNODE_MAGIC (unsigned short)0x7856
-#define CUFALLOCNODE_SIZE (HEAPCHUNK_SIZE - sizeof(cuFallocDeviceNode))
 
 __device__ void fallocInit(fallocDeviceHeap* deviceHeap) {
 	if (threadIdx.x != 0)
@@ -114,11 +113,16 @@ __device__ static fallocContext* fallocCreateCtx(fallocDeviceHeap* deviceHeap) {
 	if (sizeof(fallocContext) > HEAPCHUNK_SIZE)
 		__THROW;
 	fallocContext* ctx = (fallocContext*)fallocGetChunk(deviceHeap);
+	if (ctx == nullptr)
+		__THROW;
 	ctx->deviceHeap = deviceHeap;
 	unsigned short freeOffset = ctx->node.freeOffset = sizeof(fallocContext);
 	ctx->node.magic = CUFALLOCNODE_MAGIC;
 	ctx->node.next = nullptr; ctx->nodes = (cuFallocDeviceNode*)ctx;
 	ctx->node.nextAvailable = nullptr; ctx->availableNodes = (cuFallocDeviceNode*)ctx;
+	// close node
+	if ((freeOffset + FALLOCNODE_SLACK) > HEAPCHUNK_SIZE)
+		ctx->availableNodes = nullptr;
 	return ctx;
 }
 
@@ -129,20 +133,23 @@ __device__ static void fallocDisposeCtx(fallocContext* ctx) {
 }
 
 __device__ static void* falloc(fallocContext* ctx, unsigned short bytes, bool alloc) {
-	if (bytes > CUFALLOCNODE_SIZE)
+	if (bytes > (HEAPCHUNK_SIZE - sizeof(fallocContext)))
 		__THROW;
 	// find or add available node
 	cuFallocDeviceNode* node;
 	unsigned short freeOffset;
 	unsigned char hasFreeSpace;
 	cuFallocDeviceNode* lastNode;
-	for (lastNode = (cuFallocDeviceNode*)ctx, node = ctx->availableNodes; node != nullptr; lastNode = node, node = node->nextAvailable)
+	for (lastNode = (cuFallocDeviceNode*)ctx, node = ctx->availableNodes; node != nullptr; lastNode = node, node = (alloc ? node->nextAvailable : node->next))
 		 if (hasFreeSpace = ((freeOffset = (node->freeOffset + bytes)) <= HEAPCHUNK_SIZE))
 			 break;
 	if ((node == nullptr) || !hasFreeSpace) {
 		// add node
 		node = (cuFallocDeviceNode*)fallocGetChunk(ctx->deviceHeap);
+		if (node == nullptr)
+			__THROW;
 		freeOffset = node->freeOffset = sizeof(cuFallocDeviceNode); 
+		freeOffset += bytes;
 		node->magic = CUFALLOCNODE_MAGIC;
 		node->next = ctx->nodes; ctx->nodes = node;
 		node->nextAvailable = (alloc ? ctx->availableNodes : nullptr); ctx->availableNodes = node;
@@ -161,26 +168,30 @@ __device__ static void* falloc(fallocContext* ctx, unsigned short bytes, bool al
 	return obj;
 }
 
-__device__ void* fallocRetract(fallocContext* ctx, unsigned short bytes) {
-	// first node
-	cuFallocDeviceNode* node = &ctx->node;
-	if (node == ctx->availableNodes)
+__device__ static void* fallocRetract(fallocContext* ctx, unsigned short bytes) {
+	cuFallocDeviceNode* node = ctx->availableNodes;
+	int freeOffset = (int)node->freeOffset - bytes;
+	// multi node, retract node
+	if ((node != &ctx->node) && (freeOffset < sizeof(cuFallocDeviceNode)))
 	{
-		int freeOffset = (int)node->freeOffset - bytes;
-		if (freeOffset < sizeof(cuFallocDeviceNode))
-			__THROW;
-		node->freeOffset = (unsigned short)freeOffset;
-		return (__int8*)node + freeOffset;
+		node->freeOffset = sizeof(cuFallocDeviceNode);
+		// search for previous node
+		cuFallocDeviceNode* lastNode;
+		for (lastNode = (cuFallocDeviceNode*)ctx, node = ctx->nodes; node != nullptr; lastNode = node, node = node->next)
+			if (node == ctx->availableNodes)
+				break;
+		node = ctx->availableNodes = lastNode;
+		freeOffset = (int)node->freeOffset - bytes;
 	}
-	// search for previous node
-	cuFallocDeviceNode* lastNode;
-	for (lastNode = (cuFallocDeviceNode*)ctx, node = ctx->nodes; node != nullptr; lastNode = node, node = node->next)
-		break;
-	__THROW;
-	//return nullptr;
+	// first node && !overflow
+	if ((node == &ctx->node) && (freeOffset < sizeof(fallocContext)))
+		__THROW;
+	node->freeOffset = (unsigned short)freeOffset;
+	return (__int8*)node + freeOffset;
 }
 
-__device__ bool fallocAtStart(fallocContext* ctx) { return (ctx->node.freeOffset == sizeof(fallocContext)); }
+__device__ static void fallocMark(fallocContext* ctx, void* &mark, unsigned short &mark2) { mark = ctx->availableNodes; mark2 = ctx->availableNodes->freeOffset; }
+__device__ static bool fallocAtMark(fallocContext* ctx, void* mark, unsigned short mark2) { return ((mark == ctx->availableNodes) && (mark2 == ctx->availableNodes->freeOffset)); }
 
 
 ///////////////////////////////////////////////////////////////////////////////

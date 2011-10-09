@@ -32,7 +32,7 @@ THE SOFTWARE.
 
 // This is the smallest amount of memory, per-thread, which is allowed.
 // It is also the largest amount of space a single falloc() can take up
-const static int HEAPCHUNK_SIZE = 256;
+const static int HEAPCHUNK_SIZE = 128; //256;
 const static int FALLOCNODE_SLACK = 0x10;
 
 // This is the header preceeding all printf entries.
@@ -64,7 +64,6 @@ typedef struct _cpuFallocContext {
 // All our headers are prefixed with a magic number so we know they're ready
 #define CPUFALLOC_MAGIC (unsigned short)0x3412        // Not a valid ascii character
 #define CPUFALLOCNODE_MAGIC (unsigned short)0x7856
-#define CPUFALLOCNODE_SIZE (HEAPCHUNK_SIZE - sizeof(cpuFallocDeviceNode))
 
 void fallocInit(fallocDeviceHeap* deviceHeap) {
 	volatile cpuFallocHeapChunk* chunk = (cpuFallocHeapChunk*)((__int8*)deviceHeap + sizeof(fallocDeviceHeap));
@@ -109,11 +108,16 @@ fallocContext* fallocCreateCtx(fallocDeviceHeap* deviceHeap) {
 	if (sizeof(fallocContext) > HEAPCHUNK_SIZE)
 		throw;
 	fallocContext* ctx = (fallocContext*)fallocGetChunk(deviceHeap);
+	if (ctx == nullptr)
+		throw;
 	ctx->deviceHeap = deviceHeap;
 	unsigned short freeOffset = ctx->node.freeOffset = sizeof(fallocContext);
 	ctx->node.magic = CPUFALLOCNODE_MAGIC;
 	ctx->node.next = nullptr; ctx->nodes = (cpuFallocDeviceNode*)ctx;
 	ctx->node.nextAvailable = nullptr; ctx->availableNodes = (cpuFallocDeviceNode*)ctx;
+	// close node
+	if ((freeOffset + FALLOCNODE_SLACK) > HEAPCHUNK_SIZE)
+		ctx->availableNodes = nullptr;
 	return ctx;
 }
 
@@ -124,20 +128,23 @@ void fallocDisposeCtx(fallocContext* ctx) {
 }
 
 void* falloc(fallocContext* ctx, unsigned short bytes, bool alloc) {
-	if (bytes > CPUFALLOCNODE_SIZE)
+	if (bytes > (HEAPCHUNK_SIZE - sizeof(fallocContext)))
 		throw;
 	// find or add available node
 	cpuFallocDeviceNode* node;
 	unsigned short freeOffset;
 	unsigned char hasFreeSpace;
 	cpuFallocDeviceNode* lastNode;
-	for (lastNode = (cpuFallocDeviceNode*)ctx, node = ctx->availableNodes; node != nullptr; lastNode = node, node = node->nextAvailable)
-		 if (hasFreeSpace = ((freeOffset = (node->freeOffset + bytes)) <= HEAPCHUNK_SIZE))
-			 break;
+	for (lastNode = (cpuFallocDeviceNode*)ctx, node = ctx->availableNodes; node != nullptr; lastNode = node, node = (alloc ? node->nextAvailable : node->next))
+		if (hasFreeSpace = ((freeOffset = (node->freeOffset + bytes)) <= HEAPCHUNK_SIZE))
+			break;
 	if ((node == nullptr) || !hasFreeSpace) {
 		// add node
 		node = (cpuFallocDeviceNode*)fallocGetChunk(ctx->deviceHeap);
+		if (node == nullptr)
+			throw;
 		freeOffset = node->freeOffset = sizeof(cpuFallocDeviceNode);
+		freeOffset += bytes;
 		node->magic = CPUFALLOCNODE_MAGIC;
 		node->next = ctx->nodes; ctx->nodes = node;
 		node->nextAvailable = (alloc ? ctx->availableNodes : nullptr); ctx->availableNodes = node;
@@ -157,25 +164,29 @@ void* falloc(fallocContext* ctx, unsigned short bytes, bool alloc) {
 }
 
 void* fallocRetract(fallocContext* ctx, unsigned short bytes) {
-	// first node
-	cpuFallocDeviceNode* node = &ctx->node;
-	if (node == ctx->availableNodes)
+	cpuFallocDeviceNode* node = ctx->availableNodes;
+	int freeOffset = (int)node->freeOffset - bytes;
+	// multi node, retract node
+	if ((node != &ctx->node) && (freeOffset < sizeof(cpuFallocDeviceNode)))
 	{
-		int freeOffset = (int)node->freeOffset - bytes;
-		if (freeOffset < sizeof(cpuFallocDeviceNode))
-			throw;
-		node->freeOffset = (unsigned short)freeOffset;
-		return (__int8*)node + freeOffset;
+		node->freeOffset = sizeof(cpuFallocDeviceNode);
+		// search for previous node
+		cpuFallocDeviceNode* lastNode;
+		for (lastNode = (cpuFallocDeviceNode*)ctx, node = ctx->nodes; node != nullptr; lastNode = node, node = node->next)
+			if (node == ctx->availableNodes)
+				break;
+		node = ctx->availableNodes = lastNode;
+		freeOffset = (int)node->freeOffset - bytes;
 	}
-	// search for previous node
-	cpuFallocDeviceNode* lastNode;
-	for (lastNode = (cpuFallocDeviceNode*)ctx, node = ctx->nodes; node != nullptr; lastNode = node, node = node->next)
-		break;
-	throw;
-	//return nullptr;
+	// first node && !overflow
+	if ((node == &ctx->node) && (freeOffset < sizeof(fallocContext)))
+		throw;
+	node->freeOffset = (unsigned short)freeOffset;
+	return (__int8*)node + freeOffset;
 }
 
-bool fallocAtStart(fallocContext* ctx) { return (ctx->node.freeOffset == sizeof(fallocContext)); }
+void fallocMark(fallocContext* ctx, void* &mark, unsigned short &mark2) { mark = ctx->availableNodes; mark2 = ctx->availableNodes->freeOffset; }
+bool fallocAtMark(fallocContext* ctx, void* mark, unsigned short mark2) { return ((mark == ctx->availableNodes) && (mark2 == ctx->availableNodes->freeOffset)); }
 
 
 ///////////////////////////////////////////////////////////////////////////////
