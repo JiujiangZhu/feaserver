@@ -24,112 +24,32 @@ THE SOFTWARE.
 */
 #pragma endregion
 #pragma once
-#define COMPARE(x, y) 1 //wcscmp(x,y)
+
+extern int TreeSet_COMPARE(unsigned __int32 shard, void* x, void* y);
 
 namespace System {
 
 	#pragma region Node Class
 
-	typedef struct _Node {
+	template <typename T>
+	class Node
+	{
+	public:
 		__int8 isRed;
-		void* item;
-		struct _Node* left;
-		struct _Node* right;
-	} Node;
+		Node* left;
+		Node* right;
+		T item;
 
-	__device__ static Node* CreateNode(fallocContext* fallocCtx, void* item, bool isRed /*true*/)
-	{
-		Node* node = (Node*)falloc(fallocCtx, sizeof(Node));
-		node->item = item;
-		node->isRed = isRed;
-		node->left = node->right = nullptr;
-		return node;
-	}
+		__device__ static Node* CreateNode(fallocContext* fallocCtx, T item, bool isRed /*true*/)
+		{
+			Node* node = falloc<Node>(fallocCtx);
+			node->item = item;
+			node->isRed = isRed;
+			node->left = node->right = nullptr;
+			return node;
+		}
 
-	// red calcs
-	__device__ static bool IsRed(Node* t) { return ((t != nullptr) && t->isRed); }
-	__device__ static bool Is4Node(Node* t) { return (IsRed(t->left) && IsRed(t->right)); }
-
-	__device__ static void Split4Node(Node* t)
-	{
-		t->isRed = true;
-		t->left->isRed = false;
-		t->right->isRed = false;
-	}
-
-	// rotation
-	__device__ static Node* RotateLeft(Node* t)
-	{
-		Node* right = t->right;
-		t->right = right->left;
-		right->left = t;
-		return right;
-	}
-
-	__device__ static Node* RotateLeftRight(Node* t)
-	{
-		Node* left = t->left;
-		Node* right = left->right;
-		t->left = right->right;
-		right->right = t;
-		left->right = right->left;
-		right->left = left;
-		return right;
-	}
- 
-	__device__ static Node* RotateRight(Node* t)
-	{
-		Node* left = t->left;
-		t->left = left->right;
-		left->right = t;
-		return left;
-	}
- 
-	__device__ static Node* RotateRightLeft(Node* t)
-	{
-		Node* right = t->right;
-		Node* left = right->left;
-		t->right = left->left;
-		left->left = t;
-		right->left = left->right;
-		left->right = right;
-		return left;
-	}
-
-	//////////////////////////
-	// DELETE
-	typedef enum
-	{
-		TreeRotation_LeftRightRotation = 4,
-		TreeRotation_LeftRotation = 1,
-		TreeRotation_RightLeftRotation = 3,
-		TreeRotation_RightRotation = 2
-	} TreeRotation;
-
-	// weird red calcs
-	__device__ static bool IsBlack(Node* t) { return ((t != nullptr) && !t->isRed); }
-	__device__ static bool IsNullOrBlack(Node* t) { return (t != nullptr ? !t->isRed : true); }
-	__device__ static bool Is2Node(Node* t) { return ((IsBlack(t) && IsNullOrBlack(t->left)) && IsNullOrBlack(t->right)); }
-
-	__device__ static TreeRotation RotationNeeded(Node* parent, Node* current, Node* sibling)
-	{
-		if (IsRed(sibling->left))
-			return (parent->left == current ? TreeRotation_RightLeftRotation : TreeRotation_RightRotation);
-		return (parent->left == current ? TreeRotation_LeftRotation : TreeRotation_LeftRightRotation);
-	}
-
-	__device__ static Node* GetSibling(Node* node, Node* parent)
-	{
-		return (parent->left == node ? parent->right : parent->left);
-	}
-
-	// split merge
-	__device__ static void Merge2Nodes(Node* parent, Node* child1, Node* child2)
-	{
-		parent->isRed = false;
-		child1->isRed = true;
-		child2->isRed = true;
-	}
+	};
 
 	#pragma endregion
 
@@ -137,13 +57,64 @@ namespace System {
 	class TreeSet
 	{
 	private:
+		unsigned __int32 _shard;
 		unsigned __int32 _count;
-		Node* _root;
+		Node<T>* _root;
 		unsigned __int16 _version;
 		fallocContext* _fallocCtx;
 
 	private:
-		__device__ void ReplaceChildOfNodeOrRoot(Node* parent, Node* child, Node* newChild)
+		// red calcs
+		__device__ static bool IsRed(Node<T>* t) { return ((t != nullptr) && t->isRed); }
+		__device__ static bool Is4Node(Node<T>* t) { return (IsRed(t->left) && IsRed(t->right)); }
+
+		__device__ static void Split4Node(Node<T>* node)
+		{
+			node->isRed = true;
+			node->left->isRed = false;
+			node->right->isRed = false;
+		}
+
+		// rotation
+		__device__ static Node<T>* RotateLeft(Node<T>* node)
+		{
+			Node<T>* right = node->right;
+			node->right = right->left;
+			right->left = node;
+			return right;
+		}
+
+		__device__ static Node<T>* RotateLeftRight(Node<T>* node)
+		{
+			Node<T>* left = node->left;
+			Node<T>* right = left->right;
+			node->left = right->right;
+			right->right = node;
+			left->right = right->left;
+			right->left = left;
+			return right;
+		}
+ 
+		__device__ static Node<T>* RotateRight(Node<T>* node)
+		{
+			Node<T>* left = node->left;
+			node->left = left->right;
+			left->right = node;
+			return left;
+		}
+ 
+		__device__ static Node<T>* RotateRightLeft(Node<T>* node)
+		{
+			Node<T>* right = node->right;
+			Node<T>* left = right->left;
+			node->right = left->left;
+			left->left = node;
+			right->left = left->right;
+			left->right = right;
+			return left;
+		}
+		
+		__device__ void ReplaceChildOfNodeOrRoot(Node<T>* parent, Node<T>* child, Node<T>* newChild)
 		{
 			if (parent != nullptr)
 			{
@@ -156,9 +127,9 @@ namespace System {
 				_root = newChild;
 		}
 
-		__device__ void InsertionBalance(Node* current, Node* parent, Node* grandParent, Node* greatGrandParent)
+		__device__ void InsertionBalance(Node<T>* current, Node<T>* parent, Node<T>* grandParent, Node<T>* greatGrandParent)
 		{
-			Node* node;
+			Node<T>* node;
 			bool flag = (grandParent->right == parent);
 			bool flag2 = (parent->right == current);
 			if (flag == flag2)
@@ -173,13 +144,48 @@ namespace System {
 			ReplaceChildOfNodeOrRoot(greatGrandParent, grandParent, node);
 		}
 
+		//////////////////////////
+		// DELETE
+		typedef enum
+		{
+			TreeRotation_LeftRightRotation = 4,
+			TreeRotation_LeftRotation = 1,
+			TreeRotation_RightLeftRotation = 3,
+			TreeRotation_RightRotation = 2
+		} TreeRotation;
+
+		// weird red calcs
+		__device__ static bool IsBlack(Node<T>* t) { return ((t != nullptr) && !t->isRed); }
+		__device__ static bool IsNullOrBlack(Node<T>* t) { return ((t != nullptr) ? !t->isRed : true); }
+		__device__ static bool Is2Node(Node<T>* t) { return ((IsBlack(t) && IsNullOrBlack(t->left)) && IsNullOrBlack(t->right)); }
+
+		__device__ static TreeRotation RotationNeeded(Node<T>* parent, Node<T>* current, Node<T>* sibling)
+		{
+			if (IsRed(sibling->left))
+				return (parent->left == current ? TreeRotation_RightLeftRotation : TreeRotation_RightRotation);
+			return (parent->left == current ? TreeRotation_LeftRotation : TreeRotation_LeftRightRotation);
+		}
+
+		__device__ static Node<T>* GetSibling(Node<T>* node, Node<T>* parent)
+		{
+			return (parent->left == node ? parent->right : parent->left);
+		}
+
+		// split merge
+		__device__ static void Merge2Nodes(Node<T>* parent, Node<T>* child1, Node<T>* child2)
+		{
+			parent->isRed = false;
+			child1->isRed = true;
+			child2->isRed = true;
+		}
+
 	public:
-		__device__ Node* FindNode(T item)
+		__device__ Node<T>* FindNode(T item)
 		{
 			int num;
-			for (Node* node = _root; node != nullptr; node = (num < 0 ? node->left : node->right))
+			for (Node<T>* node = _root; node != nullptr; node = (num < 0 ? node->left : node->right))
 			{
-				num = COMPARE(item, node->Item);
+				num = TreeSet_COMPARE(_shard, (void*)&item, (void*)&node->item);
 				if (num == 0)
 					return node;
 			}
@@ -190,29 +196,31 @@ namespace System {
 	public:
 		//__device__ TreeSet(fallocContext* fallocCtx)
 		//	: _fallocCtx(fallocCtx) { }
-		__device__ void xtor(fallocContext* fallocCtx)
+		__device__ void xtor(unsigned __int32 shard, fallocContext* fallocCtx)
 		{
+			_shard = shard;
 			_fallocCtx = fallocCtx;
+			_root = nullptr;
 		}
 
-		__device__ void Add(T* item)
+		__device__ void Add(T item)
 		{
 			if (_root == nullptr)
 			{
-				_root = CreateNode(_fallocCtx, item, false);
+				_root = Node<T>::CreateNode(_fallocCtx, item, false);
 				_count = 1;
 			}
 			else
 			{
-				Node* root = _root;
-				Node* node = nullptr;
-				Node* grandParent = nullptr;
-				Node* greatGrandParent = nullptr;
-				Node* current;
+				Node<T>* root = _root;
+				Node<T>* node = nullptr;
+				Node<T>* grandParent = nullptr;
+				Node<T>* greatGrandParent = nullptr;
+				Node<T>* current;
 				int num = 0;
 				while (root != nullptr)
 				{
-					num = COMPARE(item, root->Item);
+					num = TreeSet_COMPARE(_shard, (void*)&item, (void*)&root->item);
 					if (num == 0)
 					{
 						_root->isRed = false;
@@ -229,7 +237,7 @@ namespace System {
 					node = root;
 					root = (num < 0 ? root->left : root->right);
 				}
-				current = CreateNode(_fallocCtx, item, true);
+				current = Node<T>::CreateNode(_fallocCtx, item, true);
 				if (num > 0)
 					node->right = current;
 				else
@@ -249,17 +257,16 @@ namespace System {
 			_version++;
 		}
 
-		__device__ bool Contains(T* item)
+		__device__ bool Contains(T item)
 		{
-			return false;
-			//return (FindNode(item) != nullptr);
+			return (FindNode(item) != nullptr);
 		}
 
 
 	//////////////////////////
 	// DELETE
 	private:
-		__device__ void ReplaceNode(Node* match, Node* parentOfMatch, Node* succesor, Node* parentOfSuccesor)
+		__device__ void ReplaceNode(Node<T>* match, Node<T>* parentOfMatch, Node<T>* succesor, Node<T>* parentOfSuccesor)
 		{
 			if (succesor == match)
 				succesor = match->left;
@@ -280,15 +287,15 @@ namespace System {
 		}
 
 	public:
-		__device__ bool Remove(T* item)
+		__device__ bool Remove(T item)
 		{
 			if (_root == nullptr)
 				return false;
-			Node* root = _root;
-			Node* parent = nullptr;
-			Node* node3 = nullptr;
-			Node* match = nullptr;
-			Node* parentOfMatch = nullptr;
+			Node<T>* root = _root;
+			Node<T>* parent = nullptr;
+			Node<T>* node3 = nullptr;
+			Node<T>* match = nullptr;
+			Node<T>* parentOfMatch = nullptr;
 			bool flag = false;
 			while (root != nullptr)
 			{
@@ -299,7 +306,7 @@ namespace System {
 						_root->isRed = true;
 					else
 					{
-						Node* sibling = GetSibling(root, parent);
+						Node<T>* sibling = GetSibling(root, parent);
 						if (sibling->isRed)
 						{
 							if (parent->right == sibling)
@@ -319,7 +326,7 @@ namespace System {
 						else
 						{
 							TreeRotation rotation = RotationNeeded(parent, root, sibling);
-							Node* newChild = nullptr;
+							Node<T>* newChild = nullptr;
 							switch (rotation)
 							{
 								case TreeRotation_LeftRotation:
@@ -347,7 +354,7 @@ namespace System {
 						}
 					}
 				}
-				num = (flag ? -1 : COMPARE(item, root->Item));
+				num = (flag ? -1 : TreeSet_COMPARE(_shard, (void*)&item, (void*)&root->item));
 				if (num == 0)
 				{
 					flag = true;
@@ -372,60 +379,38 @@ namespace System {
 	//////////////////////////
 	// ENUMERATE
 	private:
-		Node* _current;
+		Node<T>* _current;
+		T defaultT;
 
 	public:
-		__device__ void EnumeratorStart(fallocContext* ctx)
+		T Current;
+
+		__device__ void EnumeratorBegin(fallocContext* ctx)
 		{
 			_current = nullptr;
-			for (Node* node = _root; node != nullptr; node = node->left)
-				//fallocPush<Node*>(ctx, node);
-			{
-				Node* p = (Node*)fallocPush(ctx, sizeof(Node*));
-				p = node;
-			}
+			for (Node<T>* node = _root; node != nullptr; node = node->left)
+				fallocPush<Node<T>*>(ctx, node);
 		}
-
-		__device__ void EnumeratorEnd(fallocContext* ctx) { }
+		__device__ void EnumeratorEnd(fallocContext* ctx)
+		{
+			_current = nullptr;
+		}
 
 		__device__ bool EnumeratorMoveNext(fallocContext* ctx)
 		{
 			if (fallocAtStart(ctx))
 			{
 				_current = nullptr;
+				Current = defaultT;
 				return false;
 			}
-			//_current = fallocPop<Node*>(ctx);
-			//for (Node* node = _current->right; node != nullptr; node = node->left)
-			//	fallocPush<Node*>(ctx, node);
+			_current = fallocPop<Node<T>*>(ctx);
+			for (Node<T>* node = _current->right; node != nullptr; node = node->left)
+				fallocPush<Node<T>*>(ctx, node);
+			Current = _current->item;
 			return true;
 		}
 
 	};
-
-
-	//internal bool InOrderTreeWalk(TreeWalkAction<T> action)
-	//{
-	//    if (this.root != nullptr)
-	//    {
-	//        Stack<Node<T>> stack = new Stack<Node<T>>(2 * ((int) Math.Log((double) (this.Count + 1))));
-	//        Node<T> root = t->root;
-	//        while (root != nullptr)
-	//        {
-	//            stack.Push(root);
-	//            root = root.Left;
-	//        }
-	//        while (stack.Count != 0)
-	//        {
-	//            root = stack.Pop();
-	//            if (!action(root))
-	//                return false;
-	//            for (Node<T> node2 = root.Right; node2 != nullptr; node2 = node2.Left)
-	//                stack.Push(node2);
-	//        }
-	//    }
-	//    return true;
-	//}
-	//
 
 }

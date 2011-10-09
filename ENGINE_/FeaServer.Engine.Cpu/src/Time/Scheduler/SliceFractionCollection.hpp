@@ -43,17 +43,17 @@ namespace Time { namespace Scheduler {
 		{
 			SliceFractionPair pair;
 			pair.key = key;
-			System::Node* node = _set.FindNode(pair);
+			System::Node<SliceFractionPair>* node = _set.FindNode(pair);
 			if (node == nullptr)
 				return false;
-			*value = ((SliceFractionPair*)node->item)->value;
+			*value = node->item.value;
 			return true;
 		}
 
 		__device__ void Add(ulong key, SliceFraction* value)
 		{
-			SliceFractionPair* pair = (SliceFractionPair*)falloc(_fallocCtx, sizeof(SliceFractionPair));
-			pair->key = key; pair->value = value;
+			SliceFractionPair pair;
+			pair.key = key; pair.value = value;
 			_set.Add(pair);
 		}
 
@@ -62,7 +62,7 @@ namespace Time { namespace Scheduler {
 		{
 			trace(SliceFractionCollection, "xtor");
 			_fallocCtx = fallocCtx;
-			_set.xtor(fallocCtx);
+			_set.xtor(0, fallocCtx);
 		}
 
 		__device__ void Schedule(Element* element, ulong fraction)
@@ -71,7 +71,7 @@ namespace Time { namespace Scheduler {
             SliceFraction* fraction2;
             if (!TryGetValue(fraction, &fraction2))
 			{
-				fraction2 = (SliceFraction*)falloc(_fallocCtx, sizeof(SliceFraction));
+				fraction2 = falloc<SliceFraction>(_fallocCtx);
 				fraction2->xtor(_fallocCtx);
                 Add(fraction, fraction2);
 			}

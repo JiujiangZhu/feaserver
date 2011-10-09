@@ -62,7 +62,7 @@ namespace Time { namespace Scheduler {
                     _singles.MergeLastWins(element, metadata);
                     break;
                 case Multiple:
-					elementRef = (ElementRef*)falloc(_fallocCtx, sizeof(ElementRef));
+					elementRef = falloc<ElementRef>(_fallocCtx);
 					if (elementRef == nullptr)
 						thrownew(OutOfMemoryException);
 					elementRef->Element = element;

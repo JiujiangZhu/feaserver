@@ -45,8 +45,8 @@ THE SOFTWARE.
 
 		// create/free alloc
 		fallocContext* ctx = fallocCreateCtx(heap.deviceHeap);
-		char* testString = (char* )falloc(ctx, 10);
-		int* testInteger = (int* )falloc(ctx, sizeof(int));
+		char* testString = (char*)falloc(ctx, 10);
+		int* testInteger = falloc<int>(ctx);
 		fallocDisposeCtx(ctx);
 
 		// free and exit
@@ -68,15 +68,13 @@ void fallocFreeChunk(fallocDeviceHeap* deviceHeap, void* obj);
 typedef struct _cpuFallocContext fallocContext;
 fallocContext* fallocCreateCtx(fallocDeviceHeap* deviceHeap);
 void fallocDisposeCtx(fallocContext* ctx);
-void* falloc(fallocContext* ctx, unsigned short bytes);
-template <typename T> T* falloc(fallocContext* ctx);
+void* falloc(fallocContext* ctx, unsigned short bytes, bool alloc = true);
+void* fallocRetract(fallocContext* ctx, unsigned short bytes);
 bool fallocAtStart(fallocContext* ctx);
-void fallocPush(fallocContext* ctx, unsigned short bytes);
-template <typename T> void fallocPush(fallocContext* ctx, T t);
-void* fallocPop(fallocContext* ctx, unsigned short bytes);
-template <typename T> T fallocPop(fallocContext* ctx);
-//template <typename T> void fallocEnqueue(fallocContext* ctx, T t);
-//template <typename T> T fallocDequeue(fallocContext* ctx);
+template <typename T> T* falloc(fallocContext* ctx) { return (T*)falloc(ctx, sizeof(T), true); }
+template <typename T> void fallocPush(fallocContext* ctx, T t) { *((T*)falloc(ctx, sizeof(T), false)) = t; }
+template <typename T> T fallocPop(fallocContext* ctx) { return *((T*)fallocRetract(ctx, sizeof(T))); }
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // HOST SIDE

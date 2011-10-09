@@ -44,8 +44,8 @@ THE SOFTWARE.
 
 		// create/free alloc
 		fallocContext* ctx = fallocCreateCtx(deviceHeap);
-		char* testString = (char* )falloc(ctx, 10);
-		int* testInteger = (int* )falloc(ctx, sizeof(int));
+		char* testString = (char*)falloc(ctx, 10);
+		int* testInteger = falloc<int>(ctx);
 		fallocDisposeCtx(ctx);
 	}
 
@@ -76,7 +76,12 @@ __device__ void fallocFreeChunk(fallocDeviceHeap* deviceHeap, void* obj);
 typedef struct _cuFallocContext fallocContext;
 __device__ fallocContext* fallocCreateCtx(fallocDeviceHeap* deviceHeap);
 __device__ void fallocDisposeCtx(fallocContext* ctx);
-__device__ void* falloc(fallocContext* ctx, unsigned short bytes);
+__device__ void* falloc(fallocContext* ctx, unsigned short bytes, bool alloc = true);
+__device__ void* fallocRetract(fallocContext* ctx, unsigned short bytes);
+__device__ bool fallocAtStart(fallocContext* ctx);
+template <typename T> __device__ T* falloc(fallocContext* ctx) { return (T*)falloc(ctx, sizeof(T), true); }
+template <typename T> __device__ void fallocPush(fallocContext* ctx, T t) { *((T*)falloc(ctx, sizeof(T), false)) = t; }
+template <typename T> __device__ T fallocPop(fallocContext* ctx) { return *((T*)fallocRetract(ctx, sizeof(T))); }
 
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -23,37 +23,56 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 #pragma endregion
-/*
+#pragma once
 #include <cuda.h>;
 #include "Core.h";
 #include "System\cuFalloc.cu"
 using namespace System;
 
+template class TreeSet<int>;
+__device__ int TreeSet_COMPARE(unsigned __int32 shard, void* x, void* y)
+{
+	int a = *((int*)x);
+	int b = *((int*)y);
+    return (a < b ? -1 : (a > b ? 1 : 0));
+}
+
 __global__ void TestTreeSet(fallocDeviceHeap* deviceHeap)
 {
 	fallocInit(deviceHeap);
 	fallocContext* ctx = fallocCreateCtx(deviceHeap);
+	fallocContext* stack = fallocCreateCtx(deviceHeap);
 
 	//
-	int test = 5;
-	int test2 = 6;
-	TreeSet<int>* treeSet = TreeSet<int>::ctor(ctx);
-	treeSet->Add(&test);
-	treeSet->Add(&test2);
+	TreeSet<int> treeSet; treeSet.xtor(0, ctx);
+	treeSet.Add(5);
+	treeSet.Add(3);
+	treeSet.Add(1);
+	treeSet.Add(2);
+	treeSet.Add(7);
 
+	//
+	treeSet.EnumeratorBegin(stack);
+	while (treeSet.EnumeratorMoveNext(stack))
+		cuPrintf("%d\n", treeSet.Current);
+	treeSet.EnumeratorEnd(stack);
+
+	//
+	fallocDisposeCtx(stack);
 	fallocDisposeCtx(ctx);
 }
 
 int main()
 {
 	cudaFallocHeap heap = cudaFallocInit(2048);
+	cudaPrintfInit();
 
 	// test
 	TestTreeSet<<<1, 1>>>(heap.deviceHeap);
 
 	// free and exit
+	cudaPrintfDisplay(stdout, true); cudaPrintfEnd();
 	cudaFallocEnd(heap);
-	printf("\ndone.\n"); // scanf_s("%c");
+	printf("\ndone.\n"); scanf_s("%c");
     return 0;
 }
-*/

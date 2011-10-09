@@ -23,6 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 #pragma endregion
+#pragma once
 /*
 #include <cuda.h>;
 #include "..\Core.h";
@@ -52,8 +53,7 @@ int main()
 	Schedule<<<1, 1>>>(heap.deviceHeap);
 
 	// free and exit
-	cudaPrintfDisplay(stdout, true);
-	cudaPrintfEnd();
+	cudaPrintfDisplay(stdout, true); cudaPrintfEnd();
 	cudaFallocEnd(heap);
 	printf("\ndone.\n"); scanf_s("%c");
     return 0;

@@ -23,7 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 #pragma endregion
-
+#pragma once
+/*
 #include <cuda.h>;
 #include "Core.h";
 #include "System\cuFalloc.cu"
@@ -38,8 +39,8 @@ __global__ void TestFalloc(fallocDeviceHeap* deviceHeap)
 
 	// create/free alloc
 	fallocContext* ctx = fallocCreateCtx(deviceHeap);
-	char* testString = (char* )falloc(ctx, 10);
-	int* testInteger = (int* )falloc(ctx, sizeof(int));
+	char* testString = (char*)falloc(ctx, 10);
+	int* testInteger = falloc<int>(ctx);
 	fallocDisposeCtx(ctx);
 }
 
@@ -55,3 +56,4 @@ int main()
 	printf("\ndone.\n"); // scanf("%c");
     return 0;
 }
+*/

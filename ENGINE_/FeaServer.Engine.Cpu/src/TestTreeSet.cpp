@@ -28,8 +28,13 @@ THE SOFTWARE.
 #include "Core.h"
 using namespace System;
 
-//template void fallocPush<Node*>(fallocContext* ctx, Node* t);
 template class TreeSet<int>;
+int TreeSet_COMPARE(unsigned __int32 shard, void* x, void* y)
+{
+	int a = *((int*)x);
+	int b = *((int*)y);
+    return (a < b ? -1 : (a > b ? 1 : 0));
+}
 
 static void main()
 {
@@ -39,13 +44,17 @@ static void main()
 	fallocContext* stack = fallocCreateCtx(heap.deviceHeap);
 
 	//
-	int test = 5;
-	int test2 = 6;
-	TreeSet<int> treeSet; treeSet.xtor(ctx);
-	treeSet.Add(&test);
-	treeSet.Add(&test2);
+	TreeSet<int> treeSet; treeSet.xtor(0, ctx);
+	treeSet.Add(5);
+	treeSet.Add(3);
+	treeSet.Add(1);
+	treeSet.Add(2);
+	treeSet.Add(7);
 
-	treeSet.EnumeratorStart(stack);
+	//
+	treeSet.EnumeratorBegin(stack);
+	while (treeSet.EnumeratorMoveNext(stack))
+		printf("%d\n", treeSet.Current);
 	treeSet.EnumeratorEnd(stack);
 
 	// free and exit
