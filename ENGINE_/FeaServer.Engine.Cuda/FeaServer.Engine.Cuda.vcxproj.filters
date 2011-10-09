@@ -53,6 +53,7 @@
     </CudaCompile>
     <CudaCompile Include="src\TestFalloc.cu" />
     <CudaCompile Include="src\TestTreeSet.cu" />
+    <CudaCompile Include="src\Program.cu" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Time">

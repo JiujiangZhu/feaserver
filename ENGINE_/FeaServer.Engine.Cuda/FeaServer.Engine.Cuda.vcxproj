@@ -185,6 +185,7 @@
     <None Include="src\System\cuPrintf.cu">
       <FileType>Document</FileType>
     </None>
+    <CudaCompile Include="src\Program.cu" />
     <CudaCompile Include="src\TestFalloc.cu" />
     <CudaCompile Include="src\TestTreeSet.cu" />
     <CudaCompile Include="src\Time\SchedulerKernel.cu">

@@ -36,7 +36,7 @@ int TreeSet_COMPARE(unsigned __int32 shard, void* x, void* y)
     return (a < b ? -1 : (a > b ? 1 : 0));
 }
 
-static void main()
+static void amain()
 {
 	cpuFallocHeap heap = cpuFallocInit();
 	fallocInit(heap.deviceHeap);

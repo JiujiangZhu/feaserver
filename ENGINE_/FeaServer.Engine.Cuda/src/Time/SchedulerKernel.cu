@@ -31,6 +31,13 @@ THE SOFTWARE.
 #include "..\..\..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp"
 using namespace Time::Scheduler;
 
+__device__ int TreeSet_COMPARE(unsigned __int32 shard, void* x, void* y)
+{
+	int a = *((int*)x);
+	int b = *((int*)y);
+    return (a < b ? -1 : (a > b ? 1 : 0));
+}
+
 __global__ void Schedule(fallocDeviceHeap* deviceHeap)
 {
 	fallocInit(deviceHeap);
@@ -38,10 +45,10 @@ __global__ void Schedule(fallocDeviceHeap* deviceHeap)
 	Element e;
 	e.ScheduleStyle = Time::ElementScheduleStyle::Multiple;
 
-	SliceCollection* s = nullptr;
-	s->Schedule(&e, 10);
-	s->MoveNextSlice();
-	s->Dispose();
+	SliceCollection s; s.xtor(deviceHeap);
+	s.Schedule(&e, 10);
+	s.MoveNextSlice();
+	s.Dispose();
 }
 
 int main()
