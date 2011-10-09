@@ -31,7 +31,7 @@ THE SOFTWARE.
 #include "..\..\..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp"
 using namespace Time::Scheduler;
 
-__device__ int TreeSet_COMPARE(unsigned __int32 shard, void* x, void* y)
+__device__ int system_COMPARE(unsigned __int32 shard, void* x, void* y)
 {
 	int a = *((int*)x);
 	int b = *((int*)y);

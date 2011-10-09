@@ -29,14 +29,14 @@ THE SOFTWARE.
 #include "Time\Scheduler\SliceCollection.hpp"
 using namespace Time::Scheduler;
 
-//int TreeSet_COMPARE(unsigned __int32 shard, void* x, void* y)
-//{
-//	int a = *((int*)x);
-//	int b = *((int*)y);
-//    return (a < b ? -1 : (a > b ? 1 : 0));
-//}
+int TreeSet_COMPARE(unsigned __int32 shard, void* x, void* y)
+{
+	int a = *((int*)x);
+	int b = *((int*)y);
+    return (a < b ? -1 : (a > b ? 1 : 0));
+}
 
-static void main()
+static void xmain()
 {
 	cpuFallocHeap heap = cpuFallocInit();
 	fallocInit(heap.deviceHeap);

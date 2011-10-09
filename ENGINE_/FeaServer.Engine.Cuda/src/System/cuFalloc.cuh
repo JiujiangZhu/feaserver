@@ -71,7 +71,9 @@ THE SOFTWARE.
 typedef struct _cuFallocDeviceHeap fallocDeviceHeap;
 __device__ void fallocInit(fallocDeviceHeap* deviceHeap);
 __device__ void* fallocGetChunk(fallocDeviceHeap* deviceHeap);
+__device__ void* fallocGetChunks(fallocDeviceHeap* deviceHeap, size_t length, size_t* allocLength = nullptr);
 __device__ void fallocFreeChunk(fallocDeviceHeap* deviceHeap, void* obj);
+__device__ void fallocFreeChunks(fallocDeviceHeap* deviceHeap, void* obj);
 // ALLOC
 typedef struct _cuFallocContext fallocContext;
 __device__ fallocContext* fallocCreateCtx(fallocDeviceHeap* deviceHeap);
@@ -105,12 +107,12 @@ typedef struct {
 //	is completely used.
 //
 //	Arguments:
-//		bufferLen - Length, in bytes, of total space to reserve (in device global memory) for output.
+//		length - Length, in bytes, of total space to reserve (in device global memory) for output.
 //
 //	Returns:
 //		cudaSuccess if all is well.
 //
-extern "C" cudaFallocHeap cudaFallocInit(size_t bufferLen=1048576, cudaError_t* error=nullptr);   // 1-meg
+extern "C" cudaFallocHeap cudaFallocInit(size_t length=1048576, cudaError_t* error=nullptr);   // 1-meg
 
 //
 //	cudaFallocEnd

@@ -27,19 +27,29 @@ THE SOFTWARE.
 #include <stdio.h>
 #include "Core.h"
 
-static void xmain()
+static void main()
 {
-	cpuFallocHeap heap = cpuFallocInit(1);
+	cpuFallocHeap heap = cpuFallocInit(512);
 	fallocInit(heap.deviceHeap);
 
 	// create/free heap
 	void* obj = fallocGetChunk(heap.deviceHeap);
 	fallocFreeChunk(heap.deviceHeap, obj);
+	void* obj2 = fallocGetChunks(heap.deviceHeap, 144*2);
+	fallocFreeChunks(heap.deviceHeap, obj2);
 
 	// create/free alloc
 	fallocContext* ctx = fallocCreateCtx(heap.deviceHeap);
 	char* testString = (char*)falloc(ctx, 10);
 	int* testInteger = falloc<int>(ctx);
+	fallocDisposeCtx(ctx);
+
+	// create/free stack
+	fallocContext* stack = fallocCreateCtx(heap.deviceHeap);
+	fallocPush<int>(ctx, 1);
+	fallocPush<int>(ctx, 2);
+	int b = fallocPop<int>(ctx);
+	int a = fallocPop<int>(ctx);
 	fallocDisposeCtx(ctx);
 
 	// free and exit

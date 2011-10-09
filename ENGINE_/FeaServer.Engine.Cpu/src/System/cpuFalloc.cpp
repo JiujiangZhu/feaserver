@@ -35,11 +35,10 @@ THE SOFTWARE.
 const static int HEAPCHUNK_SIZE = 128; //256;
 const static int FALLOCNODE_SLACK = 0x10;
 
-// This is the header preceeding all printf entries.
-// NOTE: It *must* be size-aligned to the maximum entity size (size_t)
 typedef struct _cpuFallocHeapChunk {
-    unsigned short magic;				// Magic number says we're valid
-    volatile struct _cpuFallocHeapChunk* next;	// Next chunk pointer
+    unsigned short magic; // magic number says we're valid
+	unsigned short count; // count of chunks: default 1
+    volatile struct _cpuFallocHeapChunk* next; // next chunk pointer
 } cpuFallocHeapChunk;
 
 typedef struct _cpuFallocDeviceHeap {
@@ -48,10 +47,10 @@ typedef struct _cpuFallocDeviceHeap {
 } fallocDeviceHeap;
 
 typedef struct _cpuFallocDeviceNode {
-	struct _cpuFallocDeviceNode* next;
-	struct _cpuFallocDeviceNode* nextAvailable;
-	unsigned short freeOffset;
-	unsigned short magic;
+	struct _cpuFallocDeviceNode* next; // next node pointer
+	struct _cpuFallocDeviceNode* nextAvailable; // next available-node pointer
+	unsigned short freeOffset; // moving free-offset into node, starts from top and includes header
+	unsigned short magic; // magic number says we're valid
 } cpuFallocDeviceNode;
 
 typedef struct _cpuFallocContext {
@@ -64,6 +63,8 @@ typedef struct _cpuFallocContext {
 // All our headers are prefixed with a magic number so we know they're ready
 #define CPUFALLOC_MAGIC (unsigned short)0x3412        // Not a valid ascii character
 #define CPUFALLOCNODE_MAGIC (unsigned short)0x7856
+#define CHUNKSIZE (sizeof(cpuFallocHeapChunk)+HEAPCHUNK_SIZE)
+#define CHUNKSIZEALIGN (CHUNKSIZE%16?CHUNKSIZE+16-(CHUNKSIZE%16):CHUNKSIZE)
 
 void fallocInit(fallocDeviceHeap* deviceHeap) {
 	volatile cpuFallocHeapChunk* chunk = (cpuFallocHeapChunk*)((__int8*)deviceHeap + sizeof(fallocDeviceHeap));
@@ -71,18 +72,18 @@ void fallocInit(fallocDeviceHeap* deviceHeap) {
 	unsigned short chunks = deviceHeap->chunks;
 	// preset all chunks
 	chunk->magic = CPUFALLOC_MAGIC;
-	while (chunks-- > 1)
-	{
-		chunk = chunk->next = (cpuFallocHeapChunk*)((__int8*)chunk + sizeof(cpuFallocHeapChunk) + HEAPCHUNK_SIZE);
+	chunk->count = 1;
+	while (chunks-- > 1) {
+		chunk = chunk->next = (cpuFallocHeapChunk*)((__int8*)chunk + CHUNKSIZEALIGN);
 		chunk->magic = CPUFALLOC_MAGIC;
+		chunk->count = 1;
 	}
 	chunk->next = nullptr;
-	chunk->magic = CPUFALLOC_MAGIC;
 }
 
 void* fallocGetChunk(fallocDeviceHeap* deviceHeap) {
 	volatile cpuFallocHeapChunk* chunk = deviceHeap->freeChunks;
-	if (chunk == nullptr)
+	if (!chunk)
 		return nullptr;
 	{ // critical
 		deviceHeap->freeChunks = chunk->next;
@@ -91,15 +92,80 @@ void* fallocGetChunk(fallocDeviceHeap* deviceHeap) {
 	return (void*)((__int8*)chunk + sizeof(cpuFallocHeapChunk));
 }
 
+void* fallocGetChunks(fallocDeviceHeap* deviceHeap, size_t length, size_t* allocLength) {
+    // fix up length to be a multiple of chunkSize
+    length = (length < CHUNKSIZEALIGN ? CHUNKSIZEALIGN : length);
+    if (length % CHUNKSIZEALIGN)
+        length += CHUNKSIZEALIGN - (length % CHUNKSIZEALIGN);
+	// set length, if requested
+	if (allocLength)
+		*allocLength = length - sizeof(cpuFallocHeapChunk);
+	unsigned short chunks = (unsigned short)(length / CHUNKSIZEALIGN);
+	if (chunks > deviceHeap->chunks)
+		throw;
+	// single, equals: fallocGetChunk
+	if (chunks == 1)
+		return fallocGetChunk(deviceHeap);
+    // multiple, find a contiguous chuck
+	unsigned short index = chunks;
+	volatile cpuFallocHeapChunk* chunk;
+	volatile cpuFallocHeapChunk* endChunk = (cpuFallocHeapChunk*)((__int8*)deviceHeap + sizeof(fallocDeviceHeap) + (CHUNKSIZEALIGN * chunks));
+	{ // critical
+		for (chunk = (cpuFallocHeapChunk*)((__int8*)deviceHeap + sizeof(fallocDeviceHeap)); index && (chunk < endChunk); chunk = (cpuFallocHeapChunk*)((__int8*)chunk + (CHUNKSIZEALIGN * chunk->count))) {
+			if (chunk->magic != CPUFALLOC_MAGIC)
+				throw;
+			index = (chunk->next ? index - 1 : chunks);
+		}
+		if (index)
+			return nullptr;
+		// found chuck, remove from freeChunks
+		endChunk = chunk;
+		chunk = (cpuFallocHeapChunk*)((__int8*)chunk - (CHUNKSIZEALIGN * chunks));
+		for (volatile cpuFallocHeapChunk* chunk2 = deviceHeap->freeChunks; chunk2; chunk2 = chunk2->next)
+			if ((chunk2 >= chunk) && (chunk2 <= endChunk))
+				chunk2->next = (chunk2->next ? chunk2->next->next : nullptr);
+		chunk->count = chunks;
+		chunk->next = nullptr;
+	}
+	return (void*)((__int8*)chunk + sizeof(cpuFallocHeapChunk));
+}
+
 void fallocFreeChunk(fallocDeviceHeap* deviceHeap, void* obj) {
-	cpuFallocHeapChunk* chunk = (cpuFallocHeapChunk*)((__int8*)obj - sizeof(cpuFallocHeapChunk));
-	if (chunk->magic != CPUFALLOC_MAGIC)
+	volatile cpuFallocHeapChunk* chunk = (cpuFallocHeapChunk*)((__int8*)obj - sizeof(cpuFallocHeapChunk));
+	if ((chunk->magic != CPUFALLOC_MAGIC) || (chunk->count > 1))
 		throw;
 	{ // critical
 		chunk->next = deviceHeap->freeChunks;
 		deviceHeap->freeChunks = chunk;
 	}
 }
+
+void fallocFreeChunks(fallocDeviceHeap* deviceHeap, void* obj) {
+	volatile cpuFallocHeapChunk* chunk = (cpuFallocHeapChunk*)((__int8*)obj - sizeof(cpuFallocHeapChunk));
+	if (chunk->magic != CPUFALLOC_MAGIC)
+		throw;
+	unsigned short chunks = chunk->count;
+	// single, equals: fallocFreeChunk
+	if (chunks == 1) {
+		{ // critical
+			chunk->next = deviceHeap->freeChunks;
+			deviceHeap->freeChunks = chunk;
+		}
+		return;
+	}
+	// retag chunks
+	chunk->count = 1;
+	while (chunks-- > 1) {
+		chunk = chunk->next = (cpuFallocHeapChunk*)((__int8*)chunk + sizeof(cpuFallocHeapChunk) + HEAPCHUNK_SIZE);
+		chunk->magic = CPUFALLOC_MAGIC;
+		chunk->count = 1;
+	}
+	{ // critical
+		chunk->next = deviceHeap->freeChunks;
+		deviceHeap->freeChunks = chunk;
+	}
+}
+
 
 //////////////////////
 // ALLOC
@@ -108,7 +174,7 @@ fallocContext* fallocCreateCtx(fallocDeviceHeap* deviceHeap) {
 	if (sizeof(fallocContext) > HEAPCHUNK_SIZE)
 		throw;
 	fallocContext* ctx = (fallocContext*)fallocGetChunk(deviceHeap);
-	if (ctx == nullptr)
+	if (!ctx)
 		throw;
 	ctx->deviceHeap = deviceHeap;
 	unsigned short freeOffset = ctx->node.freeOffset = sizeof(fallocContext);
@@ -123,7 +189,7 @@ fallocContext* fallocCreateCtx(fallocDeviceHeap* deviceHeap) {
 
 void fallocDisposeCtx(fallocContext* ctx) {
 	fallocDeviceHeap* deviceHeap = ctx->deviceHeap;
-	for (cpuFallocDeviceNode* node = ctx->nodes; node != nullptr; node = node->next)
+	for (cpuFallocDeviceNode* node = ctx->nodes; node; node = node->next)
 		fallocFreeChunk(deviceHeap, node);
 }
 
@@ -135,13 +201,13 @@ void* falloc(fallocContext* ctx, unsigned short bytes, bool alloc) {
 	unsigned short freeOffset;
 	unsigned char hasFreeSpace;
 	cpuFallocDeviceNode* lastNode;
-	for (lastNode = (cpuFallocDeviceNode*)ctx, node = ctx->availableNodes; node != nullptr; lastNode = node, node = (alloc ? node->nextAvailable : node->next))
+	for (lastNode = (cpuFallocDeviceNode*)ctx, node = ctx->availableNodes; node; lastNode = node, node = (alloc ? node->nextAvailable : node->next))
 		if (hasFreeSpace = ((freeOffset = (node->freeOffset + bytes)) <= HEAPCHUNK_SIZE))
 			break;
-	if ((node == nullptr) || !hasFreeSpace) {
+	if (!node || !hasFreeSpace) {
 		// add node
 		node = (cpuFallocDeviceNode*)fallocGetChunk(ctx->deviceHeap);
-		if (node == nullptr)
+		if (!node)
 			throw;
 		freeOffset = node->freeOffset = sizeof(cpuFallocDeviceNode);
 		freeOffset += bytes;
@@ -167,12 +233,11 @@ void* fallocRetract(fallocContext* ctx, unsigned short bytes) {
 	cpuFallocDeviceNode* node = ctx->availableNodes;
 	int freeOffset = (int)node->freeOffset - bytes;
 	// multi node, retract node
-	if ((node != &ctx->node) && (freeOffset < sizeof(cpuFallocDeviceNode)))
-	{
+	if ((node != &ctx->node) && (freeOffset < sizeof(cpuFallocDeviceNode))) {
 		node->freeOffset = sizeof(cpuFallocDeviceNode);
 		// search for previous node
 		cpuFallocDeviceNode* lastNode;
-		for (lastNode = (cpuFallocDeviceNode*)ctx, node = ctx->nodes; node != nullptr; lastNode = node, node = node->next)
+		for (lastNode = (cpuFallocDeviceNode*)ctx, node = ctx->nodes; node; lastNode = node, node = node->next)
 			if (node == ctx->availableNodes)
 				break;
 		node = ctx->availableNodes = lastNode;
@@ -189,6 +254,54 @@ void fallocMark(fallocContext* ctx, void* &mark, unsigned short &mark2) { mark =
 bool fallocAtMark(fallocContext* ctx, void* mark, unsigned short mark2) { return ((mark == ctx->availableNodes) && (mark2 == ctx->availableNodes->freeOffset)); }
 
 
+//////////////////////
+// ATOMIC
+
+#define CPUFATOMIC_MAGIC (unsigned short)0xBC9A
+
+typedef struct _cpuFallocAutomic {
+	fallocDeviceHeap* deviceHeap;
+	unsigned short magic;
+	unsigned short pitch;
+	size_t bufferLength;
+	unsigned __int32* bufferBase;
+	volatile unsigned __int32* buffer;
+} fallocAutomic;
+
+fallocAutomic* fallocCreateAtom(fallocDeviceHeap* deviceHeap, unsigned short pitch, size_t length) {
+	// align pitch
+	if (pitch % 16)
+		pitch += 16 - (pitch % 16);
+	// fix up length to be a multiple of pitch
+    length = (length < pitch ? pitch : length);
+    if (length % pitch)
+        length += pitch - (length % pitch);
+	//
+	size_t allocLength;
+	fallocAutomic* atom = (fallocAutomic*)fallocGetChunks(deviceHeap, length + sizeof(fallocAutomic), &allocLength);
+	if (!atom)
+		throw;
+	atom->deviceHeap = deviceHeap;
+	atom->magic = CPUFATOMIC_MAGIC;
+	atom->pitch = pitch;
+	atom->bufferLength = allocLength - sizeof(fallocAutomic);
+	atom->bufferBase = (unsigned __int32*)atom + sizeof(fallocAutomic);
+	atom->buffer = (volatile unsigned __int32*)atom->bufferBase;
+	return atom;
+}
+
+void fallocDisposeAtom(fallocAutomic* atom) {
+	fallocFreeChunks(atom->deviceHeap, atom);
+}
+
+void* fallocAtomNext(fallocAutomic* atom, unsigned short bytes) {
+	size_t offset = (size_t)atom->buffer - (size_t)atom->bufferBase;
+	atom->buffer += atom->pitch;
+    offset %= atom->bufferLength;
+	return atom->bufferBase + offset;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // HOST SIDE
 
@@ -199,31 +312,27 @@ bool fallocAtMark(fallocContext* ctx, void* mark, unsigned short mark2) { return
 //  returns a pointer to it for when a kernel is called. It's up to the caller
 //  to free it.
 //
-extern "C" cpuFallocHeap cpuFallocInit(size_t bufferLen) {
+extern "C" cpuFallocHeap cpuFallocInit(size_t length) {
 	cpuFallocHeap heap; memset(&heap, 0, sizeof(fallocDeviceHeap));
-	// Fix up chunkSize to include cpuFallocHeapChunk
-	int chunkSize = sizeof(cpuFallocHeapChunk) + HEAPCHUNK_SIZE;
-	if ((chunkSize % 16) > 0)
-        chunkSize += (16 - (chunkSize % 16));
-    // Fix up bufferlen to be a multiple of chunkSize
-    bufferLen = (bufferLen < chunkSize ? chunkSize : bufferLen);
-    if ((bufferLen % chunkSize) > 0)
-        bufferLen += (chunkSize - (bufferLen % chunkSize));
-	unsigned short chunks = (unsigned short)(bufferLen / chunkSize);
-	// Fix up bufferlen to include fallocDeviceHeap
-	bufferLen += sizeof(fallocDeviceHeap);
-	if ((bufferLen % 16) > 0)
-        bufferLen += (16 - (bufferLen % 16));
-    // Allocate a print buffer on the device and zero it
+    // fix up length to be a multiple of chunkSize
+    length = (length < CHUNKSIZEALIGN ? CHUNKSIZEALIGN : length);
+    if (length % CHUNKSIZEALIGN)
+        length += CHUNKSIZEALIGN - (length % CHUNKSIZEALIGN);
+	unsigned short chunks = (unsigned short)(length / CHUNKSIZEALIGN);
+	// fix up length to include fallocDeviceHeap
+	length += sizeof(fallocDeviceHeap);
+	if (length % 16)
+        length += 16 - (length % 16);
+    // allocate a print buffer on the device and zero it
 	fallocDeviceHeap* deviceHeap;
-    if ((deviceHeap = (fallocDeviceHeap*)malloc(bufferLen)) == nullptr)
+    if (!(deviceHeap = (fallocDeviceHeap*)malloc(length)))
 		return heap;
-    memset(deviceHeap, 0, bufferLen);
+    memset(deviceHeap, 0, length);
 	// transfer to heap
 	deviceHeap->chunks = chunks;
 	// return heap
 	heap.deviceHeap = deviceHeap;
-	heap.length = (int)bufferLen;
+	heap.length = (int)length;
     return heap;
 }
 

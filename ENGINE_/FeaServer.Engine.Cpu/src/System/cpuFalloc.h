@@ -63,7 +63,9 @@ THE SOFTWARE.
 typedef struct _cpuFallocDeviceHeap fallocDeviceHeap;
 void fallocInit(fallocDeviceHeap* deviceHeap);
 void* fallocGetChunk(fallocDeviceHeap* deviceHeap);
+void* fallocGetChunks(fallocDeviceHeap* deviceHeap, size_t length, size_t* allocLength = nullptr);
 void fallocFreeChunk(fallocDeviceHeap* deviceHeap, void* obj);
+void fallocFreeChunks(fallocDeviceHeap* deviceHeap, void* obj);
 // ALLOC
 typedef struct _cpuFallocContext fallocContext;
 fallocContext* fallocCreateCtx(fallocDeviceHeap* deviceHeap);
@@ -75,7 +77,11 @@ bool fallocAtMark(fallocContext* ctx, void* mark, unsigned short mark2);
 template <typename T> T* falloc(fallocContext* ctx) { return (T*)falloc(ctx, sizeof(T), true); }
 template <typename T> void fallocPush(fallocContext* ctx, T t) { *((T*)falloc(ctx, sizeof(T), false)) = t; }
 template <typename T> T fallocPop(fallocContext* ctx) { return *((T*)fallocRetract(ctx, sizeof(T))); }
-
+// ATOMIC
+typedef struct _cpuFallocAutomic fallocAutomic;
+fallocAutomic* fallocCreateAtom(fallocDeviceHeap* deviceHeap, unsigned short pitch, size_t length);
+void fallocDisposeAtom(fallocAutomic* atom);
+void* fallocAtomNext(fallocAutomic* atom, unsigned short bytes);
 
 ///////////////////////////////////////////////////////////////////////////////
 // HOST SIDE
@@ -97,12 +103,12 @@ typedef struct {
 //	is completely used.
 //
 //	Arguments:
-//		bufferLen - Length, in bytes, of total space to reserve (in device global memory) for output.
+//		length - Length, in bytes, of total space to reserve (in device global memory) for output.
 //
 //	Returns:
 //		cudaSuccess if all is well.
 //
-extern "C" cpuFallocHeap cpuFallocInit(size_t bufferLen=1048576);   // 1-meg
+extern "C" cpuFallocHeap cpuFallocInit(size_t length=1048576);   // 1-meg
 
 //
 //	cudaFallocEnd

@@ -29,12 +29,12 @@ THE SOFTWARE.
 using namespace System;
 
 template class TreeSet<int>;
-int TreeSet_COMPARE(unsigned __int32 shard, void* x, void* y)
-{
-	int a = *((int*)x);
-	int b = *((int*)y);
-    return (a < b ? -1 : (a > b ? 1 : 0));
-}
+//int TreeSet_COMPARE(unsigned __int32 shard, void* x, void* y)
+//{
+//	int a = *((int*)x);
+//	int b = *((int*)y);
+//    return (a < b ? -1 : (a > b ? 1 : 0));
+//}
 
 static void amain()
 {
