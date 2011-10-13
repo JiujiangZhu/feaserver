@@ -27,11 +27,39 @@ THE SOFTWARE.
 #include <stdlib.h>
 #include <stdio.h>
 #include "Core.h"
-#include "ClContext.cpp"
 using namespace System;
-using namespace FeaServer::Engine;
+using namespace System::Runtime::InteropServices;
+using namespace FeaServer::Engine::Utility;
+// http://www.guineacode.com/2010/linking-and-compiling-opencl/
+// http://www.khronos.org/registry/cl/sdk/1.0/docs/man/xhtml/clGetProgramBuildInfo.html
 
+#include "ClContext.cpp"
+using namespace FeaServer::Engine;
 static ClContext* _context = new ClContext();
+
+cl_program CreateProgram(String^ pathMngd)
+{
+	String^ bodyMngd = Preparser::ReadAllText(pathMngd);
+	// create & compile program
+	cl_int r;
+	const size_t source_size = 0;
+	char* body = (char*)Marshal::StringToHGlobalAnsi(bodyMngd).ToPointer();
+	cl_program program = clCreateProgramWithSource(_context->_context, 1, (const char**)&body, 0, &r);
+	Marshal::FreeHGlobal(IntPtr(body));
+	assertR(r, "Exception", "clCreateProgramWithSource");
+	r = clBuildProgram(program, 1, &_context->_device_id, nullptr, nullptr, nullptr);
+	if (r != CL_SUCCESS) {
+		char log[2048];
+		r = clGetProgramBuildInfo(program, _context->_device_id, CL_PROGRAM_BUILD_LOG, 2048, log, NULL); // assertR(r, "Exception", "clGetProgramBuildInfo");
+		printf("COMPILE ERROR:\n");
+		if (r == CL_SUCCESS)
+			printf("%s\n", log);
+		else
+			printf("Error was too long.");
+		scanf_s("%c"); exit(0);
+	}
+	return program;
+}
 
 int main()
 {
@@ -42,10 +70,10 @@ int main()
 
 	if (!_context->Initialize())
 		throw gcnew Exception(L"Unable to initalize CuContext");
-	//cl_program program = _context->CreateProgram(gcnew String(L"C:\\_APPLICATION\\FEASERVER\\ENGINE_\\FeaServer.Engine.OpenCL\\src\\Time\\SchedulerKernel.cl"));
-	cl_program program = _context->CreateProgram(gcnew String(L"C:\\_APPLICATION\\FEASERVER\\ENGINE_\\FeaServer.Engine.OpenCL\\src\\TestPrintf.cl"));
+	//cl_program program = CreateProgram(gcnew String(L"C:\\_APPLICATION\\FEASERVER\\ENGINE_\\FeaServer.Engine.OpenCL\\src\\Time\\SchedulerKernel.cl"));
+	cl_program program = CreateProgram(gcnew String(L"C:\\_APPLICATION\\FEASERVER\\ENGINE_\\FeaServer.Engine.OpenCL\\src\\TestPrintf.cl"));
 
-	// create kernel
+	//// create kernel
 	//cl_kernel kernel = clCreateKernel(program, "Test", &r); assertR(r, "Exception", "clCreateKernel");
 
 	//// execute kernel

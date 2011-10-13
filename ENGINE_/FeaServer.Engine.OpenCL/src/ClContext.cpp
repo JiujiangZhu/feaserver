@@ -24,8 +24,15 @@ THE SOFTWARE.
 */
 #pragma endregion
 #pragma once
+#include <stdlib.h>
+#include <stdio.h>
 #include "Core.h"
 using namespace System;
+using namespace System::Runtime::InteropServices;
+using namespace FeaServer::Engine::Utility;
+// http://www.guineacode.com/2010/linking-and-compiling-opencl/
+// http://www.khronos.org/registry/cl/sdk/1.0/docs/man/xhtml/clGetProgramBuildInfo.html
+// http://www.cmsoft.com.br/index.php?option=com_content&view=category&layout=blog&id=113&Itemid=168
 
 namespace FeaServer { namespace Engine {
 	class ClContext
@@ -41,6 +48,7 @@ namespace FeaServer { namespace Engine {
 
 		static void ContextNotifyHandler(const char* errinfo, const void* private_info, size_t cb, void* user_data)
 		{
+			printf("ContextNotifyHandler");
 		}
 
 		bool Initialize()
@@ -65,6 +73,30 @@ namespace FeaServer { namespace Engine {
 
 		void Dispose()
 		{
+		}
+
+		cl_program CreateProgram(String^ pathMngd)
+		{
+			String^ bodyMngd = Preparser::ReadAllText(pathMngd);
+			// create & compile program
+			cl_int r;
+			const size_t source_size = 0;
+			char* body = (char*)Marshal::StringToHGlobalAnsi(bodyMngd).ToPointer();
+			cl_program program = clCreateProgramWithSource(_context, 1, (const char**)&body, 0, &r);
+			Marshal::FreeHGlobal(IntPtr(body));
+			assertR(r, "Exception", "clCreateProgramWithSource");
+			r = clBuildProgram(program, 1, &_device_id, "-Werror", nullptr, nullptr);
+			if (r != CL_SUCCESS) {
+				char log[10240];
+				r = clGetProgramBuildInfo(program, _device_id, CL_PROGRAM_BUILD_LOG, 10240, log, NULL);
+				printf("COMPILE ERROR:\n");
+				if (r == CL_SUCCESS)
+					printf("%s\n", log);
+				else
+					printf("Error was too long.");
+				scanf_s("%c"); exit(0);
+			}
+			return program;
 		}
 	};
 }}

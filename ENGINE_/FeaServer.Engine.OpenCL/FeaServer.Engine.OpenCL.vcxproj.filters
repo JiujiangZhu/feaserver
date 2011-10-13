@@ -8,14 +8,28 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Core.h" />
+    <ClInclude Include="src\System\cl.hpp">
+      <Filter>System</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\Time\SchedulerKernel.cl">
       <Filter>Time</Filter>
     </None>
-    <None Include="src\Time\Core.clh">
-      <Filter>Time</Filter>
+    <None Include="src\System\clFalloc.cl">
+      <Filter>System</Filter>
     </None>
+    <None Include="src\System\clFalloc.clh">
+      <Filter>System</Filter>
+    </None>
+    <None Include="src\System\clPrintf.cl">
+      <Filter>System</Filter>
+    </None>
+    <None Include="src\System\clPrintf.clh">
+      <Filter>System</Filter>
+    </None>
+    <None Include="src\TestPrintf.cl" />
+    <None Include="src\Core.clh" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Time">
