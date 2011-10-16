@@ -156,6 +156,8 @@
     <ClCompile Include="src\CudaEngine.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\LoadStore\Shard.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\LoadStore\ShardCollection.hpp" />
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\Element.hpp" />
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\ElementCollection.hpp" />
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\ElementList.hpp" />
@@ -177,7 +179,7 @@
       <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ptx</NvccCompilation>
       <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Engines\cu\%(Filename).ptx</CompileOut>
       <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
-      <CInterleavedPTX Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</CInterleavedPTX>
+      <CInterleavedPTX Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</CInterleavedPTX>
     </CudaCompile>
     <None Include="src\System\cuFalloc.cu">
       <FileType>Document</FileType>
@@ -185,12 +187,24 @@
     <None Include="src\System\cuPrintf.cu">
       <FileType>Document</FileType>
     </None>
-    <CudaCompile Include="src\Program.cu" />
-    <CudaCompile Include="src\TestFalloc.cu" />
-    <CudaCompile Include="src\TestTreeSet.cu" />
+    <CudaCompile Include="src\Program.cu">
+      <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
+    </CudaCompile>
+    <CudaCompile Include="src\TestFalloc.cu">
+      <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
+    </CudaCompile>
+    <CudaCompile Include="src\TestLoadStore.cu">
+      <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
+    </CudaCompile>
+    <CudaCompile Include="src\TestScheduler.cu">
+      <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
+    </CudaCompile>
+    <CudaCompile Include="src\TestTreeSet.cu">
+      <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
+    </CudaCompile>
     <CudaCompile Include="src\Time\SchedulerKernel.cu">
       <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
-      <CInterleavedPTX Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</CInterleavedPTX>
+      <CInterleavedPTX Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</CInterleavedPTX>
       <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Engines\cu\%(Filename).obj</CompileOut>
       <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compile</NvccCompilation>
     </CudaCompile>

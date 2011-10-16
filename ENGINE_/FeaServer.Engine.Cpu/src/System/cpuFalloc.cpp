@@ -42,7 +42,7 @@ typedef struct _cpuFallocHeapChunk {
 } cpuFallocHeapChunk;
 
 typedef struct _cpuFallocDeviceHeap {
-	unsigned short chunks;
+	size_t chunks;
 	volatile cpuFallocHeapChunk* freeChunks;
 } fallocDeviceHeap;
 
@@ -69,7 +69,7 @@ typedef struct _cpuFallocContext {
 void fallocInit(fallocDeviceHeap* deviceHeap) {
 	volatile cpuFallocHeapChunk* chunk = (cpuFallocHeapChunk*)((__int8*)deviceHeap + sizeof(fallocDeviceHeap));
 	deviceHeap->freeChunks = chunk;
-	unsigned short chunks = deviceHeap->chunks;
+	size_t chunks = deviceHeap->chunks;
 	// preset all chunks
 	chunk->magic = CPUFALLOC_MAGIC;
 	chunk->count = 1;
@@ -100,14 +100,14 @@ void* fallocGetChunks(fallocDeviceHeap* deviceHeap, size_t length, size_t* alloc
 	// set length, if requested
 	if (allocLength)
 		*allocLength = length - sizeof(cpuFallocHeapChunk);
-	unsigned short chunks = (unsigned short)(length / CHUNKSIZEALIGN);
+	size_t chunks = (size_t)(length / CHUNKSIZEALIGN);
 	if (chunks > deviceHeap->chunks)
 		throw;
 	// single, equals: fallocGetChunk
 	if (chunks == 1)
 		return fallocGetChunk(deviceHeap);
     // multiple, find a contiguous chuck
-	unsigned short index = chunks;
+	size_t index = chunks;
 	volatile cpuFallocHeapChunk* chunk;
 	volatile cpuFallocHeapChunk* endChunk = (cpuFallocHeapChunk*)((__int8*)deviceHeap + sizeof(fallocDeviceHeap) + (CHUNKSIZEALIGN * chunks));
 	{ // critical
@@ -144,7 +144,7 @@ void fallocFreeChunks(fallocDeviceHeap* deviceHeap, void* obj) {
 	volatile cpuFallocHeapChunk* chunk = (cpuFallocHeapChunk*)((__int8*)obj - sizeof(cpuFallocHeapChunk));
 	if (chunk->magic != CPUFALLOC_MAGIC)
 		throw;
-	unsigned short chunks = chunk->count;
+	size_t chunks = chunk->count;
 	// single, equals: fallocFreeChunk
 	if (chunks == 1) {
 		{ // critical
@@ -298,7 +298,7 @@ void* fallocAtomNext(fallocAutomic* atom, unsigned short bytes) {
 	size_t offset = (size_t)atom->buffer - (size_t)atom->bufferBase;
 	atom->buffer += atom->pitch;
     offset %= atom->bufferLength;
-	return atom->bufferBase + offset;
+	return (void*)(atom->bufferBase + offset);
 }
 
 
@@ -318,7 +318,9 @@ extern "C" cpuFallocHeap cpuFallocInit(size_t length) {
     length = (length < CHUNKSIZEALIGN ? CHUNKSIZEALIGN : length);
     if (length % CHUNKSIZEALIGN)
         length += CHUNKSIZEALIGN - (length % CHUNKSIZEALIGN);
-	unsigned short chunks = (unsigned short)(length / CHUNKSIZEALIGN);
+	size_t chunks = (size_t)(length / CHUNKSIZEALIGN);
+	if (!chunks)
+		return heap;
 	// fix up length to include fallocDeviceHeap
 	length += sizeof(fallocDeviceHeap);
 	if (length % 16)
@@ -330,7 +332,7 @@ extern "C" cpuFallocHeap cpuFallocInit(size_t length) {
     memset(deviceHeap, 0, length);
 	// transfer to heap
 	deviceHeap->chunks = chunks;
-	// return heap
+	// return the heap
 	heap.deviceHeap = deviceHeap;
 	heap.length = (int)length;
     return heap;

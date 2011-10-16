@@ -24,43 +24,22 @@ THE SOFTWARE.
 */
 #pragma endregion
 #pragma once
-#include <stdio.h>
-#include "Core.h"
-using namespace System;
 
-template class TreeSet<int>;
-//int TreeSet_COMPARE(unsigned __int32 shard, void* x, void* y)
-//{
-//	int a = *((int*)x);
-//	int b = *((int*)y);
-//    return (a < b ? -1 : (a > b ? 1 : 0));
-//}
+namespace Time { namespace LoadStore {
+#ifdef _SHARD
 
-static void ts_main()
-{
-	cpuFallocHeap heap = cpuFallocInit();
-	fallocInit(heap.deviceHeap);
-	fallocContext* ctx = fallocCreateCtx(heap.deviceHeap);
-	fallocContext* stack = fallocCreateCtx(heap.deviceHeap);
-	falloc(stack, 70, false);
-	//
-	TreeSet<int> treeSet; treeSet.xtor(0, ctx);
-	treeSet.Add(5);
-	treeSet.Add(3);
-	treeSet.Add(1);
-	treeSet.Add(2);
-	treeSet.Add(7);
-	treeSet.Add(10);
+#else
+	#define SHARD
 
-	//
-	treeSet.EnumeratorBegin(stack);
-	while (treeSet.EnumeratorMoveNext(stack))
-		printf("%d\n", treeSet.Current);
-	treeSet.EnumeratorEnd(stack);
+	typedef struct
+	{
+	public:
+        __device__ void xtor(fallocContext* falloCtx)
+        {
+			trace(SliceFraction, "xtor");
+        }
 
-	// free and exit
-	fallocDisposeCtx(stack);
-	fallocDisposeCtx(ctx);
-	cpuFallocEnd(heap);
-	printf("done."); scanf_s("%c");
-}
+	} Shard;
+
+#endif
+}}

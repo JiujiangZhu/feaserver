@@ -24,59 +24,37 @@ THE SOFTWARE.
 */
 #pragma endregion
 #pragma once
-/*
-#include <cuda.h>;
-#include "Core.h";
-#include "System\cuFalloc.cu"
-using namespace System;
+#include <stdio.h>
+#include "Core.h"
+#include "Time\LoadStore\ShardCollection.hpp"
+using namespace Time::LoadStore;
 
-template class TreeSet<int>;
-__device__ int system_COMPARE(unsigned __int32 shard, void* x, void* y)
+//int TreeSet_COMPARE(unsigned __int32 shard, void* x, void* y)
+//{
+//	int a = *((int*)x);
+//	int b = *((int*)y);
+//    return (a < b ? -1 : (a > b ? 1 : 0));
+//}
+
+static void ls_main()
 {
-	int a = *((int*)x);
-	int b = *((int*)y);
-    return (a < b ? -1 : (a > b ? 1 : 0));
-}
-
-__global__ void TestTreeSet(fallocDeviceHeap* deviceHeap)
-{
-	fallocInit(deviceHeap);
-	fallocContext* ctx = fallocCreateCtx(deviceHeap);
-	fallocContext* stack = fallocCreateCtx(deviceHeap);
-	falloc(stack, 70, false);
+	cpuFallocHeap heap = cpuFallocInit();
+	fallocInit(heap.deviceHeap);
 
 	//
-	TreeSet<int> treeSet; treeSet.xtor(0, ctx);
-	treeSet.Add(5);
-	treeSet.Add(3);
-	treeSet.Add(1);
-	treeSet.Add(2);
-	treeSet.Add(7);
-	treeSet.Add(10);
+	fallocContext* ctx = fallocCreateCtx(heap.deviceHeap);
+	//
+	//Shard s;
+
+	ShardCollection s; s.xtor(ctx);
+	s.Load(nullptr, 10);
+	s.Load(nullptr, 11);
+	s.Dispose();
 
 	//
-	treeSet.EnumeratorBegin(stack);
-	while (treeSet.EnumeratorMoveNext(stack))
-		cuPrintf("%d\n", treeSet.Current);
-	treeSet.EnumeratorEnd(stack);
-
-	//
-	fallocDisposeCtx(stack);
 	fallocDisposeCtx(ctx);
-}
-
-int main()
-{
-	cudaFallocHeap heap = cudaFallocInit(2048);
-	cudaPrintfInit(256000);
-
-	// test
-	TestTreeSet<<<1, 1>>>(heap.deviceHeap);
 
 	// free and exit
-	cudaPrintfDisplay(stdout, true); cudaPrintfEnd();
-	cudaFallocEnd(heap);
-	printf("\ndone.\n"); scanf_s("%c");
-    return 0;
+	cpuFallocEnd(heap);
+	printf("done."); scanf_s("%c");
 }
-*/

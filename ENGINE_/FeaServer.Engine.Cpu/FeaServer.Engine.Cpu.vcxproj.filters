@@ -9,6 +9,8 @@
     </ClCompile>
     <ClCompile Include="src\TestFalloc.cpp" />
     <ClCompile Include="src\TestTreeSet.cpp" />
+    <ClCompile Include="src\TestLoadStore.cpp" />
+    <ClCompile Include="src\TestScheduler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\CpuElementTypeCollection.cpp" />
@@ -54,6 +56,15 @@
     </ClInclude>
     <ClInclude Include="src\System\TreeSet.h">
       <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\LoadStore\Shard.hpp">
+      <Filter>Time\LoadStore</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\LoadStore\ShardCollection.hpp">
+      <Filter>Time\LoadStore</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Element.hpp">
+      <Filter>Time</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

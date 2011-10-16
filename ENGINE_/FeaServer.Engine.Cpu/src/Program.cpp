@@ -26,32 +26,14 @@ THE SOFTWARE.
 #pragma once
 #include <stdio.h>
 #include "Core.h"
-#include "Time\Scheduler\SliceCollection.hpp"
-using namespace Time::Scheduler;
 
-int TreeSet_COMPARE(unsigned __int32 shard, void* x, void* y)
-{
-	int a = *((int*)x);
-	int b = *((int*)y);
-    return (a < b ? -1 : (a > b ? 1 : 0));
-}
-
-static void xmain()
+static void p_main()
 {
 	cpuFallocHeap heap = cpuFallocInit();
 	fallocInit(heap.deviceHeap);
 
-	//
-	Element e; e.ScheduleStyle = Time::Multiple;
-
-	SliceCollection s; s.xtor(heap.deviceHeap);
-	s.Schedule(&e, 10);
-	s.MoveNextSlice();
-	s.Dispose();
 
 	// free and exit
 	cpuFallocEnd(heap);
 	printf("done."); scanf_s("%c");
 }
-
-#include "Time\Scheduler\SliceCollection.hpp"

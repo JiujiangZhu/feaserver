@@ -24,54 +24,39 @@ THE SOFTWARE.
 */
 #pragma endregion
 #pragma once
-/*
+
 #include <cuda.h>;
 #include "Core.h";
 #include "System\cuFalloc.cu"
-using namespace System;
+#include "..\..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp"
+using namespace Time::Scheduler;
 
-template class TreeSet<int>;
-__device__ int system_COMPARE(unsigned __int32 shard, void* x, void* y)
+__device__ int TreeSet_COMPARE(unsigned __int32 shard, void* x, void* y)
 {
 	int a = *((int*)x);
 	int b = *((int*)y);
     return (a < b ? -1 : (a > b ? 1 : 0));
 }
 
-__global__ void TestTreeSet(fallocDeviceHeap* deviceHeap)
+__global__ void Schedule(fallocDeviceHeap* deviceHeap)
 {
 	fallocInit(deviceHeap);
-	fallocContext* ctx = fallocCreateCtx(deviceHeap);
-	fallocContext* stack = fallocCreateCtx(deviceHeap);
-	falloc(stack, 70, false);
 
-	//
-	TreeSet<int> treeSet; treeSet.xtor(0, ctx);
-	treeSet.Add(5);
-	treeSet.Add(3);
-	treeSet.Add(1);
-	treeSet.Add(2);
-	treeSet.Add(7);
-	treeSet.Add(10);
+	Element e; e.ScheduleStyle = Time::ElementScheduleStyle::Multiple;
 
-	//
-	treeSet.EnumeratorBegin(stack);
-	while (treeSet.EnumeratorMoveNext(stack))
-		cuPrintf("%d\n", treeSet.Current);
-	treeSet.EnumeratorEnd(stack);
-
-	//
-	fallocDisposeCtx(stack);
-	fallocDisposeCtx(ctx);
+	SliceCollection s; s.xtor(deviceHeap);
+	s.Schedule(&e, 10);
+	//s.MoveNextSlice();
+	s.Dispose();
 }
 
 int main()
 {
-	cudaFallocHeap heap = cudaFallocInit(2048);
+	cudaFallocHeap heap = cudaFallocInit(256000);
 	cudaPrintfInit(256000);
 
-	// test
-	TestTreeSet<<<1, 1>>>(heap.deviceHeap);
+	// schedule
+	Schedule<<<1, 1>>>(heap.deviceHeap);
 
 	// free and exit
 	cudaPrintfDisplay(stdout, true); cudaPrintfEnd();
@@ -79,4 +64,5 @@ int main()
 	printf("\ndone.\n"); scanf_s("%c");
     return 0;
 }
-*/
+
+#include "..\..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp"

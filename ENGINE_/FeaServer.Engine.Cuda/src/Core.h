@@ -26,7 +26,7 @@ THE SOFTWARE.
 #pragma once
 
 #define trace(type,method,...) cuPrintf(#type":"method"\n",__VA_ARGS__)
-#define thrownew(type,...) { cuPrintf("\n\nTHROWS:\n"#type); __THROW; }
+#define thrownew(type,...) { cuPrintf("\n\nTHROWS:\n"#type"\n"); __THROW; }
 #include "System\cuPrintf.cu"
 #include "System\cuFalloc.cuh"
 #include "System\LinkedList.h"

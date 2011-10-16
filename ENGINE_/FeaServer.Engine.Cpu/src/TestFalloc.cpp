@@ -27,7 +27,7 @@ THE SOFTWARE.
 #include <stdio.h>
 #include "Core.h"
 
-static void main()
+static void f_main()
 {
 	cpuFallocHeap heap = cpuFallocInit(512);
 	fallocInit(heap.deviceHeap);

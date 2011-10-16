@@ -24,6 +24,8 @@
     <ClCompile Include="src\Program.cpp" />
     <ClCompile Include="src\System\cpuFalloc.cpp" />
     <ClCompile Include="src\TestFalloc.cpp" />
+    <ClCompile Include="src\TestLoadStore.cpp" />
+    <ClCompile Include="src\TestScheduler.cpp" />
     <ClCompile Include="src\TestTreeSet.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -32,6 +34,9 @@
     <ClInclude Include="src\system\cpuFalloc.h" />
     <ClInclude Include="src\System\LinkedList.h" />
     <ClInclude Include="src\System\TreeSet.h" />
+    <ClInclude Include="src\Time\Element.hpp" />
+    <ClInclude Include="src\Time\LoadStore\Shard.hpp" />
+    <ClInclude Include="src\Time\LoadStore\ShardCollection.hpp" />
     <ClInclude Include="src\Time\Scheduler\Element.hpp" />
     <ClInclude Include="src\Time\Scheduler\ElementCollection.hpp" />
     <ClInclude Include="src\Time\Scheduler\ElementList.hpp" />

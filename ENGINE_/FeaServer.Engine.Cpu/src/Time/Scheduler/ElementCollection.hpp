@@ -63,13 +63,13 @@ namespace Time { namespace Scheduler {
                     break;
                 case Multiple:
 					elementRef = falloc<ElementRef>(_fallocCtx);
-					if (elementRef == nullptr)
-						thrownew(OutOfMemoryException);
+					if (!elementRef)
+						thrownew(OutOfMemoryExcepton);
 					elementRef->Element = element;
-					if (metadata != nullptr)
+					if (metadata)
 						memcpy(elementRef->Metadata, metadata, MetadataSize);
 					//else memset(elementRef->Metadata, 0, MetadataSize);
-                    _multiples.AddFirst(elementRef);
+                    //_multiples.AddFirst(elementRef);
                     break;
                 default:
 					trace(Warn, "UNDEFINED");

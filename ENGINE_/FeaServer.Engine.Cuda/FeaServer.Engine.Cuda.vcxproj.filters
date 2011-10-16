@@ -45,6 +45,12 @@
     <ClInclude Include="src\System\TreeSet.h">
       <Filter>System</Filter>
     </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\LoadStore\Shard.hpp">
+      <Filter>Time\LoadStore+Cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\LoadStore\ShardCollection.hpp">
+      <Filter>Time\LoadStore+Cpu</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="src\MockElementKernel.cu" />
@@ -54,6 +60,8 @@
     <CudaCompile Include="src\TestFalloc.cu" />
     <CudaCompile Include="src\TestTreeSet.cu" />
     <CudaCompile Include="src\Program.cu" />
+    <CudaCompile Include="src\TestLoadStore.cu" />
+    <CudaCompile Include="src\TestScheduler.cu" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Time">

@@ -24,6 +24,7 @@ THE SOFTWARE.
 */
 #pragma endregion
 #pragma once
+/*
 #include <cuda.h>;
 #include "Core.h";
 #include "System\cuFalloc.cu"
@@ -32,3 +33,4 @@ int main()
 {
     return 0;
 }
+*/

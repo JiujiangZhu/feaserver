@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 // This is the smallest amount of memory, per-thread, which is allowed.
 // It is also the largest amount of space a single printf() can take up
-const static int HEAPCHUNK_SIZE = 128;
+const static int HEAPCHUNK_SIZE = 256;
 const static int FALLOCNODE_SLACK = 0x10;
 
 typedef struct __align__(8) _cuFallocHeapChunk {
@@ -40,7 +40,7 @@ typedef struct __align__(8) _cuFallocHeapChunk {
 } cuFallocHeapChunk;
 
 typedef struct __align__(8) _cuFallocDeviceHeap {
-	unsigned short chunks;
+	size_t chunks;
 	volatile cuFallocHeapChunk* freeChunks;
 } fallocDeviceHeap;
 
@@ -65,11 +65,13 @@ typedef struct _cuFallocContext {
 #define CHUNKSIZEALIGN (CHUNKSIZE%16?CHUNKSIZE+16-(CHUNKSIZE%16):CHUNKSIZE)
 
 __device__ void fallocInit(fallocDeviceHeap* deviceHeap) {
-	if (threadIdx.x)
+	if ((threadIdx.x) || (threadIdx.y) || (threadIdx.z))
 		return;
 	volatile cuFallocHeapChunk* chunk = (cuFallocHeapChunk*)((__int8*)deviceHeap + sizeof(fallocDeviceHeap));
 	deviceHeap->freeChunks = chunk;
-	unsigned short chunks = deviceHeap->chunks;
+	size_t chunks = deviceHeap->chunks;
+	if (!chunks)
+		__THROW;
 	// preset all chunks
 	chunk->magic = CUFALLOC_MAGIC;
 	chunk->count = 1;
@@ -82,7 +84,7 @@ __device__ void fallocInit(fallocDeviceHeap* deviceHeap) {
 }
 
 __device__ void* fallocGetChunk(fallocDeviceHeap* deviceHeap) {
-	if (threadIdx.x)
+	if ((threadIdx.x) || (threadIdx.y) || (threadIdx.z))
 		__THROW;
 	volatile cuFallocHeapChunk* chunk = deviceHeap->freeChunks;
 	if (!chunk)
@@ -96,20 +98,21 @@ __device__ void* fallocGetChunk(fallocDeviceHeap* deviceHeap) {
 
 __device__ void* fallocGetChunks(fallocDeviceHeap* deviceHeap, size_t length, size_t* allocLength) {
     // fix up length to be a multiple of chunkSize
+	size_t chunkSizeAlign = CHUNKSIZEALIGN;
     length = (length < CHUNKSIZEALIGN ? CHUNKSIZEALIGN : length);
     if (length % CHUNKSIZEALIGN)
         length += CHUNKSIZEALIGN - (length % CHUNKSIZEALIGN);
 	// set length, if requested
 	if (allocLength)
 		*allocLength = length - sizeof(cuFallocHeapChunk);
-	unsigned short chunks = (unsigned short)(length / CHUNKSIZEALIGN);
+	size_t chunks = (size_t)(length / CHUNKSIZEALIGN);
 	if (chunks > deviceHeap->chunks)
 		__THROW;
 	// single, equals: fallocGetChunk
 	if (chunks == 1)
 		return fallocGetChunk(deviceHeap);
     // multiple, find a contiguous chuck
-	unsigned short index = chunks;
+	size_t index = chunks;
 	volatile cuFallocHeapChunk* chunk;
 	volatile cuFallocHeapChunk* endChunk = (cuFallocHeapChunk*)((__int8*)deviceHeap + sizeof(fallocDeviceHeap) + (CHUNKSIZEALIGN * chunks));
 	{ // critical
@@ -133,7 +136,7 @@ __device__ void* fallocGetChunks(fallocDeviceHeap* deviceHeap, size_t length, si
 }
 
 __device__ void fallocFreeChunk(fallocDeviceHeap* deviceHeap, void* obj) {
-	if (threadIdx.x)
+	if ((threadIdx.x) || (threadIdx.y) || (threadIdx.z))
 		__THROW;
 	volatile cuFallocHeapChunk* chunk = (cuFallocHeapChunk*)((__int8*)obj - sizeof(cuFallocHeapChunk));
 	if ((chunk->magic != CUFALLOC_MAGIC) || (chunk->count > 1))
@@ -148,7 +151,7 @@ __device__ void fallocFreeChunks(fallocDeviceHeap* deviceHeap, void* obj) {
 	volatile cuFallocHeapChunk* chunk = (cuFallocHeapChunk*)((__int8*)obj - sizeof(cuFallocHeapChunk));
 	if (chunk->magic != CUFALLOC_MAGIC)
 		__THROW;
-	unsigned short chunks = chunk->count;
+	size_t chunks = chunk->count;
 	// single, equals: fallocFreeChunk
 	if (chunks == 1) {
 		{ // critical
@@ -270,7 +273,8 @@ typedef struct _cpuFallocAutomic {
 	unsigned short magic;
 	unsigned short pitch;
 	size_t bufferLength;
-	unsigned __int32* buffer;
+	unsigned __int32* bufferBase;
+	volatile unsigned __int32* buffer;
 } fallocAutomic;
 
 fallocAutomic* fallocCreateAtom(fallocDeviceHeap* deviceHeap, unsigned short pitch, size_t length) {
@@ -302,7 +306,7 @@ void fallocDisposeAtom(fallocAutomic* atom) {
 void* fallocAtomNext(fallocAutomic* atom, unsigned short bytes) {
 	size_t offset = atomicAdd(atom->bufferBase, atom->pitch) - (size_t)atom->buffer;
     offset %= atom->bufferLength;
-    return atom->buffer + offset;
+    return (void*)(atom->buffer + offset);
 }
 
 #endif
@@ -323,7 +327,9 @@ extern "C" cudaFallocHeap cudaFallocInit(size_t length, cudaError_t* error) {
     length = (length < CHUNKSIZEALIGN ? CHUNKSIZEALIGN : length);
     if (length % CHUNKSIZEALIGN)
         length += (CHUNKSIZEALIGN - (length % CHUNKSIZEALIGN));
-	unsigned short chunks = (unsigned short)length / CHUNKSIZEALIGN;
+	size_t chunks = (size_t)(length / CHUNKSIZEALIGN);
+	if (!chunks)
+		return heap;
 	// Fix up length to include cudaFallocHeap
 	length += sizeof(cudaFallocHeap);
 	if ((length % 16) > 0)
@@ -335,11 +341,13 @@ extern "C" cudaFallocHeap cudaFallocInit(size_t length, cudaError_t* error) {
 		return heap;
     cudaMemset(deviceHeap, 0, length);
 	// transfer to deviceHeap
-	fallocDeviceHeap hostHeap;
-	hostHeap.freeChunks = nullptr;
-	hostHeap.chunks = chunks;
-	cudaMemcpy(deviceHeap, &hostHeap, sizeof(fallocDeviceHeap), cudaMemcpyHostToDevice);
-	// return deviceHeap
+	fallocDeviceHeap hostDeviceHeap;
+	hostDeviceHeap.freeChunks = nullptr;
+	hostDeviceHeap.chunks = chunks;
+	if ((!error && (cudaMemcpy(deviceHeap, &hostDeviceHeap, sizeof(fallocDeviceHeap), cudaMemcpyHostToDevice) != cudaSuccess)) ||
+		(error && ((*error = cudaMemcpy(deviceHeap, &hostDeviceHeap, sizeof(fallocDeviceHeap), cudaMemcpyHostToDevice)) != cudaSuccess)))
+		return heap;
+	// return the heap
 	if (error)
 		*error = cudaSuccess;
 	heap.deviceHeap = deviceHeap;

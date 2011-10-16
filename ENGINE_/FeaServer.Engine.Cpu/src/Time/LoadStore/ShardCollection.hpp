@@ -24,35 +24,36 @@ THE SOFTWARE.
 */
 #pragma endregion
 #pragma once
-#include "SliceFraction.hpp"
+#include "Shard.hpp"
+#include "..\Scheduler\SliceCollection.hpp"
 
-namespace Time { namespace Scheduler {
-#ifdef _SLICEFRACTIONCOLLECTION
+namespace Time { namespace LoadStore {
+#ifdef _SHARDCOLLECTION
 
 #else
-	#define SLICEFRACTIONCOLLECTION
+	#define SHARDCOLLECTION
 
-	typedef struct { ulong key; SliceFraction* value; } SliceFractionPair;
-	class SliceFractionCollection
+	typedef struct { ulong key; Shard* value; } ShardPair;
+	class ShardCollection
 	{
 	private:
-		System::TreeSet<SliceFractionPair> _set;
+		System::TreeSet<ShardPair> _set;
 		fallocContext* _fallocCtx;
 
-		__device__ bool TryGetValue(ulong key, SliceFraction** value)
+		__device__ bool TryGetValue(ulong key, Shard** value)
 		{
-			SliceFractionPair pair;
+			ShardPair pair;
 			pair.key = key;
-			System::Node<SliceFractionPair>* node = _set.FindNode(pair);
+			System::Node<ShardPair>* node = _set.FindNode(pair);
 			if (node == nullptr)
 				return false;
 			*value = node->item.value;
 			return true;
 		}
 
-		__device__ void Add(ulong key, SliceFraction* value)
+		__device__ void Add(ulong key, Shard* value)
 		{
-			SliceFractionPair pair;
+			ShardPair pair;
 			pair.key = key; pair.value = value;
 			_set.Add(pair);
 		}
@@ -60,24 +61,27 @@ namespace Time { namespace Scheduler {
 	public:
 		__device__ void xtor(fallocContext* fallocCtx)
 		{
-			trace(SliceFractionCollection, "xtor");
+			trace(ShardCollection, "xtor");
 			_fallocCtx = fallocCtx;
 			_set.xtor(0, fallocCtx);
 		}
+		__device__ void Dispose()
+		{
+			trace(ShardCollection, "Dispose");
+		}
 
-		__device__ void Schedule(Element* element, ulong fraction)
+		__device__ void Load(Scheduler::SliceCollection* slices, ulong shard)
         {
-			trace(SliceFractionCollection, "Schedule %d", TimePrec__DecodeTime(fraction));
-            SliceFraction* fractionAsObject;
-            if (!TryGetValue(fraction, &fractionAsObject))
+			trace(ShardCollection, "Schedule %d", shard);
+            Shard* shardAsObject;
+            if (!TryGetValue(shard, &shardAsObject))
 			{
-				fractionAsObject = falloc<SliceFraction>(_fallocCtx);
-				if (!fractionAsObject)
-					thrownew(OutOfMemoryExcepton);
-				fractionAsObject->xtor(_fallocCtx);
-                Add(fraction, fractionAsObject);
+				shardAsObject = falloc<Shard>(_fallocCtx);
+				shardAsObject->xtor(_fallocCtx);
+                Add(shard, shardAsObject);
 			}
-            fractionAsObject->Elements.Add(element, 0);
+            //shardAsObject->Elements.Add(element, 0);
+			//slices->Schedule(nullptr, 0);
         }
 
 	};
