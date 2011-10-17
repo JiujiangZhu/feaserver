@@ -38,13 +38,13 @@ namespace FeaServer.Engine.Time.Scheduler
         internal void Schedule(Element element, ulong fraction)
         {
             Console.WriteLine("SliceFractionCollection:Schedule {0}", TimePrec.DecodeTime(fraction));
-            SliceFraction fraction2;
-            if (!TryGetValue(fraction, out fraction2))
+            SliceFraction fractionAsObject;
+            if (!TryGetValue(fraction, out fractionAsObject))
             {
-                fraction2.xtor();
-                Add(fraction, fraction2);
+                fractionAsObject.xtor();
+                Add(fraction, fractionAsObject);
             }
-            fraction2.Elements.Add(element, 0);
+            fractionAsObject.Elements.Add(element, 0);
         }
     }
 }

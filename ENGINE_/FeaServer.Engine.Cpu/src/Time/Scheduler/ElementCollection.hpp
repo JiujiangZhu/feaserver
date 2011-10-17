@@ -51,7 +51,7 @@ namespace Time { namespace Scheduler {
         __device__ void Add(Element* element, ulong time)
         {
 			trace(ElementCollection, "Add %d", TimePrec__DecodeTime(time));
-            byte* metadata = (byte*)time;
+            byte* metadata = (byte*)&time;
 			ElementRef* elementRef;
             switch (element->ScheduleStyle)
             {
@@ -66,10 +66,8 @@ namespace Time { namespace Scheduler {
 					if (!elementRef)
 						thrownew(OutOfMemoryExcepton);
 					elementRef->Element = element;
-					if (metadata)
-						memcpy(elementRef->Metadata, metadata, MetadataSize);
-					//else memset(elementRef->Metadata, 0, MetadataSize);
-                    //_multiples.AddFirst(elementRef);
+					memcpy(elementRef->Metadata, metadata, MetadataSize);
+                    _multiples.AddFirst(elementRef);
                     break;
                 default:
 					trace(Warn, "UNDEFINED");

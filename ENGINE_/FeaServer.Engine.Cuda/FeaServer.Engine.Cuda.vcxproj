@@ -156,8 +156,11 @@
     <ClCompile Include="src\CudaEngine.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Element.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\InElement.hpp" />
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\LoadStore\Shard.hpp" />
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\LoadStore\ShardCollection.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\OutElement.hpp" />
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\Element.hpp" />
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\ElementCollection.hpp" />
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\ElementList.hpp" />

@@ -72,7 +72,7 @@ namespace Time { namespace LoadStore {
 
 		__device__ void Load(Scheduler::SliceCollection* slices, ulong shard)
         {
-			trace(ShardCollection, "Schedule %d", shard);
+			trace(ShardCollection, "Load %d", shard);
             Shard* shardAsObject;
             if (!TryGetValue(shard, &shardAsObject))
 			{

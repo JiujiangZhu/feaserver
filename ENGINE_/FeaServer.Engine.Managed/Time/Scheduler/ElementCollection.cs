@@ -72,21 +72,21 @@ namespace FeaServer.Engine.Time.Scheduler
             _multiples.Clear();
         }
 
-        public int Count
+        public int GetCount()
         {
-            get { return _singles.Count + _multiples.Count; }
+            return _singles.Count + _multiples.Count;
         }
 
-        public IList<Element> ToList()
-        {
-            Console.WriteLine("ElementCollection:ToList");
-            var list = new List<Element>();
-            foreach (var singles in _singles)
-                list.Add(singles);
-            foreach (var multiple in _multiples)
-                list.Add(multiple.Element);
-            return list;
-        }
+        //public IList<Element> ToList()
+        //{
+        //    Console.WriteLine("ElementCollection:ToList");
+        //    var list = new List<Element>();
+        //    foreach (var singles in _singles)
+        //        list.Add(singles);
+        //    foreach (var multiple in _multiples)
+        //        list.Add(multiple.Element);
+        //    return list;
+        //}
 
         public void DeHibernate(SliceCollection slices)
         {

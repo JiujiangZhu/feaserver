@@ -1,4 +1,4 @@
-﻿#region License
+#pragma region License
 /*
 The MIT License
 
@@ -22,16 +22,22 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
-#endregion
-using System;
+#pragma endregion
+#pragma once
+#include "Scheduler\Element.hpp"
 
-namespace FeaServer.Engine
-{
-    public class Program
-    {
-        static void p_Main(string[] args)
-        {
-            Console.WriteLine("Done.");
-        }
-    }
+namespace Time {
+#ifdef _OUTELEMENT
+
+#else
+	#define OUTELEMENT
+
+	class OutElement : public Scheduler::Element
+	{
+	public:
+		int A;
+
+	};
+
+#endif
 }

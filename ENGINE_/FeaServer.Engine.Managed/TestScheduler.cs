@@ -24,13 +24,21 @@ THE SOFTWARE.
 */
 #endregion
 using System;
+using FeaServer.Engine.Time.Scheduler;
 
 namespace FeaServer.Engine
 {
-    public class Program
+    public class TestScheduler
     {
-        static void p_Main(string[] args)
+        static void Main(string[] args)
         {
+            Time.Element e = new Time.Element { ScheduleStyle = ElementScheduleStyle.Multiple, A = 5 };
+
+            var s = new SliceCollection();
+            s.Schedule(e, 10);
+            s.MoveNextSlice();
+            s.Dispose();
+
             Console.WriteLine("Done.");
         }
     }

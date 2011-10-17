@@ -24,14 +24,16 @@ THE SOFTWARE.
 */
 #endregion
 using System;
+using System.Runtime.InteropServices;
 
-namespace FeaServer.Engine
+namespace FeaServer.Engine.Time.LoadStore
 {
-    public class Program
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct Shard
     {
-        static void p_Main(string[] args)
+        public void xtor()
         {
-            Console.WriteLine("Done.");
+            Console.WriteLine("Shard:xtor");
         }
     }
 }

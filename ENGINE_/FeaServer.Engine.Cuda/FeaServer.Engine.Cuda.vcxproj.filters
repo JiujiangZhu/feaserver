@@ -51,6 +51,15 @@
     <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\LoadStore\ShardCollection.hpp">
       <Filter>Time\LoadStore+Cpu</Filter>
     </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Element.hpp">
+      <Filter>Time</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\InElement.hpp">
+      <Filter>Time</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\OutElement.hpp">
+      <Filter>Time</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="src\MockElementKernel.cu" />

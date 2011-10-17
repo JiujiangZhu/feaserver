@@ -25,13 +25,10 @@ THE SOFTWARE.
 #endregion
 using System;
 
-namespace FeaServer.Engine
+namespace FeaServer.Engine.Time
 {
-    public class Program
+    internal class Element : Scheduler.Element
     {
-        static void p_Main(string[] args)
-        {
-            Console.WriteLine("Done.");
-        }
+        public int A;
     }
 }

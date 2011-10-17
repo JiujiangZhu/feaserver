@@ -30,8 +30,8 @@ namespace FeaServer.Engine.Time.Scheduler
 {
     internal class SliceCollection
     {
-        private ulong _currentSlice = 0;
-        private byte _currentHibernate = 0;
+        private ulong _currentSlice;
+        private byte _currentHibernate;
         private Slice[] _slices = new Slice[EngineSettings.MaxTimeslices];
         private HibernateCollection _hibernates;
         private SliceFractionCache _fractionCache = new SliceFractionCache();
@@ -39,9 +39,12 @@ namespace FeaServer.Engine.Time.Scheduler
         public SliceCollection()
         {
             Console.WriteLine("SliceCollection:ctor");
+            _currentSlice = 0;
+            _currentHibernate = 0;
             for (int sliceIndex = 0; sliceIndex < _slices.Length; sliceIndex++)
                 _slices[sliceIndex].xtor();
             _hibernates.xtor();
+            _fractionCache.xtor();
         }
         public void Dispose()
         {
@@ -49,6 +52,7 @@ namespace FeaServer.Engine.Time.Scheduler
             for (int sliceIndex = 0; sliceIndex < _slices.Length; sliceIndex++)
                 _slices[sliceIndex].Dispose();
             _hibernates.Dispose();
+            _fractionCache.Dispose();
         }
 
         public void Schedule(Element element, ulong time)

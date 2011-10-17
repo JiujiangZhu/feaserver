@@ -66,10 +66,14 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="TestScheduler.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="ManagedEngine+Shard.cs" />
     <Compile Include="System\LinkedListNode.cs" />
     <Compile Include="System\LinkedList.cs" />
+    <Compile Include="Time\Element.cs" />
+    <Compile Include="Time\LoadStore\Shard.cs" />
+    <Compile Include="Time\LoadStore\ShardCollection.cs" />
     <Compile Include="Time\Scheduler\ElementRef.cs" />
     <Compile Include="Time\Scheduler\ElementList.cs" />
     <Compile Include="Time\Scheduler\SliceFractionCache.cs" />
@@ -95,7 +99,6 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Time\LoadStore\" />
     <Folder Include="Time\Plan\" />
     <Folder Include="Time\Query\" />
     <Folder Include="Time\Work\" />

@@ -66,6 +66,12 @@
     <ClInclude Include="src\Time\Element.hpp">
       <Filter>Time</Filter>
     </ClInclude>
+    <ClInclude Include="src\Time\InElement.hpp">
+      <Filter>Time</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\OutElement.hpp">
+      <Filter>Time</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Time">

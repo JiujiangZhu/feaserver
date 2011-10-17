@@ -24,14 +24,29 @@ THE SOFTWARE.
 */
 #endregion
 using System;
+using System.Collections.Generic;
+using FeaServer.Engine.Time.Scheduler;
 
-namespace FeaServer.Engine
+namespace FeaServer.Engine.Time.LoadStore
 {
-    public class Program
+    internal class ShardCollection : SortedDictionary<ulong, Shard>
     {
-        static void p_Main(string[] args)
+        public ShardCollection()
         {
-            Console.WriteLine("Done.");
+            Console.WriteLine("ShardCollection:ctor");
+        }
+
+        internal void Load(SliceCollection slices, ulong shard)
+        {
+            Console.WriteLine("ShardCollection:Load {0}", shard);
+            Shard shardAsObject;
+            if (!TryGetValue(shard, out shardAsObject))
+            {
+                shardAsObject.xtor();
+                Add(shard, shardAsObject);
+            }
+            //shardAsObject.Elements.Add(element, 0);
+            //slices.Schedule(null, 0);
         }
     }
 }

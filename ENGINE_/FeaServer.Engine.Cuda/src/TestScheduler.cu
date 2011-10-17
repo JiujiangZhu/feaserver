@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <cuda.h>;
 #include "Core.h";
 #include "System\cuFalloc.cu"
+#include "..\..\FeaServer.Engine.Cpu\src\Time\Element.hpp"
 #include "..\..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp"
 using namespace Time::Scheduler;
 
@@ -42,7 +43,8 @@ __global__ void Schedule(fallocDeviceHeap* deviceHeap)
 {
 	fallocInit(deviceHeap);
 
-	Element e; e.ScheduleStyle = Time::ElementScheduleStyle::Multiple;
+	Time::Element e; e.ScheduleStyle = Time::Multiple;
+	e.A = 5;
 
 	SliceCollection s; s.xtor(deviceHeap);
 	s.Schedule(&e, 10);

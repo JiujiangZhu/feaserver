@@ -45,8 +45,8 @@ namespace FeaServer.Tests.Scheduler
             var element1 = new Element { ScheduleStyle = ElementScheduleStyle.FirstWins }; //(MockElement.FirstWins);
             time1.Add(element1, 0);
 
-            Assert.AreEqual(time0.Count, 1);
-            Assert.AreEqual(time1.Count, 0);
+            Assert.AreEqual(time0.GetCount(), 1);
+            Assert.AreEqual(time1.GetCount(), 0);
         }
 
         [TestMethod]
@@ -60,8 +60,8 @@ namespace FeaServer.Tests.Scheduler
             var element1 = new Element { ScheduleStyle = ElementScheduleStyle.LastWins }; //(MockElement.LastWins);
             time1.Add(element1, 0);
 
-            Assert.AreEqual(time0.Count, 0);
-            Assert.AreEqual(time1.Count, 1);
+            Assert.AreEqual(time0.GetCount(), 0);
+            Assert.AreEqual(time1.GetCount(), 1);
         }
 
 
@@ -76,8 +76,8 @@ namespace FeaServer.Tests.Scheduler
             var element1 = new Element { ScheduleStyle = ElementScheduleStyle.Multiple }; //(MockElement.Multiple);
             time1.Add(element1, 0);
 
-            Assert.AreEqual(time0.Count, 1);
-            Assert.AreEqual(time1.Count, 1);
+            Assert.AreEqual(time0.GetCount(), 1);
+            Assert.AreEqual(time1.GetCount(), 1);
         }
     }
 }
