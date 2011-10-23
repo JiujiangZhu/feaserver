@@ -24,28 +24,14 @@ THE SOFTWARE.
 */
 #endregion
 using System;
-using FeaServer.Engine;
+using System.Collections.Generic;
 
-namespace FeaServer.Tests.Mocks
+namespace FeaServer.Engine.Time
 {
-    public class MockElementType : IElementType
+    public class Init
     {
-        public readonly static MockElementType FirstWinsType = new MockElementType { Name = "F", ScheduleStyle = ElementScheduleStyle.FirstWins };
-        public readonly static MockElementType LastWinsType = new MockElementType { Name = "L", ScheduleStyle = ElementScheduleStyle.LastWins };
-        public readonly static MockElementType MultipleType = new MockElementType { Name = "M", ScheduleStyle = ElementScheduleStyle.Multiple };
-
-        public string Name { get; set; }
-
-        public ElementScheduleStyle ScheduleStyle { get; set; }
-
-        public ElementImage GetImage(EngineProvider provider)
+        public void X(IEnumerable<Compound> table)
         {
-            return new ElementImage { };
-        }
-
-        public int GetSize(EngineProvider provider)
-        {
-            return 0;
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿#region License
+#pragma region License
 /*
 The MIT License
 
@@ -22,30 +22,30 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
-#endregion
-using System;
-using FeaServer.Engine;
+#pragma endregion
+#pragma once
+using namespace System;
+using namespace System::Collections::Generic;
 
-namespace FeaServer.Tests.Mocks
-{
-    public class MockElementType : IElementType
-    {
-        public readonly static MockElementType FirstWinsType = new MockElementType { Name = "F", ScheduleStyle = ElementScheduleStyle.FirstWins };
-        public readonly static MockElementType LastWinsType = new MockElementType { Name = "L", ScheduleStyle = ElementScheduleStyle.LastWins };
-        public readonly static MockElementType MultipleType = new MockElementType { Name = "M", ScheduleStyle = ElementScheduleStyle.Multiple };
+namespace FeaServer { namespace Engine { namespace Time {
+	public ref class CpuLoadStore
+	{
+	private:
 
-        public string Name { get; set; }
+	public:
+		CpuLoadStore()
+		{
+		}
 
-        public ElementScheduleStyle ScheduleStyle { get; set; }
+	private:
+		void Init(Object^ obj)
+		{
+			int arrayLengthSize = sizeof(int);
+			int ptrSize = sizeof(void*);
 
-        public ElementImage GetImage(EngineProvider provider)
-        {
-            return new ElementImage { };
-        }
+			int n = 3;
+			int size = (ptrSize * n) + arrayLengthSize;
+		}
+	};
+}}}
 
-        public int GetSize(EngineProvider provider)
-        {
-            return 0;
-        }
-    }
-}

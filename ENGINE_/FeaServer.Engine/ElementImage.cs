@@ -30,7 +30,7 @@ namespace FeaServer.Engine
 {
     public struct ElementImage
     {
-        public int StateBytes;
+        public int StateSizeInBytes;
         public object Image;
     }
 }

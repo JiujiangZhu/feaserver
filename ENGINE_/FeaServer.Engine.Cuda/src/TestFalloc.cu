@@ -24,10 +24,10 @@ THE SOFTWARE.
 */
 #pragma endregion
 #pragma once
-/*
+
 #include <cuda.h>;
 #include "Core.h";
-#include "System\cuFalloc.cu"
+#include "System\cuFallocWTrace.cu"
 
 __global__ void TestFalloc(fallocDeviceHeap* deviceHeap)
 {
@@ -36,24 +36,45 @@ __global__ void TestFalloc(fallocDeviceHeap* deviceHeap)
 	// create/free heap
 	void* obj = fallocGetChunk(deviceHeap);
 	fallocFreeChunk(deviceHeap, obj);
+/*
+	void* obj2 = fallocGetChunks(heap.deviceHeap, 144*2);
+	fallocFreeChunks(heap.deviceHeap, obj2);
+*/
 
 	// create/free alloc
 	fallocContext* ctx = fallocCreateCtx(deviceHeap);
 	char* testString = (char*)falloc(ctx, 10);
 	int* testInteger = falloc<int>(ctx);
 	fallocDisposeCtx(ctx);
+	
+	// create/free stack
+	fallocContext* stack = fallocCreateCtx(deviceHeap);
+	fallocPush<int>(ctx, 1);
+	fallocPush<int>(ctx, 2);
+	int b = fallocPop<int>(ctx);
+	int a = fallocPop<int>(ctx);
+	fallocDisposeCtx(ctx);
 }
 
 int main()
 {
-	cudaFallocHeap heap = cudaFallocInit(2048);
+	cudaPrintfInit(25600);
+	cudaFallocHeap heap = cudaFallocWTraceInit(2048);
 
 	// test
 	TestFalloc<<<1, 1>>>(heap.deviceHeap);
 
+	// trace
+	fallocTrace* trace = cudaFallocTraceInit();
+	void* buffer; size_t length;
+	while (buffer = cudaFallocTraceStream(heap, trace, length)) {
+		printf("z: %d\n", length);
+	}
+	cudaFallocTraceEnd(trace);
+
 	// free and exit
-	cudaFallocEnd(heap);
-	printf("\ndone.\n"); // scanf("%c");
+	cudaFallocWTraceEnd(heap);
+	cudaPrintfDisplay(stdout, true); cudaPrintfEnd();
+	printf("\ndone.\n"); scanf_s("%c");
     return 0;
 }
-*/

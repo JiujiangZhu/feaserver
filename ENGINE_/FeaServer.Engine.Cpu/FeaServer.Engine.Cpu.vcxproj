@@ -22,16 +22,19 @@
     <ClCompile Include="src\CpuContext.cpp" />
     <ClCompile Include="src\CpuEngine.cpp" />
     <ClCompile Include="src\Program.cpp" />
-    <ClCompile Include="src\System\cpuFalloc.cpp" />
+    <None Include="src\System\cpuFalloc.cpp" />
+    <ClCompile Include="src\System\cpuFallocWTrace.cpp" />
     <ClCompile Include="src\TestFalloc.cpp" />
     <ClCompile Include="src\TestLoadStore.cpp" />
     <ClCompile Include="src\TestScheduler.cpp" />
     <ClCompile Include="src\TestTreeSet.cpp" />
+    <ClCompile Include="src\Time\LoadStore\CpuLoadStore.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Core.h" />
     <ClInclude Include="src\CpuElementTypeCollection.cpp" />
     <ClInclude Include="src\system\cpuFalloc.h" />
+    <ClInclude Include="src\System\cpuFallocWTrace.h" />
     <ClInclude Include="src\System\LinkedList.h" />
     <ClInclude Include="src\System\TreeSet.h" />
     <ClInclude Include="src\Time\Element.hpp" />

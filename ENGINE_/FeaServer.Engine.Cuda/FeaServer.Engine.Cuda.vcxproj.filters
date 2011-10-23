@@ -121,5 +121,11 @@
     <None Include="src\System\cuFalloc.cu">
       <Filter>System</Filter>
     </None>
+    <None Include="src\System\cuFallocWTrace.cu">
+      <Filter>System</Filter>
+    </None>
+    <None Include="src\System\cuFallocWTrace.cuh">
+      <Filter>System</Filter>
+    </None>
   </ItemGroup>
 </Project>

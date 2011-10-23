@@ -104,7 +104,6 @@ namespace FeaServer.Engine.Time.Scheduler
         }
 
 
-
         public bool EvaluateFrame(ulong frameTime, Action<SliceFraction> evaluateNode)
         {
             Console.WriteLine("SliceCollection:EvaluateFrame {0}", TimePrec.DecodeTime(frameTime));

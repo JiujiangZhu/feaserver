@@ -27,16 +27,18 @@ THE SOFTWARE.
 #include <stdio.h>
 #include "Core.h"
 
-static void f_main()
+static void main()
 {
-	cpuFallocHeap heap = cpuFallocInit(512);
+	cpuFallocHeap heap = cpuFallocWTraceInit(2048); //512
 	fallocInit(heap.deviceHeap);
 
 	// create/free heap
 	void* obj = fallocGetChunk(heap.deviceHeap);
 	fallocFreeChunk(heap.deviceHeap, obj);
+/*
 	void* obj2 = fallocGetChunks(heap.deviceHeap, 144*2);
 	fallocFreeChunks(heap.deviceHeap, obj2);
+*/	
 
 	// create/free alloc
 	fallocContext* ctx = fallocCreateCtx(heap.deviceHeap);
@@ -52,7 +54,15 @@ static void f_main()
 	int a = fallocPop<int>(ctx);
 	fallocDisposeCtx(ctx);
 
+	// trace
+	fallocTrace* trace = cpuFallocTraceInit();
+	void* buffer; size_t length;
+	while (buffer = cpuFallocTraceStream(heap, trace, length)) {
+		printf("z: %d\n", length);
+	}
+	cpuFallocTraceEnd(trace);
+
 	// free and exit
-	cpuFallocEnd(heap);
+	cpuFallocWTraceEnd(heap);
 	printf("done."); scanf_s("%c");
 }

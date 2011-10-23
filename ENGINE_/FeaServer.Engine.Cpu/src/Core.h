@@ -28,7 +28,7 @@ THE SOFTWARE.
 #define __device__
 #define trace(type,method,...) printf(#type":"method"\n",__VA_ARGS__)
 #define thrownew(type,...) { printf("\n\nTHROWS:\n"#type); scanf_s("%c"); throw; }
-#include "System\cpuFalloc.h"
+#include "System\cpuFallocWTrace.h"
 #include "System\LinkedList.h"
 #include "System\TreeSet.h"
 //#include "System\SortedDictionary.h"

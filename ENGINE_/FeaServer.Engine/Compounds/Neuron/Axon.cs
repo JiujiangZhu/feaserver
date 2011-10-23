@@ -24,28 +24,33 @@ THE SOFTWARE.
 */
 #endregion
 using System;
-using FeaServer.Engine;
 
-namespace FeaServer.Tests.Mocks
+namespace FeaServer.Engine.Compounds.Neuron
 {
-    public class MockElementType : IElementType
+    public class Axon : IElementType
     {
-        public readonly static MockElementType FirstWinsType = new MockElementType { Name = "F", ScheduleStyle = ElementScheduleStyle.FirstWins };
-        public readonly static MockElementType LastWinsType = new MockElementType { Name = "L", ScheduleStyle = ElementScheduleStyle.LastWins };
-        public readonly static MockElementType MultipleType = new MockElementType { Name = "M", ScheduleStyle = ElementScheduleStyle.Multiple };
+        public string Name
+        {
+            get { return "Axon"; }
+        }
 
-        public string Name { get; set; }
-
-        public ElementScheduleStyle ScheduleStyle { get; set; }
+        public ElementScheduleStyle ScheduleStyle
+        {
+            get { return ElementScheduleStyle.Multiple; }
+        }
 
         public ElementImage GetImage(EngineProvider provider)
         {
-            return new ElementImage { };
-        }
-
-        public int GetSize(EngineProvider provider)
-        {
-            return 0;
+            switch (provider)
+            {
+                case EngineProvider.Cpu:
+                    return new ElementImage
+                    {
+                        StateSizeInBytes = 100,
+                    };
+                default:
+                    throw new NotImplementedException();
+            }
         }
     }
 }

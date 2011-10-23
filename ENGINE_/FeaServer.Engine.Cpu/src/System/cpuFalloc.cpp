@@ -39,11 +39,13 @@ typedef struct _cpuFallocHeapChunk {
     unsigned short magic; // magic number says we're valid
 	unsigned short count; // count of chunks: default 1
     volatile struct _cpuFallocHeapChunk* next; // next chunk pointer
+	void* reserved;
 } cpuFallocHeapChunk;
 
 typedef struct _cpuFallocDeviceHeap {
 	size_t chunks;
 	volatile cpuFallocHeapChunk* freeChunks;
+	void* reserved;
 } fallocDeviceHeap;
 
 typedef struct _cpuFallocDeviceNode {
@@ -73,10 +75,12 @@ void fallocInit(fallocDeviceHeap* deviceHeap) {
 	// preset all chunks
 	chunk->magic = CPUFALLOC_MAGIC;
 	chunk->count = 1;
+	chunk->reserved = nullptr;
 	while (chunks-- > 1) {
 		chunk = chunk->next = (cpuFallocHeapChunk*)((__int8*)chunk + CHUNKSIZEALIGN);
 		chunk->magic = CPUFALLOC_MAGIC;
 		chunk->count = 1;
+		chunk->reserved = nullptr;
 	}
 	chunk->next = nullptr;
 }
@@ -109,7 +113,7 @@ void* fallocGetChunks(fallocDeviceHeap* deviceHeap, size_t length, size_t* alloc
     // multiple, find a contiguous chuck
 	size_t index = chunks;
 	volatile cpuFallocHeapChunk* chunk;
-	volatile cpuFallocHeapChunk* endChunk = (cpuFallocHeapChunk*)((__int8*)deviceHeap + sizeof(fallocDeviceHeap) + (CHUNKSIZEALIGN * chunks));
+	volatile cpuFallocHeapChunk* endChunk = (cpuFallocHeapChunk*)((__int8*)deviceHeap + sizeof(fallocDeviceHeap) + (CHUNKSIZEALIGN * deviceHeap->chunks));
 	{ // critical
 		for (chunk = (cpuFallocHeapChunk*)((__int8*)deviceHeap + sizeof(fallocDeviceHeap)); index && (chunk < endChunk); chunk = (cpuFallocHeapChunk*)((__int8*)chunk + (CHUNKSIZEALIGN * chunk->count))) {
 			if (chunk->magic != CPUFALLOC_MAGIC)
@@ -159,6 +163,7 @@ void fallocFreeChunks(fallocDeviceHeap* deviceHeap, void* obj) {
 		chunk = chunk->next = (cpuFallocHeapChunk*)((__int8*)chunk + sizeof(cpuFallocHeapChunk) + HEAPCHUNK_SIZE);
 		chunk->magic = CPUFALLOC_MAGIC;
 		chunk->count = 1;
+		chunk->reserved = nullptr;
 	}
 	{ // critical
 		chunk->next = deviceHeap->freeChunks;
@@ -312,7 +317,7 @@ void* fallocAtomNext(fallocAutomic* atom, unsigned short bytes) {
 //  returns a pointer to it for when a kernel is called. It's up to the caller
 //  to free it.
 //
-extern "C" cpuFallocHeap cpuFallocInit(size_t length) {
+extern "C" cpuFallocHeap cpuFallocInit(size_t length, void* reserved) {
 	cpuFallocHeap heap; memset(&heap, 0, sizeof(fallocDeviceHeap));
     // fix up length to be a multiple of chunkSize
     length = (length < CHUNKSIZEALIGN ? CHUNKSIZEALIGN : length);
@@ -332,9 +337,11 @@ extern "C" cpuFallocHeap cpuFallocInit(size_t length) {
     memset(deviceHeap, 0, length);
 	// transfer to heap
 	deviceHeap->chunks = chunks;
+	deviceHeap->reserved = reserved;
 	// return the heap
 	heap.deviceHeap = deviceHeap;
 	heap.length = (int)length;
+	heap.reserved = reserved;
     return heap;
 }
 

@@ -187,12 +187,16 @@
     <None Include="src\System\cuFalloc.cu">
       <FileType>Document</FileType>
     </None>
+    <None Include="src\System\cuFallocWTrace.cuh" />
     <None Include="src\System\cuPrintf.cu">
       <FileType>Document</FileType>
     </None>
     <CudaCompile Include="src\Program.cu">
       <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
     </CudaCompile>
+    <None Include="src\System\cuFallocWTrace.cu">
+      <FileType>Document</FileType>
+    </None>
     <CudaCompile Include="src\TestFalloc.cu">
       <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
     </CudaCompile>

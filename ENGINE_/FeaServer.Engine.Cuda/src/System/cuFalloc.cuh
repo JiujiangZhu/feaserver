@@ -94,6 +94,7 @@ template <typename T> __device__ T fallocPop(fallocContext* ctx) { return *((T*)
 typedef struct {
 	fallocDeviceHeap* deviceHeap;
 	int length;
+	void* reserved;
 } cudaFallocHeap;
 
 //
@@ -112,7 +113,7 @@ typedef struct {
 //	Returns:
 //		cudaSuccess if all is well.
 //
-extern "C" cudaFallocHeap cudaFallocInit(size_t length=1048576, cudaError_t* error=nullptr);   // 1-meg
+extern "C" cudaFallocHeap cudaFallocInit(size_t length=1048576, cudaError_t* error=nullptr, void* reserved=nullptr);   // 1-meg
 
 //
 //	cudaFallocEnd

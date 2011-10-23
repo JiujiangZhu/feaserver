@@ -27,7 +27,7 @@ THE SOFTWARE.
 /*
 #include <cuda.h>;
 #include "Core.h";
-#include "System\cuFalloc.cu"
+#include "System\cuFallocWTrace.cu"
 
 int main()
 {

@@ -37,11 +37,13 @@ typedef struct __align__(8) _cuFallocHeapChunk {
     unsigned short magic;
 	unsigned short count;
     volatile struct _cuFallocHeapChunk* next;
+	void* reserved;
 } cuFallocHeapChunk;
 
 typedef struct __align__(8) _cuFallocDeviceHeap {
 	size_t chunks;
 	volatile cuFallocHeapChunk* freeChunks;
+	void* reserved;
 } fallocDeviceHeap;
 
 typedef struct _cuFallocDeviceNode {
@@ -75,10 +77,12 @@ __device__ void fallocInit(fallocDeviceHeap* deviceHeap) {
 	// preset all chunks
 	chunk->magic = CUFALLOC_MAGIC;
 	chunk->count = 1;
+	chunk->reserved = nullptr;
 	while (chunks-- > 1) {
-		chunk = chunk->next = (cuFallocHeapChunk*)((__int8*)chunk + sizeof(cuFallocHeapChunk) + HEAPCHUNK_SIZE);
+		chunk = chunk->next = (cuFallocHeapChunk*)((__int8*)chunk + CHUNKSIZEALIGN);
 		chunk->magic = CUFALLOC_MAGIC;
 		chunk->count = 1;
+		chunk->reserved = nullptr;
 	}
 	chunk->next = nullptr;
 }
@@ -98,7 +102,6 @@ __device__ void* fallocGetChunk(fallocDeviceHeap* deviceHeap) {
 
 __device__ void* fallocGetChunks(fallocDeviceHeap* deviceHeap, size_t length, size_t* allocLength) {
     // fix up length to be a multiple of chunkSize
-	size_t chunkSizeAlign = CHUNKSIZEALIGN;
     length = (length < CHUNKSIZEALIGN ? CHUNKSIZEALIGN : length);
     if (length % CHUNKSIZEALIGN)
         length += CHUNKSIZEALIGN - (length % CHUNKSIZEALIGN);
@@ -114,7 +117,7 @@ __device__ void* fallocGetChunks(fallocDeviceHeap* deviceHeap, size_t length, si
     // multiple, find a contiguous chuck
 	size_t index = chunks;
 	volatile cuFallocHeapChunk* chunk;
-	volatile cuFallocHeapChunk* endChunk = (cuFallocHeapChunk*)((__int8*)deviceHeap + sizeof(fallocDeviceHeap) + (CHUNKSIZEALIGN * chunks));
+	volatile cuFallocHeapChunk* endChunk = (cuFallocHeapChunk*)((__int8*)deviceHeap + sizeof(fallocDeviceHeap) + (CHUNKSIZEALIGN * deviceHeap->chunks));
 	{ // critical
 		for (chunk = (cuFallocHeapChunk*)((__int8*)deviceHeap + sizeof(fallocDeviceHeap)); index && (chunk < endChunk); chunk = (cuFallocHeapChunk*)((__int8*)chunk + (CHUNKSIZEALIGN * chunk->count))) {
 			if (chunk->magic != CUFALLOC_MAGIC)
@@ -166,6 +169,7 @@ __device__ void fallocFreeChunks(fallocDeviceHeap* deviceHeap, void* obj) {
 		chunk = chunk->next = (cuFallocHeapChunk*)((__int8*)chunk + sizeof(cuFallocHeapChunk) + HEAPCHUNK_SIZE);
 		chunk->magic = CUFALLOC_MAGIC;
 		chunk->count = 1;
+		chunk->reserved = nullptr;
 	}
 	{ // critical
 		chunk->next = deviceHeap->freeChunks;
@@ -321,7 +325,7 @@ void* fallocAtomNext(fallocAutomic* atom, unsigned short bytes) {
 //  returns a pointer to it for when a kernel is called. It's up to the caller
 //  to free it.
 //
-extern "C" cudaFallocHeap cudaFallocInit(size_t length, cudaError_t* error) {
+extern "C" cudaFallocHeap cudaFallocInit(size_t length, cudaError_t* error, void* reserved) {
 	cudaFallocHeap heap; memset(&heap, 0, sizeof(cudaFallocHeap));
     // fix up length to be a multiple of chunkSize
     length = (length < CHUNKSIZEALIGN ? CHUNKSIZEALIGN : length);
@@ -344,6 +348,7 @@ extern "C" cudaFallocHeap cudaFallocInit(size_t length, cudaError_t* error) {
 	fallocDeviceHeap hostDeviceHeap;
 	hostDeviceHeap.freeChunks = nullptr;
 	hostDeviceHeap.chunks = chunks;
+	hostDeviceHeap.reserved = reserved;
 	if ((!error && (cudaMemcpy(deviceHeap, &hostDeviceHeap, sizeof(fallocDeviceHeap), cudaMemcpyHostToDevice) != cudaSuccess)) ||
 		(error && ((*error = cudaMemcpy(deviceHeap, &hostDeviceHeap, sizeof(fallocDeviceHeap), cudaMemcpyHostToDevice)) != cudaSuccess)))
 		return heap;
@@ -352,6 +357,7 @@ extern "C" cudaFallocHeap cudaFallocInit(size_t length, cudaError_t* error) {
 		*error = cudaSuccess;
 	heap.deviceHeap = deviceHeap;
 	heap.length = (int)length;
+	heap.reserved = reserved;
     return heap;
 }
 

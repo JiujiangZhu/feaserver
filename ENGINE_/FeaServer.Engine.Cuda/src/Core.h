@@ -28,7 +28,7 @@ THE SOFTWARE.
 #define trace(type,method,...) cuPrintf(#type":"method"\n",__VA_ARGS__)
 #define thrownew(type,...) { cuPrintf("\n\nTHROWS:\n"#type"\n"); __THROW; }
 #include "System\cuPrintf.cu"
-#include "System\cuFalloc.cuh"
+#include "System\cuFallocWTrace.cuh"
 #include "System\LinkedList.h"
 #include "System\TreeSet.h"
 #include "System\SortedDictionary.h"

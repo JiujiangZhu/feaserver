@@ -24,7 +24,7 @@ THE SOFTWARE.
 */
 #pragma endregion
 #pragma once
-
+/*
 #include <cuda.h>;
 #include "Core.h";
 #include "System\cuFalloc.cu"
@@ -68,3 +68,4 @@ int main()
 }
 
 #include "..\..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp"
+*/

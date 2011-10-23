@@ -90,10 +90,11 @@ void* fallocAtomNext(fallocAutomic* atom, unsigned short bytes);
 typedef struct {
 	fallocDeviceHeap* deviceHeap;
 	int length;
+	void* reserved;
 } cpuFallocHeap;
 
 //
-//	cudaFallocInit
+//	cpuFallocInit
 //
 //	Call this to initialise a falloc heap. If the buffer size needs to be changed, call cudaFallocEnd()
 //	before re-calling cudaFallocInit().
@@ -108,10 +109,10 @@ typedef struct {
 //	Returns:
 //		cudaSuccess if all is well.
 //
-extern "C" cpuFallocHeap cpuFallocInit(size_t length=1048576);   // 1-meg
+extern "C" cpuFallocHeap cpuFallocInit(size_t length=1048576, void* reserved=nullptr);   // 1-meg
 
 //
-//	cudaFallocEnd
+//	cpuFallocEnd
 //
 //	Cleans up all memories allocated by cudaFallocInit() for a heap.
 //	Call this at exit, or before calling cudaFallocInit() again.
