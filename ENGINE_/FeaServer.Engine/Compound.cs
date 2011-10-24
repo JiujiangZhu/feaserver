@@ -29,7 +29,7 @@ namespace FeaServer.Engine
 {
     public struct Compound
     {
-        public IElementType[] Types;
+        public CompoundType Type;
         public object[][] Elements;
     }
 }

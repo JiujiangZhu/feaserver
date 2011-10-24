@@ -1,4 +1,4 @@
-#pragma region License
+﻿#region License
 /*
 The MIT License
 
@@ -22,46 +22,18 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
-#pragma endregion
-#pragma once
-#include "..\..\Core.h"
-#include "CompoundSpec.cpp"
-using namespace System;
-using namespace System::IO;
+#endregion
+using System;
 
-namespace FeaServer { namespace Engine { namespace Time {
-	#define CPULOADSTORE_MAGIC (unsigned short)0x3412
-	public ref class CpuLoadStore
-	{
-	public:
-		CpuLoadStore()
-		{
-		}
+namespace FeaServer.Engine
+{
+    public abstract class CompoundType
+    {
+        public IElementType[] Types;
 
-	private:
-		size_t Init(Compound^ compound, BinaryWriter w)
-		{
-			w.Write(CPULOADSTORE_MAGIC);
-			CompoundSpec^ spec = CompoundSpec::GetSpec(compound->Type);
-			int n1 = spec->Types.Length;
-			w.Write(n1);
-			size_t size = array_getSize(void*, n1);
-			//
-			int n2 = 0;
-			array<int>^ typesSizeInBytes = spec->TypesSizeInBytes;
-			for (int index = 0; index < spec->Length; index++)
-			{
-				int pitch = typesSizeInBytes[index];
-				size += array_getSizeEx(pitch, n2);
-				w.Write(pitch);
-				w.Write(n2);
-				// add data2 to dataStream
-				//BinaryWriter dataW;
-				//dataW.Write(sizeof(data2));
-				//dataW.Write(data);
-			}
-			return size;
-		}
-	};
-}}}
-
+        public CompoundType(IElementType[] types)
+        {
+            Types = types;
+        }
+    }
+}

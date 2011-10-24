@@ -22,12 +22,14 @@
     <ClCompile Include="src\CpuContext.cpp" />
     <ClCompile Include="src\CpuEngine.cpp" />
     <ClCompile Include="src\Program.cpp" />
+    <ClCompile Include="src\Time\LoadStore\ElementSpec.cpp" />
     <None Include="src\System\cpuFalloc.cpp" />
     <ClCompile Include="src\System\cpuFallocWTrace.cpp" />
     <ClCompile Include="src\TestFalloc.cpp" />
     <ClCompile Include="src\TestLoadStore.cpp" />
     <ClCompile Include="src\TestScheduler.cpp" />
     <ClCompile Include="src\TestTreeSet.cpp" />
+    <ClCompile Include="src\Time\LoadStore\CompoundSpec.cpp" />
     <ClCompile Include="src\Time\LoadStore\CpuLoadStore.cpp" />
   </ItemGroup>
   <ItemGroup>

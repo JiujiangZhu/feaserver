@@ -49,6 +49,12 @@ typedef unsigned long int uint;
 typedef unsigned long long int ulong;
 typedef unsigned short int ushort;
 
+#define array_getLength(t) *((size_t*)t-1)
+#define array_getSize(T,length) ((sizeof(T)*length)+sizeof(size_t))
+#define array_getSizeEx(res,length) (((res)*length)+sizeof(size_t))
+#define newArray(t,T,length) (T*)((size_t*)malloc(sizeof(T)*length+4)+1);*((size_t*)t-1)=length
+#define freeArray(t) free((size_t*)t-1)
+
 namespace Time {
 
 	enum ElementScheduleStyle

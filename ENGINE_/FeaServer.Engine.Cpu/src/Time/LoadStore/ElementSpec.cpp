@@ -24,44 +24,38 @@ THE SOFTWARE.
 */
 #pragma endregion
 #pragma once
+#include <stdio.h>
 #include "..\..\Core.h"
-#include "CompoundSpec.cpp"
+#include "..\Element.hpp"
 using namespace System;
-using namespace System::IO;
+using namespace System::Collections::Generic;
 
-namespace FeaServer { namespace Engine { namespace Time {
-	#define CPULOADSTORE_MAGIC (unsigned short)0x3412
-	public ref class CpuLoadStore
+namespace FeaServer { namespace Engine { namespace Time2 {
+	public ref struct ElementSpec
 	{
+	private:
+		static Dictionary<IElementType^, ElementSpec^> _specs = gcnew Dictionary<IElementType^, ElementSpec^>();
+
 	public:
-		CpuLoadStore()
+		int SizeInBytes;
+
+		ElementSpec(IElementType^ elementType)
 		{
+			ElementImage^ image = elementType->GetImage(EngineProvider::Cpu);
+			SizeInBytes = sizeof(::Time::Element) + image->StateSizeInBytes;
 		}
 
-	private:
-		size_t Init(Compound^ compound, BinaryWriter w)
+		static ElementSpec^ GetSpec(IElementType^ elementType)
 		{
-			w.Write(CPULOADSTORE_MAGIC);
-			CompoundSpec^ spec = CompoundSpec::GetSpec(compound->Type);
-			int n1 = spec->Types.Length;
-			w.Write(n1);
-			size_t size = array_getSize(void*, n1);
-			//
-			int n2 = 0;
-			array<int>^ typesSizeInBytes = spec->TypesSizeInBytes;
-			for (int index = 0; index < spec->Length; index++)
+			ElementSpec^ spec;
+			if (!_specs.TryGetValue(elementType, spec))
 			{
-				int pitch = typesSizeInBytes[index];
-				size += array_getSizeEx(pitch, n2);
-				w.Write(pitch);
-				w.Write(n2);
-				// add data2 to dataStream
-				//BinaryWriter dataW;
-				//dataW.Write(sizeof(data2));
-				//dataW.Write(data);
+				spec = gcnew ElementSpec(elementType);
+				_specs.Add(elementType, spec);
 			}
-			return size;
+			return spec;
 		}
 	};
+
 }}}
 

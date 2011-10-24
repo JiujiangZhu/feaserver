@@ -24,11 +24,13 @@ THE SOFTWARE.
 */
 #endregion
 using System;
+using FeaServer.Engine.Compounds.Neuron;
 
-//namespace FeaServer.Engine.Compounds
-//{
-//    public struct NeuronCompound : ICompound
-//    {
-//        public IElement[] Elements { get; set; }
-//    }
-//}
+namespace FeaServer.Engine.Compounds
+{
+    public class NeuronCompound : CompoundType
+    {
+        public NeuronCompound()
+            : base(new IElementType[] { new Soma(), new Axon(), new Dendrite() }) { }
+    }
+}
