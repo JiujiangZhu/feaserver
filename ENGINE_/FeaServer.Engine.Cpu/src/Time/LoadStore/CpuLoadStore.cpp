@@ -25,43 +25,64 @@ THE SOFTWARE.
 #pragma endregion
 #pragma once
 #include "..\..\Core.h"
-#include "CompoundSpec.cpp"
+#include "..\Element.hpp"
 using namespace System;
 using namespace System::IO;
+using namespace System::Collections::Generic;
 
 namespace FeaServer { namespace Engine { namespace Time {
 	#define CPULOADSTORE_MAGIC (unsigned short)0x3412
 	public ref class CpuLoadStore
 	{
+	private:
+		Dictionary<CompoundSpec^, BinaryWriter^>^ _specWriters;
+
 	public:
+		static CpuLoadStore()
+		{
+			ElementSpec::ElementSize = sizeof(::Time::Element);
+		}
 		CpuLoadStore()
+			: _specWriters(gcnew Dictionary<CompoundSpec^, BinaryWriter^>())
 		{
 		}
 
 	private:
-		size_t Init(Compound^ compound, BinaryWriter w)
+		BinaryWriter^ GetSpecWriter(CompoundSpec^ spec)
 		{
-			w.Write(CPULOADSTORE_MAGIC);
-			CompoundSpec^ spec = CompoundSpec::GetSpec(compound->Type);
-			int n1 = spec->Types.Length;
-			w.Write(n1);
-			size_t size = array_getSize(void*, n1);
+			BinaryWriter^ w;
+			if (!_specWriters->TryGetValue(spec, w))
+			{
+				w = gcnew BinaryWriter(gcnew MemoryStream());
+				_specWriters->Add(spec, w);
+			}
+			return w;
+		}
+
+		size_t Init(Compound% compound, BinaryWriter^ w)
+		{
+			w->Write(CPULOADSTORE_MAGIC);
+			CompoundSpec^ spec = CompoundSpec::GetSpec(compound.Type);
+			int length = spec->Length;
+			w->Write(length);
+			size_t size = array_getSize(void*, length);
 			//
 			int n2 = 0;
+			int dataSize = 0;
+			array<char, 1>^ data;
 			array<int>^ typesSizeInBytes = spec->TypesSizeInBytes;
 			for (int index = 0; index < spec->Length; index++)
 			{
 				int pitch = typesSizeInBytes[index];
 				size += array_getSizeEx(pitch, n2);
-				w.Write(pitch);
-				w.Write(n2);
+				w->Write(pitch);
+				w->Write(n2);
 				// add data2 to dataStream
-				//BinaryWriter dataW;
-				//dataW.Write(sizeof(data2));
-				//dataW.Write(data);
+				BinaryWriter^ specW = GetSpecWriter(spec);
+				specW->Write(dataSize);
+				specW->Write(data, 0, dataSize);
 			}
 			return size;
 		}
 	};
 }}}
-

@@ -31,12 +31,13 @@ namespace FeaServer.Engine.Time
     public class ElementSpec
     {
         private static readonly Dictionary<IElementType, ElementSpec> _specs = new Dictionary<IElementType, ElementSpec>(new Dictionary<IElementType, ElementSpec>());
+        public static int ElementSize;
         public int SizeInBytes;
-
+        
         public ElementSpec(IElementType elementType)
         {
             var image = elementType.GetImage(EngineProvider.Cpu);
-            SizeInBytes = image.StateSizeInBytes + ((int)40L);
+            SizeInBytes = image.StateSizeInBytes + ElementSize;
         }
 
         public static ElementSpec GetSpec(IElementType elementType)

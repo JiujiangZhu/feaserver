@@ -14,12 +14,6 @@
     <ClCompile Include="src\System\cpuFallocWTrace.cpp">
       <Filter>System</Filter>
     </ClCompile>
-    <ClCompile Include="src\Time\LoadStore\CompoundSpec.cpp">
-      <Filter>Time\LoadStore</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Time\LoadStore\ElementSpec.cpp">
-      <Filter>Time\LoadStore</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\CpuElementTypeCollection.cpp" />

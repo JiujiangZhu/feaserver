@@ -59,6 +59,4 @@ namespace FeaServer.Engine.Time
             return spec;
         }
     }
-
-
 }
