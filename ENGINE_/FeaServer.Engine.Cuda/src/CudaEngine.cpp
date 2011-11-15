@@ -50,12 +50,12 @@ namespace FeaServer { namespace Engine {
 
 #pragma region IEngine
 
-		virtual ElementTable^ GetTable(Int32 shard)
+		virtual CompoundTable^ GetTable(Int32 shard)
 		{
 			return nullptr;
 		}
 
-		virtual void LoadTable(ElementTable^ table, Int32 shard)
+		virtual void LoadTable(CompoundTable^ table, Int32 shard)
 		{
 		}
 

@@ -40,19 +40,19 @@ namespace FeaServer.Engine
         {
         }
 
-        public ElementTable GetTable(int shard)
+        public CompoundTable GetTable(int shard)
         {
             Shard shard2;
             if (!_shards.TryGetValue(shard, out shard2))
                 throw new ArgumentNullException("shard");
             return GetTable(shard2);
         }
-        private ElementTable GetTable(Shard shard)
+        private CompoundTable GetTable(Shard shard)
         {
             return null;
         }
 
-        public void LoadTable(ElementTable table, int shard)
+        public void LoadTable(CompoundTable table, int shard)
         {
             Shard shard2;
             if (_shards.TryGetValue(shard, out shard2))
@@ -60,7 +60,7 @@ namespace FeaServer.Engine
             _shards.Add(shard, shard2 = new Shard("Shard: " + shard.ToString()));
             LoadTable(table, shard2);
         }
-        private void LoadTable(ElementTable table, Shard shard)
+        private void LoadTable(CompoundTable table, Shard shard)
         {
         }
 

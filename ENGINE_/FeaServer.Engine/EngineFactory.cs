@@ -71,12 +71,12 @@ namespace FeaServer.Engine
             if (engineType == null)
                 throw new InvalidOperationException();
             var engine = (Activator.CreateInstance(engineType) as IEngine);
-            if (types != null)
-            {
-                var engineTypes = engine.Types;
-                foreach (var type in types)
-                    engineTypes.Add(type);
-            }
+            //if (types != null)
+            //{
+            //    var engineTypes = engine.Types;
+            //    foreach (var type in types)
+            //        engineTypes.Add(type);
+            //}
             return engine;
         }
 

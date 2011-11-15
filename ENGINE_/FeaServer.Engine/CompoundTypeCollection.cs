@@ -24,14 +24,11 @@ THE SOFTWARE.
 */
 #endregion
 using System;
-using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
-namespace FeaServer.Engine.Time
+namespace FeaServer.Engine
 {
-    public class Init
+    public abstract class CompoundTypeCollection : Collection<CompoundType>
     {
-        public void X(IEnumerable<Compound> table)
-        {
-        }
     }
 }

@@ -30,10 +30,10 @@ namespace FeaServer.Engine
 {
 	public interface IEngine : IDisposable
 	{
-        ElementTable GetTable(int shard);
-        void LoadTable(ElementTable table, int shard);
+        CompoundTable GetTable(int shard);
+        void LoadTable(CompoundTable table, int shard);
         void UnloadTable(int shard);
-        ElementTypeCollection Types { get; }
+        //CompoundTypeCollection Types { get; }
         void EvaluateFrame(ulong time);
 	}
 }

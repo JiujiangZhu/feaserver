@@ -28,32 +28,49 @@ using System.Collections.Generic;
 
 namespace FeaServer.Engine.Time
 {
-    public class CompoundSpec
+    public class CompoundSpec<TEngine>
+        where TEngine : IEngine
     {
-        private static readonly Dictionary<CompoundType, CompoundSpec> _specs = new Dictionary<CompoundType, CompoundSpec>(new Dictionary<CompoundType, CompoundSpec>());
-        public int Length;
+        private static readonly Dictionary<uint, CompoundType> _ids = new Dictionary<uint, CompoundType>();
+        private static readonly Dictionary<CompoundType, CompoundSpec<TEngine>> _specs = new Dictionary<CompoundType, CompoundSpec<TEngine>>(new Dictionary<CompoundType, CompoundSpec<TEngine>>());
+        public uint ID;
+        public uint Length;
         public IElementType[] Types;
-        public int[] TypesSizeInBytes;
+        //public int[] TypesSizeInBytes;
+        //public int[] ScheduleStyleEveryTypeIndexs;
 
-        public CompoundSpec(CompoundType compoundType)
+        private CompoundSpec(CompoundType compoundType)
         {
-            ElementSpec elementSpec = null;
+            ID = (uint)_ids.Count; _ids.Add(ID, compoundType);
             Types = compoundType.Types;
-            Length = Types.Length;
-            TypesSizeInBytes = new int[Length];
-            for (int index = 0; index < Length; index++)
-            {
-                elementSpec = ElementSpec.GetSpec(Types[index]);
-                TypesSizeInBytes[index] = elementSpec.SizeInBytes;
-            }
+            Length = (uint)Types.Length;
+            //TypesSizeInBytes = new int[Length];
+            //var everyTypeIndexs = new List<int>();
+            //for (int index = 0; index < Length; index++)
+            //{
+            //    var type = Types[index];
+            //    if (type.ScheduleStyle == ElementScheduleStyle.Every)
+            //        everyTypeIndexs.Add(index);
+            //    var elementSpec = ElementSpec<TEngine>.GetSpec(type);
+            //    //TypesSizeInBytes[index] = elementSpec.SizeInBytes;
+            //}
+            //ScheduleStyleEveryTypeIndexs = (everyTypeIndexs.Count > 0 ? everyTypeIndexs.ToArray() : null);
         }
 
-        public static CompoundSpec GetSpec(CompoundType compoundType)
+        public static CompoundType GetTypeByID(uint ID)
         {
-            CompoundSpec spec;
+            CompoundType type;
+            if (_ids.TryGetValue(ID, out type))
+                return type;
+            throw new ArgumentOutOfRangeException("ID");
+        }
+
+        public static CompoundSpec<TEngine> GetSpec(CompoundType compoundType)
+        {
+            CompoundSpec<TEngine> spec;
             if (!_specs.TryGetValue(compoundType, out spec))
             {
-                spec = new CompoundSpec(compoundType);
+                spec = new CompoundSpec<TEngine>(compoundType);
                 _specs.Add(compoundType, spec);
             }
             return spec;

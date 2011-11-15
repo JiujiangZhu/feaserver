@@ -87,7 +87,9 @@
     <Compile Include="Compounds\Neuron\Axon.cs" />
     <Compile Include="Compound.cs" />
     <Compile Include="CompoundType.cs" />
-    <Compile Include="ElementTable.cs" />
+    <Compile Include="CompoundTypeCollection.cs" />
+    <Compile Include="CompoundTable.cs" />
+    <Compile Include="CompoundItem.cs" />
     <Compile Include="Hold\IElementMetadata.cs" />
     <Compile Include="ElementScheduleStyle.cs" />
     <Compile Include="ElementImage.cs" />
@@ -102,8 +104,9 @@
     <Compile Include="TimePrec.cs" />
     <Compile Include="EngineSettings.cs" />
     <Compile Include="Time\CompoundSpec.cs" />
+    <Compile Include="Time\OtherAttempt.cs" />
+    <Compile Include="Time\LoadStoreContext.cs" />
     <Compile Include="Time\ElementSpec.cs" />
-    <Compile Include="Time\Init.cs" />
     <Compile Include="Utility\Preparser.cs" />
   </ItemGroup>
   <ItemGroup>

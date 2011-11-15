@@ -28,27 +28,37 @@ using System.Collections.Generic;
 
 namespace FeaServer.Engine.Time
 {
-    public class ElementSpec
+    public class ElementSpec<TEngine>
+        where TEngine : IEngine
     {
-        private static readonly Dictionary<IElementType, ElementSpec> _specs = new Dictionary<IElementType, ElementSpec>(new Dictionary<IElementType, ElementSpec>());
-        public static int ElementSize;
-        public int SizeInBytes;
-        
-        public ElementSpec(IElementType elementType)
+        private static readonly Dictionary<IElementType, ElementSpec<TEngine>> _specs = new Dictionary<IElementType, ElementSpec<TEngine>>(new Dictionary<IElementType, ElementSpec<TEngine>>());
+        public static uint SizeOfElement;
+        public uint TotalSizeInBytes;
+        public uint StateSizeInBytes;
+        public int DataSizeInBytes;
+
+        private ElementSpec(IElementType elementType)
         {
-            var image = elementType.GetImage(EngineProvider.Cpu);
-            SizeInBytes = image.StateSizeInBytes + ElementSize;
+            var image = elementType.GetImage(Foo(typeof(TEngine)));
+            TotalSizeInBytes = image.StateSizeInBytes + SizeOfElement + sizeof(uint);
+            StateSizeInBytes = image.StateSizeInBytes;
+            DataSizeInBytes = image.DataSizeInBytes;
         }
 
-        public static ElementSpec GetSpec(IElementType elementType)
+        public static ElementSpec<TEngine> GetSpec(IElementType elementType)
         {
-            ElementSpec spec;
+            ElementSpec<TEngine> spec;
             if (!_specs.TryGetValue(elementType, out spec))
             {
-                spec = new ElementSpec(elementType);
+                spec = new ElementSpec<TEngine>(elementType);
                 _specs.Add(elementType, spec);
             }
             return spec;
+        }
+
+        private static EngineProvider Foo(Type type)
+        {
+            return EngineProvider.Cpu;
         }
     }
 }

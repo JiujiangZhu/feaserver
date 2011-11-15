@@ -40,7 +40,7 @@ namespace FeaServer { namespace Engine {
 		CpuEngine()
 			: _types(gcnew CpuElementTypeCollection())
 		{
-			_threadPool = gcnew FrugalThreadPool(4, gcnew Action<Object^, Object^>(this, &CpuEngine::Executor), gcnew Func<Object^>(this, &CpuEngine::ThreadContextBuilder));
+			//_threadPool = gcnew FrugalThreadPool(4, gcnew Action<Object^, Object^>(this, &CpuEngine::Executor), gcnew Func<Object^>(this, &CpuEngine::ThreadContextBuilder));
 		}
 		~CpuEngine()
 		{
@@ -49,13 +49,13 @@ namespace FeaServer { namespace Engine {
 
 #pragma region IEngine
 
-		virtual ElementTable^ GetTable(Int32 shard)
+		virtual CompoundTable^ GetTable(Int32 shard)
 		{
 			Console::WriteLine("Cpu::GetTable");
 			return nullptr;
 		}
 
-		virtual void LoadTable(ElementTable^ table, Int32 shard)
+		virtual void LoadTable(CompoundTable^ table, Int32 shard)
 		{
 			Console::WriteLine("Cpu::LoadTable");
 		}

@@ -8,11 +8,11 @@
     <ClCompile Include="src\TestTreeSet.cpp" />
     <ClCompile Include="src\TestLoadStore.cpp" />
     <ClCompile Include="src\TestScheduler.cpp" />
-    <ClCompile Include="src\Time\LoadStore\CpuLoadStore.cpp">
-      <Filter>Time\LoadStore</Filter>
-    </ClCompile>
     <ClCompile Include="src\System\cpuFallocWTrace.cpp">
       <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Time\LoadStore\CpuLoadStore.cpp">
+      <Filter>Time\LoadStore</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

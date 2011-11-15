@@ -30,6 +30,7 @@ namespace FeaServer.Engine
 {
     public enum ElementScheduleStyle
     {
+        Every,
         FirstWins,
         LastWins,
         Multiple,

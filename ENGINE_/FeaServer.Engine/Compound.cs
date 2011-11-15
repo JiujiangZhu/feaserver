@@ -27,9 +27,10 @@ using System;
 
 namespace FeaServer.Engine
 {
-    public struct Compound
+    public class Compound
     {
+        public uint ID;
         public CompoundType Type;
-        public object[][] Elements;
+        public CompoundItem[][] Elements;
     }
 }

@@ -24,13 +24,12 @@ THE SOFTWARE.
 */
 #endregion
 using System;
-using System.Collections.Generic;
 
 namespace FeaServer.Engine
 {
-    public class ElementTable
+    public struct CompoundItem
     {
-        public IEnumerable<IElement> Elements { get; set; }
-        public IEnumerable<IElement> Links { get; set; }
+        public uint ID;
+        public byte[] Data;
     }
 }
