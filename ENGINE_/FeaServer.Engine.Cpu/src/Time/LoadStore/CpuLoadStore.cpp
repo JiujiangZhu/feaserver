@@ -32,7 +32,6 @@ using namespace System::IO;
 using namespace System::Collections::Generic;
 
 namespace FeaServer { namespace Engine { namespace Time {
-	#define CPULOADSTORE_MAGIC (unsigned short)0x3412
 	public ref class CpuLoadStore
 	{
 	private:
@@ -44,35 +43,18 @@ namespace FeaServer { namespace Engine { namespace Time {
 			ElementSpec<CpuEngine^>::SizeOfElement = sizeof(::Time::Element);
 		}
 		CpuLoadStore()
-			: _ctx(gcnew LoadStoreContext<CpuEngine^>(nullptr, nullptr, nullptr))
+			//: _ctx(gcnew LoadStoreContext<CpuEngine^>(gcnew Func<long, ulong>(&CpuLoadStore::Alloc), nullptr, nullptr))
+			: _ctx(gcnew LoadStoreContext<CpuEngine^>(nullptr, nullptr, gcnew Action<ulong>(&CpuLoadStore::Free)))
 		{
 		}
 
-	//private:
-		//size_t Init(Compound% compound, BinaryWriter^ w)
-		//{
-		//	w->Write(CPULOADSTORE_MAGIC);
-		//	CompoundSpec^ spec = CompoundSpec::GetSpec(compound.Type);
-		//	int length = spec->Length;
-		//	w->Write(length);
-		//	size_t size = array_getSize(void*, length);
-		//	//
-		//	int n2 = 0;
-		//	int dataSize = 0;
-		//	array<char, 1>^ data;
-		//	array<int>^ typesSizeInBytes = spec->TypesSizeInBytes;
-		//	for (int index = 0; index < spec->Length; index++)
-		//	{
-		//		int pitch = typesSizeInBytes[index];
-		//		size += array_getSizeEx(pitch, n2);
-		//		w->Write(pitch);
-		//		w->Write(n2);
-		//		// add data2 to dataStream
-		//		BinaryWriter^ specW = GetSpecWriter(spec);
-		//		specW->Write(dataSize);
-		//		specW->Write(data, 0, dataSize);
-		//	}
-		//	return size;
-		//}
+	private:
+		void Free(ulong address)
+		{
+		}
+		/*ulong Alloc(ulong size)
+		{
+			return 0L;
+		}*/
 	};
 }}}

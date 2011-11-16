@@ -104,7 +104,6 @@
     <Compile Include="TimePrec.cs" />
     <Compile Include="EngineSettings.cs" />
     <Compile Include="Time\CompoundSpec.cs" />
-    <Compile Include="Time\OtherAttempt.cs" />
     <Compile Include="Time\LoadStoreContext.cs" />
     <Compile Include="Time\ElementSpec.cs" />
     <Compile Include="Utility\Preparser.cs" />

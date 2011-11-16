@@ -38,7 +38,6 @@ namespace FeaServer.Engine.Time
     {
         private struct ElementTypeHead
         {
-            //public uint TypeID;
             public ulong NextEveryAddress;
         }
 
