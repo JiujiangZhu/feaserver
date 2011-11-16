@@ -31,28 +31,38 @@ namespace FeaServer.Engine.Time
     public class ElementSpec<TEngine>
         where TEngine : IEngine
     {
+        private static readonly Dictionary<uint, IElementType> _typeIDs = new Dictionary<uint, IElementType>();
         private static readonly Dictionary<IElementType, ElementSpec<TEngine>> _specs = new Dictionary<IElementType, ElementSpec<TEngine>>(new Dictionary<IElementType, ElementSpec<TEngine>>());
         public static uint SizeOfElement;
+        public uint TypeID;
+        public bool ScheduleStyleEvery;
         public uint TotalSizeInBytes;
         public uint StateSizeInBytes;
         public int DataSizeInBytes;
 
         private ElementSpec(IElementType elementType)
         {
+            TypeID = (uint)_typeIDs.Count; _typeIDs.Add(TypeID, elementType);
+            ScheduleStyleEvery = (elementType.ScheduleStyle == ElementScheduleStyle.Every);
             var image = elementType.GetImage(Foo(typeof(TEngine)));
             TotalSizeInBytes = image.StateSizeInBytes + SizeOfElement + sizeof(uint);
             StateSizeInBytes = image.StateSizeInBytes;
             DataSizeInBytes = image.DataSizeInBytes;
         }
 
+        public static IElementType GetTypeByID(uint ID)
+        {
+            IElementType type;
+            if (_typeIDs.TryGetValue(ID, out type))
+                return type;
+            throw new ArgumentOutOfRangeException("ID");
+        }
+
         public static ElementSpec<TEngine> GetSpec(IElementType elementType)
         {
             ElementSpec<TEngine> spec;
             if (!_specs.TryGetValue(elementType, out spec))
-            {
-                spec = new ElementSpec<TEngine>(elementType);
-                _specs.Add(elementType, spec);
-            }
+                _specs.Add(elementType, spec = new ElementSpec<TEngine>(elementType));
             return spec;
         }
 

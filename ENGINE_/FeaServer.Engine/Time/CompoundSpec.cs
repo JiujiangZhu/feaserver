@@ -31,36 +31,23 @@ namespace FeaServer.Engine.Time
     public class CompoundSpec<TEngine>
         where TEngine : IEngine
     {
-        private static readonly Dictionary<uint, CompoundType> _ids = new Dictionary<uint, CompoundType>();
+        private static readonly Dictionary<uint, CompoundType> _typeIDs = new Dictionary<uint, CompoundType>();
         private static readonly Dictionary<CompoundType, CompoundSpec<TEngine>> _specs = new Dictionary<CompoundType, CompoundSpec<TEngine>>(new Dictionary<CompoundType, CompoundSpec<TEngine>>());
-        public uint ID;
+        public uint TypeID;
         public uint Length;
         public IElementType[] Types;
-        //public int[] TypesSizeInBytes;
-        //public int[] ScheduleStyleEveryTypeIndexs;
 
         private CompoundSpec(CompoundType compoundType)
         {
-            ID = (uint)_ids.Count; _ids.Add(ID, compoundType);
+            TypeID = (uint)_typeIDs.Count; _typeIDs.Add(TypeID, compoundType);
             Types = compoundType.Types;
             Length = (uint)Types.Length;
-            //TypesSizeInBytes = new int[Length];
-            //var everyTypeIndexs = new List<int>();
-            //for (int index = 0; index < Length; index++)
-            //{
-            //    var type = Types[index];
-            //    if (type.ScheduleStyle == ElementScheduleStyle.Every)
-            //        everyTypeIndexs.Add(index);
-            //    var elementSpec = ElementSpec<TEngine>.GetSpec(type);
-            //    //TypesSizeInBytes[index] = elementSpec.SizeInBytes;
-            //}
-            //ScheduleStyleEveryTypeIndexs = (everyTypeIndexs.Count > 0 ? everyTypeIndexs.ToArray() : null);
         }
 
         public static CompoundType GetTypeByID(uint ID)
         {
             CompoundType type;
-            if (_ids.TryGetValue(ID, out type))
+            if (_typeIDs.TryGetValue(ID, out type))
                 return type;
             throw new ArgumentOutOfRangeException("ID");
         }
@@ -69,10 +56,7 @@ namespace FeaServer.Engine.Time
         {
             CompoundSpec<TEngine> spec;
             if (!_specs.TryGetValue(compoundType, out spec))
-            {
-                spec = new CompoundSpec<TEngine>(compoundType);
-                _specs.Add(compoundType, spec);
-            }
+                _specs.Add(compoundType, spec = new CompoundSpec<TEngine>(compoundType));
             return spec;
         }
     }

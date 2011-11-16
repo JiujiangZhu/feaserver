@@ -36,11 +36,24 @@ namespace FeaServer.Engine.Time
     public class LoadStoreContext<TEngine> : ILoadStoreContext
         where TEngine : IEngine
     {
+        private struct ElementTypeHead
+        {
+            //public uint TypeID;
+            public ulong NextEveryAddress;
+        }
+
+        public struct CompoundInfo
+        {
+            public ulong Address;
+            public Compound Compound;
+        }
+
         public const ushort LOADSTORE_MAGIC = 0x3412;
         public const byte LOADSTORE_BLOCKTYPE = 0x01;
         public const byte LOADSTORE_HEADTYPE = 0x00;
         public static int SizeOfSize_t;
-        private Dictionary<CompoundSpec<TEngine>, SpecWriter> _specWriters = new Dictionary<CompoundSpec<TEngine>, SpecWriter>();
+        private Dictionary<uint, CompoundInfo> _compounds = new Dictionary<uint, CompoundInfo>();
+        private Dictionary<uint, ElementTypeHead> _elementTypeHeads = new Dictionary<uint, ElementTypeHead>();
         private List<Tuple<ulong, long>> _mallocs = new List<Tuple<ulong, long>>();
         private List<long> _adjustSIndexs = new List<long>();
         private MemoryStream _s = new MemoryStream();
@@ -49,12 +62,6 @@ namespace FeaServer.Engine.Time
         private Func<long, ulong> _xAlloc;
         private Action<MemoryStream, FileAccess, ulong, long> _xTransfer;
         private Action<ulong> _xFree;
-
-        private struct SpecWriter
-        {
-            public BinaryWriter W;
-            public ulong LastEveryAddress;
-        }
 
         public LoadStoreContext(Func<long, ulong> alloc, Action<MemoryStream, FileAccess, ulong, long> transfer, Action<ulong> free)
         {
@@ -77,20 +84,6 @@ namespace FeaServer.Engine.Time
             _mallocs.Clear();
         }
 
-        private SpecWriter GetSpecWriter(CompoundSpec<TEngine> spec)
-        {
-            SpecWriter w;
-            if (!_specWriters.TryGetValue(spec, out w))
-            {
-                w = new SpecWriter
-                {
-                    W = new BinaryWriter(new MemoryStream()),
-                };
-                _specWriters.Add(spec, w);
-            }
-            return w;
-        }
-
         public IEnumerable<Compound> Store()
         {
             foreach (var malloc in _mallocs)
@@ -102,7 +95,7 @@ namespace FeaServer.Engine.Time
             }
         }
 
-        public void Load(IEnumerable<Compound> compounds)
+        public ulong Load(IEnumerable<Compound> compounds)
         {
             var items = new List<Compound>();
             foreach (var compound in compounds)
@@ -116,7 +109,7 @@ namespace FeaServer.Engine.Time
             }
             if (items.Count > 0)
                 LoadGroup(items);
-            LoadHeader();
+            return LoadHeader();
         }
 
         private IEnumerable<Compound> StoreGroup(ulong address, long length)
@@ -138,21 +131,37 @@ namespace FeaServer.Engine.Time
             _w.Write(LOADSTORE_MAGIC);
             _w.Write(LOADSTORE_BLOCKTYPE);
             _w.Write((ushort)compounds.Count);
+            var localCompounds = new Dictionary<uint, CompoundInfo>();
+            var localEverys = new Dictionary<ElementSpec<TEngine>, List<ulong>>();
             foreach (var compound in compounds)
-                ToStream(compound);
+                ToStream(compound, localCompounds, localEverys);
+            // alloc.adjust.transfer
             var length = _s.Length;
-            var address = _xAlloc(length);
-            _mallocs.Add(new Tuple<ulong, long>(address, length));
-            Adjust(address);
-            _xTransfer(_s, FileAccess.Write, address, length);
+            var baseAddress = _xAlloc(length);
+            _mallocs.Add(new Tuple<ulong, long>(baseAddress, length));
+            AdjustGroup(baseAddress, localCompounds, localEverys);
+            _xTransfer(_s, FileAccess.Write, baseAddress, length);
             _s.SetLength(0);
         }
 
-        private void LoadHeader()
+        private ulong LoadHeader()
         {
             _w.Write(LOADSTORE_MAGIC);
             _w.Write(LOADSTORE_HEADTYPE);
+            ElementTypeHead elementTypeHead;            
+            for (var index = (uint)0; index < _elementTypeHeads.Keys.Count; index++)
+                if (_elementTypeHeads.TryGetValue(index, out elementTypeHead))
+                    _w.Write(elementTypeHead.NextEveryAddress);
+                else
+                    _w.Write((ulong)0L);
+            _elementTypeHeads.Clear();
+            // alloc.adjust.transfer
+            var length = _s.Length;
+            var baseAddress = _xAlloc(length);
+            _mallocs.Add(new Tuple<ulong, long>(baseAddress, length));
+            _xTransfer(_s, FileAccess.Write, baseAddress, length);
             _s.SetLength(0);
+            return baseAddress;
         }
 
         private Compound FromStream()
@@ -200,13 +209,15 @@ namespace FeaServer.Engine.Time
             };
         }
 
-        private void ToStream(Compound compound)
+        private void ToStream(Compound compound, Dictionary<uint, CompoundInfo> localCompounds, Dictionary<ElementSpec<TEngine>, List<ulong>> localEverys)
         {
             _w.Write(compound.ID);
             // write compoundType
             var spec = CompoundSpec<TEngine>.GetSpec(compound.Type);
-            _w.Write(spec.ID);
+            _w.Write(spec.TypeID);
             _w.Write(spec.Length); // #arrayLength
+            var compoundAddress = (ulong)_s.Position;
+            localCompounds.Add(compound.ID, new CompoundInfo { Address = compoundAddress, Compound = compound });
             var specSIndexs = new long[spec.Length];
             var specArraySIndex = _s.Position;
             _s.Seek(spec.Length * sizeof(ulong), SeekOrigin.Current);
@@ -215,6 +226,7 @@ namespace FeaServer.Engine.Time
                 var elementSpec = ElementSpec<TEngine>.GetSpec(spec.Types[specIndex]);
                 var sizeOfElement = ElementSpec<TEngine>.SizeOfElement;
                 var stateSizeInBytes = elementSpec.StateSizeInBytes;
+                GetElementTypeHead(elementSpec.TypeID);
                 //
                 var elements = compound.Elements[specIndex];
                 _w.Write(elementSpec.TotalSizeInBytes); // #arrayPitch
@@ -223,13 +235,26 @@ namespace FeaServer.Engine.Time
                 foreach (var element in elements)
                 {
                     _w.Write(element.ID);
+                    var elementAddress = (ulong)_s.Position;
+                    // check for schedule-everys
+                    if (elementSpec.ScheduleStyleEvery)
+                    {
+                        List<ulong> everyAddresses;
+                        if (!localEverys.TryGetValue(elementSpec, out everyAddresses))
+                            localEverys.Add(elementSpec, everyAddresses = new List<ulong>());
+                        everyAddresses.Add(elementAddress);
+                    }
                     _s.Seek(sizeOfElement, SeekOrigin.Current);
                     var remainingPitch = (long)stateSizeInBytes;
-                    var data = element.Data;
-                    if (data != null)
+                    var dataSizeInBytes = elementSpec.DataSizeInBytes;
+                    if (dataSizeInBytes > 0)
                     {
-                        _w.Write(data);
-                        remainingPitch -= data.Length;
+                        var data = element.Data;
+                        if (data != null)
+                        {
+                            _w.Write(data);
+                            remainingPitch -= data.Length;
+                        }
                     }
                     if (remainingPitch < 0)
                         throw new OverflowException("Data larger then StateSize");
@@ -248,16 +273,43 @@ namespace FeaServer.Engine.Time
             _s.Position = lastSIndex;
         }
 
-        private void Adjust(ulong address)
+        private void AdjustGroup(ulong baseAddress, Dictionary<uint, CompoundInfo> localCompounds, Dictionary<ElementSpec<TEngine>, List<ulong>> localEverys)
         {
-            // replace specSIndex
+            // adjust adjustSIndexes
             var lastSIndex = _s.Position;
             foreach (var adjustSIndex in _adjustSIndexs)
             {
                 _s.Position = adjustSIndex;
-                //_s.Write((long)specSIndex);
+                var adjust = (ulong)_r.ReadUInt64() + baseAddress;
+                _w.Write(adjust);
             }
+            _adjustSIndexs.Clear();
             _s.Position = lastSIndex;
+            // adjust local-compounds
+            foreach (var localCompound in localCompounds)
+            {
+                var compoundInfo = localCompound.Value;
+                compoundInfo.Address += baseAddress;
+                _compounds.Add(localCompound.Key, compoundInfo);
+            }
+            // adjust local-Everys
+            foreach (var localEvery in localEverys)
+            {
+                var head = GetElementTypeHead(localEvery.Key.TypeID);
+                var nextEveryAddress = (ulong)_s.Position + baseAddress;
+                _w.Write(head.NextEveryAddress);
+                head.NextEveryAddress = nextEveryAddress;
+                foreach (var value in localEvery.Value)
+                    _w.Write(value + baseAddress);
+            }
+        }
+
+        private ElementTypeHead GetElementTypeHead(uint typeID)
+        {
+            ElementTypeHead head;
+            if (!_elementTypeHeads.TryGetValue(typeID, out head))
+                _elementTypeHeads.Add(typeID, head = new ElementTypeHead());
+            return head;
         }
 
         //private static ulong array_getSize(int res, int length) { return (ulong)((res * length) + SizeOfSize_t); }
