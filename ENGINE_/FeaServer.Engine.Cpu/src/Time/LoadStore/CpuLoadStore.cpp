@@ -44,7 +44,7 @@ namespace FeaServer { namespace Engine { namespace Time {
 		}
 		CpuLoadStore()
 			//: _ctx(gcnew LoadStoreContext<CpuEngine^>(gcnew Func<long, ulong>(&CpuLoadStore::Alloc), nullptr, nullptr))
-			: _ctx(gcnew LoadStoreContext<CpuEngine^>(nullptr, nullptr, gcnew Action<ulong>(&CpuLoadStore::Free)))
+			//: _ctx(gcnew LoadStoreContext<CpuEngine^>(nullptr, nullptr, gcnew Action<ulong>(&CpuLoadStore::Free)))
 		{
 		}
 

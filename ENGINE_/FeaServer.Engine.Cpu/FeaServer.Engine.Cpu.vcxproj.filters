@@ -14,6 +14,9 @@
     <ClCompile Include="src\Time\LoadStore\CpuLoadStore.cpp">
       <Filter>Time\LoadStore</Filter>
     </ClCompile>
+    <ClCompile Include="src\Query\Vdbe.cpp">
+      <Filter>Query</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\CpuElementTypeCollection.cpp" />
@@ -101,6 +104,9 @@
     </Filter>
     <Filter Include="Time\Query">
       <UniqueIdentifier>{0d821341-2d58-4af6-aefe-1f0afdaf98f3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Query">
+      <UniqueIdentifier>{3123277a-e8ae-4646-aae0-467686b013fc}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

@@ -33,6 +33,9 @@
   <ItemGroup>
     <ClInclude Include="src\Core.h" />
     <ClInclude Include="src\CpuElementTypeCollection.cpp" />
+    <ClCompile Include="src\Query\Vdbe.cpp">
+      <FileType>CppHeader</FileType>
+    </ClCompile>
     <ClInclude Include="src\system\cpuFalloc.h" />
     <ClInclude Include="src\System\cpuFallocWTrace.h" />
     <ClInclude Include="src\System\LinkedList.h" />
