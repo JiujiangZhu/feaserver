@@ -1,181 +1,159 @@
 ﻿using System;
 using System.IO;
+using System.Collections.Generic;
 
 namespace Lemon
 {
     public class Reporter
     {
+        private static bool _showPrecedenceConflict;
 
-void ConfigPrint(FILE *fp, struct config *cfp)
-{
-  struct rule *rp;
-  struct symbol *sp;
-  int i, j;
-  rp = cfp->rp;
-  fprintf(fp,"%s ::=",rp->lhs->name);
-  for(i=0; i<=rp->nrhs; i++){
-    if( i==cfp->dot ) fprintf(fp," *");
-    if( i==rp->nrhs ) break;
-    sp = rp->rhs[i];
-    fprintf(fp," %s", sp->name);
-    if( sp->type==MULTITERMINAL ){
-      for(j=1; j<sp->nsubsym; j++){
-        fprintf(fp,"|%s",sp->subsym[j]->name);
-      }
-    }
-  }
-}
-
-/* #define TEST */
-#if 0
-/* Print a set */
-PRIVATE void SetPrint(out,set,lemp)
-FILE *out;
-char *set;
-struct lemon *lemp;
-{
-  int i;
-  char *spacer;
-  spacer = "";
-  fprintf(out,"%12s[","");
-  for(i=0; i<lemp->nterminal; i++){
-    if( SetFind(set,i) ){
-      fprintf(out,"%s%s",spacer,lemp->symbols[i]->name);
-      spacer = " ";
-    }
-  }
-  fprintf(out,"]\n");
-}
-
-/* Print a plink chain */
-PRIVATE void PlinkPrint(out,plp,tag)
-FILE *out;
-struct plink *plp;
-char *tag;
-{
-  while( plp ){
-    fprintf(out,"%12s%s (state %2d) ","",tag,plp->cfp->stp->statenum);
-    ConfigPrint(out,plp->cfp);
-    fprintf(out,"\n");
-    plp = plp->next;
-  }
-}
-#endif
-
-/* Print an action to the given file descriptor.  Return FALSE if
-** nothing was actually printed.
-*/
-int PrintAction(struct action *ap, FILE *fp, int indent){
-  int result = 1;
-  switch( ap->type ){
-    case SHIFT:
-      fprintf(fp,"%*s shift  %d",indent,ap->sp->name,ap->x.stp->statenum);
-      break;
-    case REDUCE:
-      fprintf(fp,"%*s reduce %d",indent,ap->sp->name,ap->x.rp->index);
-      break;
-    case ACCEPT:
-      fprintf(fp,"%*s accept",indent,ap->sp->name);
-      break;
-    case ERROR:
-      fprintf(fp,"%*s error",indent,ap->sp->name);
-      break;
-    case SRCONFLICT:
-    case RRCONFLICT:
-      fprintf(fp,"%*s reduce %-3d ** Parsing conflict **",
-        indent,ap->sp->name,ap->x.rp->index);
-      break;
-    case SSCONFLICT:
-      fprintf(fp,"%*s shift  %-3d ** Parsing conflict **", 
-        indent,ap->sp->name,ap->x.stp->statenum);
-      break;
-    case SH_RESOLVED:
-      if( showPrecedenceConflict ){
-        fprintf(fp,"%*s shift  %-3d -- dropped by precedence",
-                indent,ap->sp->name,ap->x.stp->statenum);
-      }else{
-        result = 0;
-      }
-      break;
-    case RD_RESOLVED:
-      if( showPrecedenceConflict ){
-        fprintf(fp,"%*s reduce %-3d -- dropped by precedence",
-                indent,ap->sp->name,ap->x.rp->index);
-      }else{
-        result = 0;
-      }
-      break;
-    case NOT_USED:
-      result = 0;
-      break;
-  }
-  return result;
-}
-
-/* Generate the "y.output" log file */
-void ReportOutput(struct lemon *lemp)
-{
-  int i;
-  struct state *stp;
-  struct config *cfp;
-  struct action *ap;
-  FILE *fp;
-
-  fp = file_open(lemp,".out","wb");
-  if( fp==0 ) return;
-  for(i=0; i<lemp->nstate; i++){
-    stp = lemp->sorted[i];
-    fprintf(fp,"State %d:\n",stp->statenum);
-    if( lemp->basisflag ) cfp=stp->bp;
-    else                  cfp=stp->cfp;
-    while( cfp ){
-      char buf[20];
-      if( cfp->dot==cfp->rp->nrhs ){
-        sprintf(buf,"(%d)",cfp->rp->index);
-        fprintf(fp,"    %5s ",buf);
-      }else{
-        fprintf(fp,"          ");
-      }
-      ConfigPrint(fp,cfp);
-      fprintf(fp,"\n");
-#if 0
-      SetPrint(fp,cfp->fws,lemp);
-      PlinkPrint(fp,cfp->fplp,"To  ");
-      PlinkPrint(fp,cfp->bplp,"From");
-#endif
-      if( lemp->basisflag ) cfp=cfp->bp;
-      else                  cfp=cfp->next;
-    }
-    fprintf(fp,"\n");
-    for(ap=stp->ap; ap; ap=ap->next){
-      if( PrintAction(ap,fp,30) ) fprintf(fp,"\n");
-    }
-    fprintf(fp,"\n");
-  }
-  fprintf(fp, "----------------------------------------------------\n");
-  fprintf(fp, "Symbols:\n");
-  for(i=0; i<lemp->nsymbol; i++){
-    int j;
-    struct symbol *sp;
-
-    sp = lemp->symbols[i];
-    fprintf(fp, "  %3d: %s", i, sp->name);
-    if( sp->type==NONTERMINAL ){
-      fprintf(fp, ":");
-      if( sp->lambda ){
-        fprintf(fp, " <lambda>");
-      }
-      for(j=0; j<lemp->nterminal; j++){
-        if( sp->firstset && SetFind(sp->firstset, j) ){
-          fprintf(fp, " %s", lemp->symbols[j]->name);
+        private static void ConfigPrint(TextWriter fp, Config cfp)
+        {
+            var rp = cfp.rp;
+            fp.Write("{0} ::=", rp.lhs.Name);
+            for (var i = 0; i <= rp.nrhs; i++)
+            {
+                if (i == cfp.dot)
+                    fp.Write(" *");
+                if (i == rp.nrhs)
+                    break;
+                var sp = rp.rhs[i];
+                fp.Write(" {0}", sp.Name);
+                if (sp.Type == SymbolType.MultiTerminal)
+                    for (var j = 1; j < sp.subsym.Length; j++)
+                        fp.Write("|{0}", sp.subsym[j].Name);
+            }
         }
-      }
-    }
-    fprintf(fp, "\n");
-  }
-  fclose(fp);
-  return;
-}
 
+        /* #define TEST */
+#if true
+        /* Print a set */
+        private static void SetPrint(TextWriter fp, HashSet<int> set, Lemon lemp)
+        {
+            var spacer = string.Empty;
+            fp.Write("{12:0}[", string.Empty);
+            for (var i = 0; i < lemp.nterminal; i++)
+                if (set.Contains(i))
+                {
+                    fp.Write("%s%s", spacer, lemp.symbols[i].Name);
+                    spacer = " ";
+                }
+            fp.Write("]\n");
+        }
+
+        /* Print a plink chain */
+        private static void PlinkPrint(TextWriter fp, LinkedList<Config> plp, string tag)
+        {
+            foreach (var cfp in plp)
+            {
+                fp.Write("{12:0}{1} (state {2:2}) ", string.Empty, tag, cfp.stp.statenum);
+                ConfigPrint(fp, cfp);
+                fp.Write("\n");
+            }
+        }
+#endif
+
+        /* Print an action to the given file descriptor.  Return FALSE if nothing was actually printed. */
+        private static bool PrintAction(Action ap, TextWriter fp, int indent)
+        {
+            var result = true;
+            var firstParam = "{" + indent.ToString() + ":0}";
+            switch (ap.type)
+            {
+                case ActionType.Shift:
+                    fp.Write(firstParam + " shift  {1}", ap.sp.Name, ap.stp.statenum);
+                    break;
+                case ActionType.Reduce:
+                    fp.Write(firstParam + " reduce {1}", ap.sp.Name, ap.rp.index);
+                    break;
+                case ActionType.Accept:
+                    fp.Write(firstParam + " accept", ap.sp.Name);
+                    break;
+                case ActionType.Error:
+                    fp.Write(firstParam + " error", ap.sp.Name);
+                    break;
+                case ActionType.SRConflict:
+                case ActionType.RRConflict:
+                    fp.Write(firstParam + " reduce {-3:1} ** Parsing conflict **", ap.sp.Name, ap.rp.index);
+                    break;
+                case ActionType.SSConflict:
+                    fp.Write(firstParam + " shift  {-3:1} ** Parsing conflict **", ap.sp.Name, ap.stp.statenum);
+                    break;
+                case ActionType.SHResolved:
+                    if (_showPrecedenceConflict)
+                        fp.Write(firstParam + " shift  {-3:1} -- dropped by precedence", ap.sp.Name, ap.stp.statenum);
+                    else
+                        result = false;
+                    break;
+                case ActionType.RDResolved:
+                    if (_showPrecedenceConflict)
+                        fp.Write(firstParam + " reduce {-3:1} -- dropped by precedence", ap.sp.Name, ap.rp.index);
+                    else
+                        result = false;
+                    break;
+                case ActionType.NotUsed:
+                    result = false;
+                    break;
+            }
+            return result;
+        }
+
+        /* Generate the "y.output" log file */
+        private static void ReportOutput(Lemon lemp)
+        {
+            using (TextWriter fp = null) //new file_open(lemp,".out","wb");
+            {
+                if (fp == null)
+                    return;
+                for (var i = 0; i < lemp.nstate; i++)
+                {
+                    var stp = lemp.sorted[i];
+                    fp.Write("State %d:\n", stp.statenum);
+                    var cfp = (lemp.basisflag ? stp.bp : stp.cfp);
+                    while (cfp != null)
+                    {
+                        var buf = new char[20];
+                        if (cfp.dot == cfp.rp.nrhs)
+                        {
+                            //sprintf(buf,"(%d)",cfp.rp.index);
+                            fp.Write("    %5s ", buf);
+                        }
+                        else
+                            fp.Write("          ");
+                        ConfigPrint(fp, cfp);
+                        fp.Write("\n");
+#if true
+                        SetPrint(fp, cfp.fws, lemp);
+                        PlinkPrint(fp, cfp.fplp, "To  ");
+                        PlinkPrint(fp, cfp.bplp, "From");
+#endif
+                        cfp = (lemp.basisflag ? cfp.bp : cfp.next);
+                    }
+                    fp.Write("\n");
+                    for (var ap = stp.ap; ap != null; ap = ap.next)
+                        if (PrintAction(ap, fp, 30))
+                            fp.Write("\n");
+                    fp.Write("\n");
+                }
+                fp.Write("----------------------------------------------------\n");
+                fp.Write("Symbols:\n");
+                for (var i = 0; i < lemp.nsymbol; i++)
+                {
+                    var sp = lemp.symbols[i];
+                    fp.Write("  %3d: %s", i, sp.Name);
+                    if (sp.Type == SymbolType.NonTerminal)
+                    {
+                        fp.Write(":");
+                        if (sp.lambda)
+                            fp.Write(" <lambda>");
+                        for (var j = 0; j < lemp.nterminal; j++)
+                            if ((sp.firstset != null) && sp.firstset.Contains(j))
+                                fp.Write(" %s", lemp.symbols[j].Name);
+                    }
+                    fp.Write("\n");
+                }
+            }
+        }
     }
 }

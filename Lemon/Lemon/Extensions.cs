@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace Lemon
 {
@@ -12,6 +13,13 @@ namespace Lemon
                 change |= set.Add(item);
             return change;
         }
+
+        public static void WriteLine(this StreamWriter source, ref int line) { source.WriteLine(); line++; }
+        public static void WriteLine(this StreamWriter source, ref int line, string format) { source.WriteLine(format); line++; }
+        public static void WriteLine(this StreamWriter source, ref int line, string format, object arg0) { source.WriteLine(format, arg0); line++;}
+        public static void WriteLine(this StreamWriter source, ref int line, string format, object arg0, object arg1) { source.WriteLine(format, arg0, arg1); line++;}
+        public static void WriteLine(this StreamWriter source, ref int line, string format, object arg0, object arg1, object arg2) { source.WriteLine(format, arg0, arg1, arg2); line++;}
+        public static void WriteLine(this StreamWriter source, ref int line, string format, params object[] arg) { source.WriteLine(format, arg); line++;}
 
         //PRIVATE char *pathsearch(char *argv0, char *name, int modemask)
         //{

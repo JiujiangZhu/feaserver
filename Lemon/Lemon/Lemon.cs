@@ -36,7 +36,7 @@ namespace Lemon
         public int nconflict;
         public int tablesize;
         public bool basisflag;
-        public int has_fallback;
+        public bool has_fallback;
         public bool nolinenosflag;
         public string argv0;
 

@@ -47,6 +47,24 @@ namespace Lemon
             aLookahead[nLookahead].action = action;
             nLookahead++;
         }
+        
+        /* Return the number of entries in the yy_action table */
+        public int Size
+        {
+            get { return nAction; }
+        }
+
+        /* The value for the N-th entry in yy_action */
+        public int GetAction(int index)
+        {
+            return aAction[index].action;
+        }
+
+        /* The value for the N-th entry in yy_lookahead */
+        public int GetLookahead(int index)
+        {
+            return aAction[index].lookahead;
+        }
 
         public int Insert()
         {
