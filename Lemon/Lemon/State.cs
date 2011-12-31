@@ -6,6 +6,7 @@ namespace Lemon
 {
     public class State : IComparer<State>
     {
+        public const int NO_OFFSET = int.MaxValue;
         public static StateCollection States = new StateCollection();
 
         public Config bp;

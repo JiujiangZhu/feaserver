@@ -8,31 +8,31 @@ namespace Lemon
         private List<Config> _items;
         private List<Config> _basisItems;
 
-        public Config AddItem(Rule rp, int dot)
+        public Config AddItem(Rule rule, int dot)
         {
-            Config cf;
-            var key = new Config { rp = rp, dot = dot };
-            if (!TryGetValue(key, out cf))
+            Config config;
+            var key = new Config { Rule = rule, Dot = dot };
+            if (!TryGetValue(key, out config))
             {
-                cf = key;
-                _items.Add(cf);
-                Add(cf, cf);
+                config = key;
+                _items.Add(config);
+                Add(config, config);
             }
-            return cf;
+            return config;
         }
 
-        public Config AddBasisItem(Rule rp, int dot)
+        public Config AddBasisItem(Rule rule, int dot)
         {
-            Config cf;
-            var key = new Config { rp = rp, dot = dot };
-            if (!TryGetValue(key, out cf))
+            Config config;
+            var key = new Config { Rule = rule, Dot = dot };
+            if (!TryGetValue(key, out config))
             {
-                cf = key;
-                _items.Add(cf);
-                _basisItems.Add(cf);
-                Add(cf, cf);
+                config = key;
+                _items.Add(config);
+                _basisItems.Add(config);
+                Add(config, config);
             }
-            return cf;
+            return config;
         }
 
         public Config GetItem()
@@ -62,48 +62,48 @@ namespace Lemon
             Clear();
         }
 
-        public void Closure(Lemon lemon)
+        public void Closure(Context ctx)
         {
             foreach (var item in _items)
             {
-                var rp = item.rp;
-                var dot = item.dot;
-                if (dot >= rp.nrhs)
+                var rule = item.Rule;
+                var dot = item.Dot;
+                if (dot >= rule.nrhs)
                     continue;
-                var sp = rp.rhs[dot];
-                if (sp.Type == SymbolType.NonTerminal)
+                var symbol = rule.RHSymbols[dot];
+                if (symbol.Type == SymbolType.NonTerminal)
                 {
-                    if ((sp.Rule == null) && (sp != lemon.errsym))
+                    if (symbol.Rule == null && symbol != ctx.ErrorSymbol)
                     {
-                        Console.Write("{0}: Nonterminal \"{1}\" has no rules.", rp.line, sp.Name);
-                        lemon.errorcnt++;
+                        Console.Write("{0}: Nonterminal \"{1}\" has no rules.", rule.Lineno, symbol.Name);
+                        ctx.Errors++;
                     }
-                    for (var newrp = sp.Rule; newrp != null; newrp = newrp.nextlhs)
+                    for (var newrp = symbol.Rule; newrp != null; newrp = newrp.NextLHSymbol)
                     {
                         var newcfp = AddItem(newrp, 0);
                         var i = dot + 1;
-                        for (; i < rp.nrhs; i++)
+                        for (; i < rule.nrhs; i++)
                         {
-                            var xsp = rp.rhs[i];
+                            var xsp = rule.RHSymbols[i];
                             if (xsp.Type == SymbolType.Terminal)
                             {
-                                newcfp.fws.Add(xsp.Index);
+                                newcfp.fws.Add(xsp.ID);
                                 break;
                             }
                             else if (xsp.Type == SymbolType.MultiTerminal)
                             {
-                                foreach (var subSymbol in xsp.subsym)
-                                    newcfp.fws.Add(subSymbol.Index);
+                                foreach (var subSymbol in xsp.Children)
+                                    newcfp.fws.Add(subSymbol.ID);
                                 break;
                             }
                             else
                             {
-                                newcfp.fws.Union(xsp.firstset);
-                                if (!xsp.lambda)
+                                newcfp.fws.Union(xsp.FirstSet);
+                                if (!xsp.Lambda)
                                     break;
                             }
                         }
-                        if (i == rp.nrhs)
+                        if (i == rule.nrhs)
                             item.fplp.AddFirst(newcfp);
                     }
                 }

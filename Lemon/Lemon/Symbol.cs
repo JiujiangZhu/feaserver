@@ -1,63 +1,63 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Lemon
 {
-    public class Symbol : IComparer<Symbol>, IEquatable<Symbol>
+    public class Symbol // : IEquatable<Symbol>
     {
         public static SymbolCollection Symbols = new SymbolCollection();
+        private static readonly IComparer<Symbol> Compare = new SymbolComparer();
+
+        private class SymbolComparer : IComparer<Symbol>
+        {
+            public int Compare(Symbol x, Symbol y)
+            {
+                var xi = x.ID + (char.IsUpper(x.Name[0]) ? 0 : 10000000);
+                var yi = y.ID + (char.IsUpper(y.Name[0]) ? 0 : 10000000);
+                Debug.Assert(xi != yi || x.Name == y.Name);
+                return xi - yi;
+            }
+        }
 
         public string Name { get; internal set; }
-        public int Index { get; private set; }
+        public int ID { get; set; }
         public SymbolType Type { get; internal set; }
         public Rule Rule { get; set; }
         public Symbol Fallback { get; set; }
         public int Precedence { get; set; }
         public Association Association { get; set; }
-        public HashSet<int> firstset { get; set; }
-        public bool lambda { get; set; }
-        public int useCnt { get; private set; }
-        public string destructor { get; private set; }
-        public int destLineno { get; private set; }
-        public string datatype { get; private set; }
-        public int dtnum { get; private set; }
-        public Symbol[] subsym;
+        public HashSet<int> FirstSet { get; set; }
+        public bool Lambda { get; set; }
+        public int Uses { get; private set; }
+        public string Destructor { get; internal set; }
+        public int DestructorLineno { get; set; }
+        public string DataType { get; set; }
+        public int DataTypeID { get; internal set; }
+        public Symbol[] Children;
 
-        static Symbol()
-        {
-            Symbol.New("$", false);
-        }
+        static Symbol() { Symbol.New("$", false); }
         internal Symbol() { }
 
         public static Symbol New(string name) { return New(name, true); }
-        public static Symbol New(string name, bool increaseUseCount)
+        public static Symbol New(string name, bool increaseUses)
         {
-            Symbol sp;
-            if (!Symbols.TryGetValue(name, out sp))
+            Symbol symbol;
+            if (!Symbols.TryGetValue(name, out symbol))
             {
-                sp = new Symbol
+                symbol = new Symbol
                 {
                     Name = name,
                     Type = (char.IsUpper(name[0]) ? SymbolType.Terminal : SymbolType.NonTerminal),
                     Precedence = -1,
                     Association = Association.Unknown,
                 };
-                Symbols.Add(name, sp);
+                Symbols.Add(name, symbol);
             }
-            if (increaseUseCount)
-                sp.useCnt++;
-            return sp;
-        }
-
-        public int Compare(Symbol x, Symbol y)
-        {
-            //const struct symbol **a = (const struct symbol **) _a;
-            //const struct symbol **b = (const struct symbol **) _b;
-            //int i1 = (**a).index + 10000000*((**a).name[0]>'Z');
-            //int i2 = (**b).index + 10000000*((**b).name[0]>'Z');
-            //assert( i1!=i2 || strcmp((**a).name,(**b).name)==0 );
-            //return i1-i2;
-            return 0;
+            if (increaseUses)
+                symbol.Uses++;
+            return symbol;
         }
 
         public bool Equals(Symbol other)
@@ -66,12 +66,23 @@ namespace Lemon
                 return true;
             if ((Type != SymbolType.MultiTerminal) || (other.Type != SymbolType.MultiTerminal))
                 return false;
-            if (subsym.Length != other.subsym.Length)
+            if (Children.Length != other.Children.Length)
                 return false;
-            for (var i = 0; i < subsym.Length; i++)
-                if (subsym[i] != other.subsym[i])
+            for (var index = 0; index < Children.Length; index++)
+                if (Children[index] != other.Children[index])
                     return false;
             return true;
+        }
+
+        public static Symbol[] ToSymbolArray(out int terminals)
+        {
+            var symbols = Symbols.Values.ToArray();
+            for (var index = 0; index < symbols.Length; index++) symbols[index].ID = index;
+            Array.Sort(symbols, 1, symbols.Length - 1, Symbol.Compare);
+            for (var index = 0; index < symbols.Length; index++) symbols[index].ID = index;
+            terminals = 1;
+            for (; char.IsUpper(symbols[terminals].Name[0]); terminals++) { }
+            return symbols;
         }
     }
 }

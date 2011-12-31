@@ -6,15 +6,14 @@ namespace Lemon
     public class Config
     {
         public static ConfigCollection Configs = new ConfigCollection();
-
-        public Rule rp;
-        public int dot;
+        public Rule Rule;
+        public int Dot;
         public HashSet<int> fws = new HashSet<int>();
         public LinkedList<Config> fplp;
         public LinkedList<Config> bplp;
-        public State stp;
+        public State State;
         public bool Complete;
-        public Config next;
-        public Config bp;
+        public Config Next;
+        public Config Prev;
     }
 }

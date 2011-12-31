@@ -7,27 +7,28 @@ namespace Lemon
     {
         public struct lookahead_action
         {
-            public int lookahead;
-            public int action;
+            public int Lookahead;
+            public int Action;
         }
-        public int nAction;
-        public int nActionAlloc;
-        public lookahead_action[] aAction;
-        public lookahead_action[] aLookahead;
+
+        public int _UsedActions;
+        public int _AllocatedActions;
+        public lookahead_action[] Actions;
+        public lookahead_action[] Lookaheads;
         public int mnLookahead;
         public int mnAction;
         public int mxLookahead;
-        public int nLookahead;
-        public int nLookaheadAlloc;
+        public int _UsedLookaheads;
+        public int _AllocatedLookaheads;
 
         public void Action(int lookahead, int action)
         {
-            if (nLookahead >= nLookaheadAlloc)
+            if (_UsedLookaheads >= _AllocatedLookaheads)
             {
-                nLookaheadAlloc += 25;
-                Array.Resize(ref aLookahead, nLookaheadAlloc);
+                _AllocatedLookaheads += 25;
+                Array.Resize(ref Lookaheads, _AllocatedLookaheads);
             }
-            if (nLookahead == 0)
+            if (_UsedLookaheads == 0)
             {
                 mxLookahead = lookahead;
                 mnLookahead = lookahead;
@@ -43,80 +44,80 @@ namespace Lemon
                     mnAction = action;
                 }
             }
-            aLookahead[nLookahead].lookahead = lookahead;
-            aLookahead[nLookahead].action = action;
-            nLookahead++;
+            Lookaheads[_UsedLookaheads].Lookahead = lookahead;
+            Lookaheads[_UsedLookaheads].Action = action;
+            _UsedLookaheads++;
         }
         
         /* Return the number of entries in the yy_action table */
         public int Size
         {
-            get { return nAction; }
+            get { return _UsedActions; }
         }
 
         /* The value for the N-th entry in yy_action */
         public int GetAction(int index)
         {
-            return aAction[index].action;
+            return Actions[index].Action;
         }
 
         /* The value for the N-th entry in yy_lookahead */
         public int GetLookahead(int index)
         {
-            return aAction[index].lookahead;
+            return Actions[index].Lookahead;
         }
 
         public int Insert()
         {
-            Debug.Assert(nLookahead > 0);
+            Debug.Assert(_UsedLookaheads > 0);
 
             /* Make sure we have enough space to hold the expanded action table in the worst case.  The worst case occurs if the transaction set must be appended to the current action table */
             var n = mxLookahead + 1;
-            if (nAction + n >= nActionAlloc)
+            if (_UsedActions + n >= _AllocatedActions)
             {
-                var oldAlloc = nActionAlloc;
-                nActionAlloc = nAction + n + nActionAlloc + 20;
-                Array.Resize(ref aAction, nActionAlloc);
-                for (var index = oldAlloc; index < nActionAlloc; index++)
+                var oldAlloc = _AllocatedActions;
+                _AllocatedActions = _UsedActions + n + _AllocatedActions + 20;
+                Array.Resize(ref Actions, _AllocatedActions);
+                for (var index = oldAlloc; index < _AllocatedActions; index++)
                 {
-                    aAction[index].lookahead = -1;
-                    aAction[index].action = -1;
+                    Actions[index].Lookahead = -1;
+                    Actions[index].Action = -1;
                 }
             }
 
             /* Scan the existing action table looking for an offset that is a duplicate of the current transaction set.  Fall out of the loop if and when the duplicate is found.
             ** i is the index in aAction[] where mnLookahead is inserted. */
-            var i = nAction - 1;
+            var i = _UsedActions - 1;
             for (; i >= 0; i--)
-                if (aAction[i].lookahead == mnLookahead)
+                if (Actions[i].Lookahead == mnLookahead)
                 {
                     /* All lookaheads and actions in the aLookahead[] transaction must match against the candidate aAction[i] entry. */
-                    if (aAction[i].action != mnAction)
+                    if (Actions[i].Action != mnAction)
                         continue;
                     var j = 0;
-                    for (; j < nLookahead; j++)
+                    for (; j < _UsedLookaheads; j++)
                     {
-                        var k = aLookahead[j].lookahead - mnLookahead + i;
-                        if ((k < 0) || (k >= nAction))
+                        var k = Lookaheads[j].Lookahead - mnLookahead + i;
+                        if ((k < 0) || (k >= _UsedActions))
                             break;
-                        if (aLookahead[j].lookahead != aAction[k].lookahead)
+                        if (Lookaheads[j].Lookahead != Actions[k].Lookahead)
                             break;
-                        if (aLookahead[j].action != aAction[k].action)
+                        if (Lookaheads[j].Action != Actions[k].Action)
                             break;
                     }
-                    if (j < nLookahead)
+                    if (j < _UsedLookaheads)
                         continue;
 
                     /* No possible lookahead value that is not in the aLookahead[] transaction is allowed to match aAction[i] */
                     var n2 = 0;
-                    for (var j2 = 0; j2 < nAction; j2++)
+                    for (var j2 = 0; j2 < _UsedActions; j2++)
                     {
-                        if (aAction[j2].lookahead < 0)
+                        if (Actions[j2].Lookahead < 0)
                             continue;
-                        if (aAction[j2].lookahead == j2 + mnLookahead - i)
+                        if (Actions[j2].Lookahead == j2 + mnLookahead - i)
                             n2++;
                     }
-                    if (n2 == nLookahead)
+                    if (n2 == _UsedLookaheads)
                         break;  /* An exact match is found at offset i */
                 }
 
@@ -125,36 +126,36 @@ namespace Lemon
             {
                 /* Look for holes in the aAction[] table that fit the current aLookahead[] transaction.  Leave i set to the offset of the hole.
                 ** If no holes are found, i is left at p->nAction, which means the transaction will be appended. */
-                for (i = 0; i < nActionAlloc - mxLookahead; i++)
-                    if (aAction[i].lookahead < 0)
+                for (i = 0; i < _AllocatedActions - mxLookahead; i++)
+                    if (Actions[i].Lookahead < 0)
                     {
                         var j = 0;
-                        for (; j < nLookahead; j++)
+                        for (; j < _UsedLookaheads; j++)
                         {
-                            var k = aLookahead[j].lookahead - mnLookahead + i;
+                            var k = Lookaheads[j].Lookahead - mnLookahead + i;
                             if (k < 0)
                                 break;
-                            if (aAction[k].lookahead >= 0)
+                            if (Actions[k].Lookahead >= 0)
                                 break;
                         }
-                        if (j < nLookahead)
+                        if (j < _UsedLookaheads)
                             continue;
-                        for (j = 0; j < nAction; j++)
-                            if (aAction[j].lookahead == j + mnLookahead - i)
+                        for (j = 0; j < _UsedActions; j++)
+                            if (Actions[j].Lookahead == j + mnLookahead - i)
                                 break;
-                        if (j == nAction)
+                        if (j == _UsedActions)
                             break;  /* Fits in empty slots */
                     }
             }
             /* Insert transaction set at index i. */
-            for (var j = 0; j < nLookahead; j++)
+            for (var j = 0; j < _UsedLookaheads; j++)
             {
-                var k = aLookahead[j].lookahead - mnLookahead + i;
-                aAction[k] = aLookahead[j];
-                if (k >= nAction)
-                    nAction = k + 1;
+                var k = Lookaheads[j].Lookahead - mnLookahead + i;
+                Actions[k] = Lookaheads[j];
+                if (k >= _UsedActions)
+                    _UsedActions = k + 1;
             }
-            nLookahead = 0;
+            _UsedLookaheads = 0;
 
             /* Return the offset that is added to the lookahead in order to get the index into yy_action of the action */
             return i - mnLookahead;
