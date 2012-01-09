@@ -10,19 +10,19 @@ namespace Lemon
 
         private static void ConfigPrint(TextWriter w, Config config)
         {
-            var rp = config.Rule;
-            w.Write("{0} ::=", rp.LHSymbol.Name);
-            for (var i = 0; i <= rp.nrhs; i++)
+            var rule = config.Rule;
+            w.Write("{0} ::=", rule.LHSymbol.Name);
+            for (var i = 0; i <= rule.RHSymbols.Length; i++)
             {
                 if (i == config.Dot)
                     w.Write(" *");
-                if (i == rp.nrhs)
+                if (i == rule.RHSymbols.Length)
                     break;
-                var sp = rp.RHSymbols[i];
-                w.Write(" {0}", sp.Name);
-                if (sp.Type == SymbolType.MultiTerminal)
-                    for (var j = 1; j < sp.Children.Length; j++)
-                        w.Write("|{0}", sp.Children[j].Name);
+                var symbol = rule.RHSymbols[i];
+                w.Write(" {0}", symbol.Name);
+                if (symbol.Type == SymbolType.MultiTerminal)
+                    for (var j = 1; j < symbol.Children.Length; j++)
+                        w.Write("|{0}", symbol.Children[j].Name);
             }
         }
 
@@ -32,11 +32,11 @@ namespace Lemon
         private static void SetPrint(TextWriter w, HashSet<int> set, Context ctx)
         {
             var spacer = string.Empty;
-            w.Write("{12:0}[", string.Empty);
+            w.Write("{0,12}[", string.Empty);
             for (var i = 0; i < ctx.Terminals; i++)
                 if (set.Contains(i))
                 {
-                    w.Write("%s%s", spacer, ctx.Symbols[i].Name);
+                    w.Write("{0}{1}", spacer, ctx.Symbols[i].Name);
                     spacer = " ";
                 }
             w.Write("]\n");
@@ -47,7 +47,7 @@ namespace Lemon
         {
             foreach (var config in configs)
             {
-                w.Write("{12:0}{1} (state {2:2}) ", string.Empty, tag, config.State.statenum);
+                w.Write("{12:0}{1} (state {2:2}) ", string.Empty, tag, config.State.ID);
                 ConfigPrint(w, config);
                 w.Write("\n");
             }
@@ -62,7 +62,7 @@ namespace Lemon
             switch (action.Type)
             {
                 case ActionType.Shift:
-                    w.Write(firstParam + " shift  {1}", action.Symbol.Name, action.State.statenum);
+                    w.Write(firstParam + " shift  {1}", action.Symbol.Name, action.State.ID);
                     break;
                 case ActionType.Reduce:
                     w.Write(firstParam + " reduce {1}", action.Symbol.Name, action.Rule.ID);
@@ -78,11 +78,11 @@ namespace Lemon
                     w.Write(firstParam + " reduce {-3:1} ** Parsing conflict **", action.Symbol.Name, action.Rule.ID);
                     break;
                 case ActionType.SSConflict:
-                    w.Write(firstParam + " shift  {-3:1} ** Parsing conflict **", action.Symbol.Name, action.State.statenum);
+                    w.Write(firstParam + " shift  {-3:1} ** Parsing conflict **", action.Symbol.Name, action.State.ID);
                     break;
                 case ActionType.SHResolved:
                     if (_showPrecedenceConflict)
-                        w.Write(firstParam + " shift  {-3:1} -- dropped by precedence", action.Symbol.Name, action.State.statenum);
+                        w.Write(firstParam + " shift  {-3:1} -- dropped by precedence", action.Symbol.Name, action.State.ID);
                     else
                         result = false;
                     break;
@@ -100,7 +100,7 @@ namespace Lemon
         }
 
         /* Generate the "y.output" log file */
-        private static void ReportOutput(Context ctx)
+        public static void ReportOutput(Context ctx)
         {
             using (TextWriter fp = null) //new file_open(lemp,".out","wb");
             {
@@ -109,12 +109,12 @@ namespace Lemon
                 for (var i = 0; i < ctx.States; i++)
                 {
                     var stp = ctx.Sorted[i];
-                    fp.Write("State %d:\n", stp.statenum);
-                    var cfp = (ctx.wantBasis ? stp.bp : stp.cfp);
+                    fp.Write("State %d:\n", stp.ID);
+                    var cfp = (ctx.wantBasis ? stp.Basis : stp.Config);
                     while (cfp != null)
                     {
                         var buf = new char[20];
-                        if (cfp.Dot == cfp.Rule.nrhs)
+                        if (cfp.Dot == cfp.Rule.RHSymbols.Length)
                         {
                             //sprintf(buf,"(%d)",cfp.rp.index);
                             fp.Write("    %5s ", buf);
@@ -124,14 +124,14 @@ namespace Lemon
                         ConfigPrint(fp, cfp);
                         fp.Write("\n");
 #if true
-                        SetPrint(fp, cfp.fws, ctx);
-                        PlinkPrint(fp, cfp.fplp, "To  ");
-                        PlinkPrint(fp, cfp.bplp, "From");
+                        SetPrint(fp, cfp.FwSet, ctx);
+                        PlinkPrint(fp, cfp.Forwards, "To  ");
+                        PlinkPrint(fp, cfp.Basis, "From");
 #endif
                         cfp = (ctx.wantBasis ? cfp.Prev : cfp.Next);
                     }
                     fp.Write("\n");
-                    for (var ap = stp.ap; ap != null; ap = ap.Next)
+                    for (var ap = stp.Action; ap != null; ap = ap.Next)
                         if (PrintAction(ap, fp, 30))
                             fp.Write("\n");
                     fp.Write("\n");

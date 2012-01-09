@@ -4,15 +4,17 @@ using System.Diagnostics;
 
 namespace Lemon
 {
-    public class State : IComparer<State>
+    public class State
     {
         public const int NO_OFFSET = int.MaxValue;
         public static StateCollection States = new StateCollection();
 
-        public Config bp;
-        public Config cfp;
-        public int statenum;
-        public Action ap;
+        //: IComparer<State>
+
+        public Config Basis;
+        public Config Config;
+        public int ID;
+        public Action Action;
         public int nTknAct;
         public int nNtAct;
         public int iTknOfst;
@@ -26,7 +28,7 @@ namespace Lemon
             {
                 n = y.nTknAct - x.nTknAct;
                 if (n == 0)
-                    n = y.statenum - x.statenum;
+                    n = y.ID - x.ID;
             }
             Debug.Assert(n != 0);
             return n;

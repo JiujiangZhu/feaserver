@@ -4,7 +4,7 @@ using System.Diagnostics;
 
 namespace Lemon
 {
-    public class Action : IComparer<Action>
+    public class Action
     {
         public Symbol Symbol;
         public ActionType Type;
@@ -12,6 +12,8 @@ namespace Lemon
         public Rule Rule;
         public Action Next;
         public Action Collide;
+
+        //: IComparer<Action>
 
         public Action(ref Action head)
         {
@@ -102,7 +104,7 @@ namespace Lemon
         {
             switch (Type)
             {
-                case ActionType.Shift: return State.statenum;
+                case ActionType.Shift: return State.ID;
                 case ActionType.Reduce: return Rule.ID + ctx.States;
                 case ActionType.Error: return ctx.States + ctx.Rules;
                 case ActionType.Accept: return ctx.States + ctx.Rules + 1;

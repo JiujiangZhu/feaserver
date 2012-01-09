@@ -47,11 +47,11 @@ namespace Lemon
             errors++;
         }
 
-        public void EnsureRulesPrecedences()
+        public void BuildRulesPrecedences()
         {
             for (var rule = Rule; rule != null; rule = rule.Next)
                 if (rule.PrecedenceSymbol == null)
-                    for (var index = 0; index < rule.nrhs && rule.PrecedenceSymbol == null; index++)
+                    for (var index = 0; index < rule.RHSymbols.Length && rule.PrecedenceSymbol == null; index++)
                     {
                         var symbol = rule.RHSymbols[index];
                         if (symbol.Type == SymbolType.MultiTerminal)
@@ -68,68 +68,65 @@ namespace Lemon
                     }
         }
 
-        public void FindFirstSets()
+        public void BuildFirstSets()
         {
             for (var i = 0; i < Symbols.Length; i++)
                 Symbols[i].Lambda = false;
-
             for (var i = Terminals; i < Symbols.Length; i++)
                 Symbols[i].FirstSet = new HashSet<int>();
-
             /* First compute all lambdas */
             bool progress = false;
             do
             {
                 progress = false;
-                for (var rp = Rule; rp != null; rp = rp.Next)
+                for (var rule = Rule; rule != null; rule = rule.Next)
                 {
-                    if (rp.LHSymbol.Lambda)
+                    if (rule.LHSymbol.Lambda)
                         continue;
                     var i = 0;
-                    for (; i < rp.nrhs; i++)
+                    for (; i < rule.RHSymbols.Length; i++)
                     {
-                        var sp = rp.RHSymbols[i];
-                        if ((sp.Type != SymbolType.Terminal) || !sp.Lambda)
+                        var symbol = rule.RHSymbols[i];
+                        if (symbol.Type != SymbolType.Terminal || !symbol.Lambda)
                             break;
                     }
-                    if (i == rp.nrhs)
+                    if (i == rule.RHSymbols.Length)
                     {
-                        rp.LHSymbol.Lambda = true;
+                        rule.LHSymbol.Lambda = true;
                         progress = true;
                     }
                 }
             } while (progress);
-
             /* Now compute all first sets */
             do
             {
                 progress = false;
-                for (var rp = Rule; rp != null; rp = rp.Next)
+                for (var rule = Rule; rule != null; rule = rule.Next)
                 {
-                    var s1 = rp.LHSymbol;
-                    for (var i = 0; i < rp.nrhs; i++)
+                    var lhSymbol = rule.LHSymbol;
+                    for (var i = 0; i < rule.RHSymbols.Length; i++)
                     {
-                        var s2 = rp.RHSymbols[i];
-                        if (s2.Type == SymbolType.Terminal)
+                        var rhSymbol = rule.RHSymbols[i];
+                        if (rhSymbol.Type == SymbolType.Terminal)
                         {
-                            progress |= s1.FirstSet.Add(s2.ID);
+                            progress |= lhSymbol.FirstSet.Add(rhSymbol.ID);
                             break;
                         }
-                        else if (s2.Type == SymbolType.MultiTerminal)
+                        else if (rhSymbol.Type == SymbolType.MultiTerminal)
                         {
-                            for (var j = 0; j < s2.Children.Length; j++)
-                                progress |= s1.FirstSet.Add(s2.Children[j].ID);
+                            for (var j = 0; j < rhSymbol.Children.Length; j++)
+                                progress |= lhSymbol.FirstSet.Add(rhSymbol.Children[j].ID);
                             break;
                         }
-                        else if (s1 == s2)
+                        else if (lhSymbol == rhSymbol)
                         {
-                            if (!s1.Lambda)
+                            if (!lhSymbol.Lambda)
                                 break;
                         }
                         else
                         {
-                            progress |= s1.FirstSet.Union(s2.FirstSet);
-                            if (!s2.Lambda)
+                            progress |= lhSymbol.FirstSet.Union(rhSymbol.FirstSet);
+                            if (!rhSymbol.Lambda)
                                 break;
                         }
                     }
@@ -137,105 +134,98 @@ namespace Lemon
             } while (progress);
         }
 
-
-        public void FindStates()
+        public void BuildStates()
         {
-            Config.Configs.ListsInit();
-
+            States = 0;
             /* Find the start symbol */
-            Symbol sp;
+            Symbol symbol;
             if (StartSymbol != null)
             {
-                sp = Symbol.Symbols[StartSymbol];
-                if (sp == null)
+                symbol = Symbol.Symbols[StartSymbol];
+                if (symbol == null)
                 {
                     ErrorMsg(ref Errors, Filename, 0, "The specified start symbol \"{0}\" is not in a nonterminal of the grammar.  \"{1}\" will be used as the start symbol instead.", StartSymbol, Rule.LHSymbol.Name);
-                    sp = Rule.LHSymbol;
+                    symbol = Rule.LHSymbol;
                 }
             }
             else
-                sp = Rule.LHSymbol;
-
+                symbol = Rule.LHSymbol;
             /* Make sure the start symbol doesn't occur on the right-hand side of any rule.  Report an error if it does.  (YACC would generate a new start symbol in this case.) */
-            for (var rp = Rule; rp != null; rp = rp.Next)
-                for (var i = 0; i < rp.nrhs; i++)
-                    if (rp.RHSymbols[i] == sp)
+            for (var rule = Rule; rule != null; rule = rule.Next)
+                for (var i = 0; i < rule.RHSymbols.Length; i++)
+                    if (rule.RHSymbols[i] == symbol)
                         /* FIX ME:  Deal with multiterminals */
-                        ErrorMsg(ref Errors, Filename, 0, "The start symbol \"{0}\" occurs on the right-hand side of a rule. This will result in a parser which does not work properly.", sp.Name);
-
+                        ErrorMsg(ref Errors, Filename, 0, "The start symbol \"{0}\" occurs on the right-hand side of a rule. This will result in a parser which does not work properly.", symbol.Name);
             /* The basis configuration set for the first state is all rules which have the start symbol as their left-hand side */
-            for (var rp = sp.Rule; rp != null; rp = rp.NextLHSymbol)
+            for (var rule = symbol.Rule; rule != null; rule = rule.NextLHSymbol)
             {
-                rp.LhSymbolStart = 1;
-                var newcfp = Config.Configs.AddBasisItem(rp, 0);
-                newcfp.fws.Add(0);
+                rule.LhSymbolStart = 1;
+                var basisConfig = Config.Configs.AddBasis(rule, 0);
+                basisConfig.FwSet.Add(0);
             }
-
             /* Compute the first state.  All other states will be computed automatically during the computation of the first one. The returned pointer to the first state is not used. */
             State.States.GetState(this);
         }
 
-        public void FindLinks()
+        public void BuildLinks()
         {
             /* Add to every propagate link a pointer back to the state to which the link is attached. */
             for (var i = 0; i < States; i++)
             {
-                var stp = Sorted[i];
-                for (var cfp = stp.cfp; cfp != null; cfp = cfp.Next)
-                    cfp.State = stp;
+                var state = Sorted[i];
+                for (var config = state.Config; config != null; config = config.Next)
+                    config.State = state;
             }
-
             /* Convert all backlinks into forward links.  Only the forward links are used in the follow-set computation. */
             for (var i = 0; i < States; i++)
             {
-                var stp = Sorted[i];
-                for (var cfp = stp.cfp; cfp != null; cfp = cfp.Next)
-                    foreach (var other in cfp.bplp)
-                        other.fplp.AddFirst(cfp);
+                var state = Sorted[i];
+                for (var config = state.Config; config != null; config = config.Next)
+                    foreach (var other in config.Basis)
+                        other.Forwards.AddFirst(config);
             }
         }
 
-        void FindFollowSets()
+        public void BuildFollowSets()
         {
             for (var i = 0; i < States; i++)
-                for (var cfp = Sorted[i].cfp; cfp != null; cfp = cfp.Next)
-                    cfp.Complete = false;
-
+                for (var config = Sorted[i].Config; config != null; config = config.Next)
+                    config.Complete = false;
             bool progress = false;
             do
             {
                 progress = false;
                 for (var i = 0; i < States; i++)
-                    for (var cfp = Sorted[i].cfp; cfp != null; cfp = cfp.Next)
+                    for (var config = Sorted[i].Config; config != null; config = config.Next)
                     {
-                        if (cfp.Complete)
+                        if (config.Complete)
                             continue;
-                        foreach (var other in cfp.fplp)
+                        foreach (var other in config.Forwards)
                         {
-                            var change = other.fws.Union(cfp.fws);
+                            var change = other.FwSet.Union(config.FwSet);
                             if (change)
                             {
                                 other.Complete = false;
                                 progress = true;
                             }
                         }
-                        cfp.Complete = true;
+                        config.Complete = true;
                     }
             } while (progress);
         }
 
-        public void FindActions()
+        public void BuildActions()
         {
             /* Add all of the reduce actions. A reduce action is added for each element of the followset of a configuration which has its dot at the extreme right. */
             for (var i = 0; i < States; i++)
             {
                 var stp = Sorted[i];
-                for (var cfp = stp.cfp; cfp != null; cfp = cfp.Next)
-                    if (cfp.Rule.nrhs == cfp.Dot)
+                for (var cfp = stp.Config; cfp != null; cfp = cfp.Next)
+                    if (cfp.Rule.RHSymbols.Length == cfp.Dot)
                         for (var j = 0; j < Terminals; j++)
-                            if (cfp.fws.Contains(j))
+                            if (cfp.FwSet.Contains(j))
                                 /* Add a reduce action to the state "stp" which will reduce by the rule "cfp->rp" if the lookahead symbol is "lemp->symbols[j]" */
-                                new Action(ref stp.ap)
+                                new Action(ref stp.Action)
                                 {
                                     Type = ActionType.Reduce,
                                     Symbol = Symbols[j],
@@ -246,7 +236,7 @@ namespace Lemon
             /* Add the accepting token */
             var sp = (StartSymbol != null ? (Symbol.Symbols[StartSymbol] ?? Rule.LHSymbol) : Rule.LHSymbol);
             /* Add to the first state (which is always the starting state of the finite state machine) an action to ACCEPT if the lookahead is the start nonterminal.  */
-            new Action(ref Sorted[0].ap)
+            new Action(ref Sorted[0].Action)
             {
                 Type = ActionType.Accept,
                 Symbol = sp,
@@ -255,20 +245,20 @@ namespace Lemon
             /* Resolve conflicts */
             for (var i = 0; i < States; i++)
             {
-                var stp = Sorted[i];
-                // Debug.Assert( stp.ap != null);
-                stp.ap = Action.Sort(stp.ap);
-                for (var ap = stp.ap; ap != null && ap.Next != null; ap = ap.Next)
+                var symbol = Sorted[i];
+                Debug.Assert(symbol.Action != null);
+                symbol.Action = Action.Sort(symbol.Action);
+                for (var ap = symbol.Action; ap != null && ap.Next != null; ap = ap.Next)
                     for (var nap = ap.Next; nap != null && nap.Symbol == ap.Symbol; nap = nap.Next)
                         /* The two actions "ap" and "nap" have the same lookahead. Figure out which one should be used */
                         Conflicts += Action.ResolveConflict(ap, nap, ErrorSymbol);
             }
 
             /* Report an error for each rule that can never be reduced. */
-            for (var rp = Rule; rp != null; rp = rp.Next)
-                rp.CanReduce = false;
+            for (var rule = Rule; rule != null; rule = rule.Next)
+                rule.CanReduce = false;
             for (var i = 0; i < States; i++)
-                for (var ap = Sorted[i].ap; ap != null; ap = ap.Next)
+                for (var ap = Sorted[i].Action; ap != null; ap = ap.Next)
                     if (ap.Type == ActionType.Reduce)
                         ap.Rule.CanReduce = true;
             for (var rp = Rule; rp != null; rp = rp.Next)
@@ -279,55 +269,51 @@ namespace Lemon
             }
         }
 
-        public void BuildShifts(State stp)
+        public void BuildShifts(State state)
         {
             /* Each configuration becomes complete after it contibutes to a successor state.  Initially, all configurations are incomplete */
-            for (var cfp = stp.cfp; cfp != null; cfp = cfp.Next)
-                cfp.Complete = false;
-
+            for (var config = state.Config; config != null; config = config.Next)
+                config.Complete = false;
             /* Loop through all configurations of the state "stp" */
-            for (var cfp = stp.cfp; cfp != null; cfp = cfp.Next)
+            for (var config = state.Config; config != null; config = config.Next)
             {
-                if (cfp.Complete)
+                if (config.Complete)
                     continue;
-                if (cfp.Dot >= cfp.Rule.nrhs)
+                if (config.Dot >= config.Rule.RHSymbols.Length)
                     continue;
                 Config.Configs.ListsReset();
-                var sp = cfp.Rule.RHSymbols[cfp.Dot];
-
+                var symbol = config.Rule.RHSymbols[config.Dot];
                 /* For every configuration in the state "stp" which has the symbol "sp" following its dot, add the same configuration to the basis set under construction but with the dot shifted one symbol to the right. */
-                for (var bcfp = cfp; bcfp != null; bcfp = bcfp.Next)
+                for (var basisConfig = config; basisConfig != null; basisConfig = basisConfig.Next)
                 {
-                    if (bcfp.Complete)
+                    if (basisConfig.Complete)
                         continue;
-                    if (bcfp.Dot >= bcfp.Rule.nrhs)
+                    if (basisConfig.Dot >= basisConfig.Rule.RHSymbols.Length)
                         continue;
-                    var bsp = bcfp.Rule.RHSymbols[bcfp.Dot];
-                    if (!bsp.Equals(sp))
+                    var scanSymbol = basisConfig.Rule.RHSymbols[basisConfig.Dot];
+                    if (!scanSymbol.Equals(symbol))
                         continue;
-                    bcfp.Complete = true;
-                    var newcfg = Config.Configs.AddBasisItem(bcfp.Rule, bcfp.Dot + 1);
-                    newcfg.bplp.AddFirst(bcfp);
+                    basisConfig.Complete = true;
+                    var newConfig = Config.Configs.AddBasis(basisConfig.Rule, basisConfig.Dot + 1);
+                    newConfig.Basis.AddFirst(basisConfig);
                 }
-
                 /* Get a pointer to the state described by the basis configuration set constructed in the preceding loop */
-                var newstp = State.States.GetState(this);
-
+                var newState = State.States.GetState(this);
                 /* The state "newstp" is reached from the state "stp" by a shift action on the symbol "sp" */
-                if (sp.Type == SymbolType.MultiTerminal)
-                    for (var i = 0; i < sp.Children.Length; i++)
-                        new Action(ref stp.ap)
+                if (symbol.Type == SymbolType.MultiTerminal)
+                    for (var i = 0; i < symbol.Children.Length; i++)
+                        new Action(ref state.Action)
                         {
                             Type = ActionType.Shift,
-                            Symbol = sp.Children[i],
-                            State = newstp,
+                            Symbol = symbol.Children[i],
+                            State = newState,
                         };
                 else
-                    new Action(ref stp.ap)
+                    new Action(ref state.Action)
                     {
                         Type = ActionType.Shift,
-                        Symbol = sp,
-                        State = newstp,
+                        Symbol = symbol,
+                        State = newState,
                     };
             }
         }
@@ -340,7 +326,7 @@ namespace Lemon
                 var nbest = 0;
                 Rule rbest = null;
                 var usesWildcard = false;
-                for (var ap = stp.ap; ap != null; ap = ap.Next)
+                for (var ap = stp.Action; ap != null; ap = ap.Next)
                 {
                     if ((ap.Type == ActionType.Shift) && (ap.Symbol == Wildcard))
                         usesWildcard = true;
@@ -374,7 +360,7 @@ namespace Lemon
                     continue;
 
                 /* Combine matching REDUCE actions into a single default */
-                var ap3 = stp.ap;
+                var ap3 = stp.Action;
                 for (; ap3 != null; ap3 = ap3.Next)
                     if ((ap3.Type == ActionType.Reduce) && (ap3.Rule == rbest))
                         break;
@@ -383,7 +369,7 @@ namespace Lemon
                 for (ap3 = ap3.Next; ap3 != null; ap3 = ap3.Next)
                     if ((ap3.Type == ActionType.Reduce) && (ap3.Rule == rbest))
                         ap3.Type = ActionType.NotUsed;
-                stp.ap = Action.Sort(stp.ap);
+                stp.Action = Action.Sort(stp.Action);
             }
         }
 
@@ -420,7 +406,7 @@ namespace Lemon
                 if (rule.LHSymbolAlias != null)
                     Console.Write("({0})", rule.LHSymbolAlias);
                 Console.Write(" ::=");
-                for (var i = 0; i < rule.nrhs; i++)
+                for (var i = 0; i < rule.RHSymbols.Length; i++)
                 {
                     var symbol = rule.RHSymbols[i];
                     Console.Write(" {0}", symbol.Name);

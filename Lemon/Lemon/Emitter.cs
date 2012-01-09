@@ -59,7 +59,7 @@ namespace Lemon
         /* zCode is a string that is the action associated with a rule.  Expand the symbols in this string so that the refer to elements of the parser stack. */
         private static void translate_code(Context ctx, Rule rule)
         {
-            var used = new bool[rule.nrhs]; /* True for each RHS element which is used */
+            var used = new bool[rule.RHSymbols.Length]; /* True for each RHS element which is used */
             var lhsused = false; /* True if the LHS element has been used */
             if (rule.Code == null) { rule.Code = "\n"; rule.Lineno = rule.RuleLineno; }
             var b = new StringBuilder();
@@ -80,20 +80,20 @@ namespace Lemon
                     }
                     else
                     {
-                        for (var i = 0; i < rule.nrhs; i++)
+                        for (var i = 0; i < rule.RHSymbols.Length; i++)
                             if (rule.RHSymbolsAlias[i] != null && z.Substring(cp, xpLength) == rule.RHSymbolsAlias[i])
                             {
                                 /* If the argument is of the form @X then substituted the token number of X, not the value of X */
                                 if (cp > 0 && z[cp - 1] == '@')
                                 {
                                     b.Length--;
-                                    b.AppendFormat("yymsp[{0}].major", i - rule.nrhs + 1);
+                                    b.AppendFormat("yymsp[{0}].major", i - rule.RHSymbols.Length + 1);
                                 }
                                 else
                                 {
                                     var sp = rule.RHSymbols[i];
                                     var dtnum = (sp.Type == SymbolType.MultiTerminal ? sp.Children[0].DataTypeID : sp.DataTypeID);
-                                    b.AppendFormat("yymsp[{0}].minor.yy{1}", i - rule.nrhs + 1, dtnum);
+                                    b.AppendFormat("yymsp[{0}].minor.yy{1}", i - rule.RHSymbols.Length + 1, dtnum);
                                 }
                                 cp = xp;
                                 used[i] = true;
@@ -107,14 +107,14 @@ namespace Lemon
             if (rule.LHSymbolAlias != null && !lhsused)
                 Context.ErrorMsg(ref ctx.Errors, ctx.Filename, rule.RuleLineno, "Label \"{0}\" for \"{1}({2})\" is never used.", rule.LHSymbolAlias, rule.LHSymbol.Name, rule.LHSymbolAlias);
             /* Generate destructor code for RHS symbols which are not used in the reduce code */
-            for (var i = 0; i < rule.nrhs; i++)
+            for (var i = 0; i < rule.RHSymbols.Length; i++)
             {
                 if (rule.RHSymbolsAlias[i] != null && !used[i])
                     Context.ErrorMsg(ref ctx.Errors, ctx.Filename, rule.RuleLineno, "Label {0} for \"{1}({2})\" is never used.", rule.RHSymbolsAlias[i], rule.RHSymbols[i].Name, rule.RHSymbolsAlias[i]);
                 else if (rule.RHSymbolsAlias[i] == null)
                 {
                     if (has_destructor(rule.RHSymbols[i], ctx))
-                        b.AppendFormat("  yy_destructor(yypParser,{0},&yymsp[{1}].minor);\n", rule.RHSymbols[i].ID, i - rule.nrhs + 1);
+                        b.AppendFormat("  yy_destructor(yypParser,{0},&yymsp[{1}].minor);\n", rule.RHSymbols[i].ID, i - rule.RHSymbols.Length + 1);
                     else { } /* No destructor defined for this term */
                 }
             }
@@ -240,7 +240,7 @@ namespace Lemon
         private static void writeRuleText(StreamWriter w, Rule rule)
         {
             w.Write("{0} ::=", rule.LHSymbol.Name);
-            for (var j = 0; j < rule.nrhs; j++)
+            for (var j = 0; j < rule.RHSymbols.Length; j++)
             {
                 var sp = rule.RHSymbols[j];
                 w.Write(" {0}", sp.Name);
@@ -378,7 +378,7 @@ namespace Lemon
                     var stp = ax[i].stp;
                     if (ax[i].isTkn)
                     {
-                        for (var ap = stp.ap; ap != null; ap = ap.Next)
+                        for (var ap = stp.Action; ap != null; ap = ap.Next)
                         {
                             if (ap.Symbol.ID >= ctx.Terminals)
                                 continue;
@@ -395,7 +395,7 @@ namespace Lemon
                     }
                     else
                     {
-                        for (var ap = stp.ap; ap != null; ap = ap.Next)
+                        for (var ap = stp.Action; ap != null; ap = ap.Next)
                         {
                             if (ap.Symbol.ID < ctx.Terminals)
                                 continue;
@@ -632,7 +632,7 @@ namespace Lemon
                 /* Generate the table of rule information 
                 ** Note: This code depends on the fact that rules are number sequentually beginning with 0. */
                 for (var rp = ctx.Rule; rp != null; rp = rp.Next)
-                    w.WriteLine(ref lineno, "  { {0}, {0} },", rp.LHSymbol.ID, rp.nrhs);
+                    w.WriteLine(ref lineno, "  { {0}, {0} },", rp.LHSymbol.ID, rp.RHSymbols.Length);
                 Template.tplt_xfer(ctx.Name, r, w, ref lineno);
 
                 /* Generate code which execution during each REDUCE action */

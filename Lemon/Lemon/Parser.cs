@@ -41,9 +41,9 @@ namespace Lemon
             public Symbol FallbackSymbol;
             public Symbol LHSymbol;
             public string LHSymbolAlias;
-            public int _RHSymbols;
-            public Symbol[] RHSymbol = new Symbol[MAXRHS];
-            public string[] RHSymbolAlias = new string[MAXRHS];
+            public int QueuedRHSymbols;
+            public Symbol[] QueuedRHSymbol = new Symbol[MAXRHS];
+            public string[] QueuedRHSymbolAlias = new string[MAXRHS];
             public Rule PrevRule;
             public string DeclKeyword;
             public Accessor<string>? DeclArgSlot;
@@ -84,7 +84,7 @@ namespace Lemon
                     else if (char.IsLower(v[0]))
                     {
                         pctx.LHSymbol = Symbol.New(v);
-                        pctx._RHSymbols = 0;
+                        pctx.QueuedRHSymbols = 0;
                         pctx.LHSymbolAlias = null;
                         pctx.FiniteState = FiniteState.WAITING_FOR_ARROW;
                     }
@@ -168,17 +168,16 @@ namespace Lemon
                         var rule = new Rule
                         {
                             RuleLineno = pctx.TokenLineno,
-                            RHSymbols = new Symbol[pctx._RHSymbols],
-                            RHSymbolsAlias = new string[pctx._RHSymbols],
+                            RHSymbols = new Symbol[pctx.QueuedRHSymbols],
+                            RHSymbolsAlias = new string[pctx.QueuedRHSymbols],
                             LHSymbol = pctx.LHSymbol,
                             LHSymbolAlias = pctx.LHSymbolAlias,
-                            nrhs = pctx._RHSymbols,
                             ID = ctx.Rules++,
                         };
-                        for (var index = 0; index < pctx._RHSymbols; index++)
+                        for (var index = 0; index < pctx.QueuedRHSymbols; index++)
                         {
-                            rule.RHSymbols[index] = pctx.RHSymbol[index];
-                            rule.RHSymbolsAlias[index] = pctx.RHSymbolAlias[index];
+                            rule.RHSymbols[index] = pctx.QueuedRHSymbol[index];
+                            rule.RHSymbolsAlias[index] = pctx.QueuedRHSymbolAlias[index];
                         }
                         rule.NextLHSymbol = rule.LHSymbol.Rule;
                         rule.LHSymbol.Rule = rule;
@@ -195,21 +194,21 @@ namespace Lemon
                     }
                     else if (char.IsLetter(v[0]))
                     {
-                        if (pctx._RHSymbols >= ParserContext.MAXRHS)
+                        if (pctx.QueuedRHSymbols >= ParserContext.MAXRHS)
                         {
                             Context.ErrorMsg(ref pctx.Errors, pctx.Filename, pctx.TokenLineno, "Too many symbols on RHS of rule beginning at \"{0}\".", v);
                             pctx.FiniteState = FiniteState.RESYNC_AFTER_RULE_ERROR;
                         }
                         else
                         {
-                            pctx.RHSymbol[pctx._RHSymbols] = Symbol.New(v);
-                            pctx.RHSymbolAlias[pctx._RHSymbols] = null;
-                            pctx._RHSymbols++;
+                            pctx.QueuedRHSymbol[pctx.QueuedRHSymbols] = Symbol.New(v);
+                            pctx.QueuedRHSymbolAlias[pctx.QueuedRHSymbols] = null;
+                            pctx.QueuedRHSymbols++;
                         }
                     }
-                    else if ((v[0] == '|' || v[0] == '/') && pctx._RHSymbols > 0)
+                    else if ((v[0] == '|' || v[0] == '/') && pctx.QueuedRHSymbols > 0)
                     {
-                        var multiSymbol = pctx.RHSymbol[pctx._RHSymbols - 1];
+                        var multiSymbol = pctx.QueuedRHSymbol[pctx.QueuedRHSymbols - 1];
                         if (multiSymbol.Type != SymbolType.MultiTerminal)
                         {
                             var originalSymbol = multiSymbol;
@@ -219,14 +218,14 @@ namespace Lemon
                                 Children = new[] { originalSymbol },
                                 Name = originalSymbol.Name,
                             };
-                            pctx.RHSymbol[pctx._RHSymbols - 1] = multiSymbol;
+                            pctx.QueuedRHSymbol[pctx.QueuedRHSymbols - 1] = multiSymbol;
                         }
                         Array.Resize(ref multiSymbol.Children, multiSymbol.Children.Length + 1);
                         multiSymbol.Children[multiSymbol.Children.Length - 1] = Symbol.New(v.Substring(1));
                         if (char.IsLower(v[1]) || char.IsLower(multiSymbol.Children[0].Name[0]))
                             Context.ErrorMsg(ref pctx.Errors, pctx.Filename, pctx.TokenLineno, "Cannot form a compound containing a non-terminal");
                     }
-                    else if (v[0] == '(' && pctx._RHSymbols > 0)
+                    else if (v[0] == '(' && pctx.QueuedRHSymbols > 0)
                         pctx.FiniteState = FiniteState.RHS_ALIAS_1;
                     else
                     {
@@ -237,12 +236,12 @@ namespace Lemon
                 case FiniteState.RHS_ALIAS_1:
                     if (char.IsLetter(v[0]))
                     {
-                        pctx.RHSymbolAlias[pctx._RHSymbols - 1] = v;
+                        pctx.QueuedRHSymbolAlias[pctx.QueuedRHSymbols - 1] = v;
                         pctx.FiniteState = FiniteState.RHS_ALIAS_2;
                     }
                     else
                     {
-                        Context.ErrorMsg(ref pctx.Errors, pctx.Filename, pctx.TokenLineno, "\"{0}\" is not a valid alias for the RHS symbol \"{1}\"\n", v, pctx.RHSymbol[pctx._RHSymbols - 1].Name);
+                        Context.ErrorMsg(ref pctx.Errors, pctx.Filename, pctx.TokenLineno, "\"{0}\" is not a valid alias for the RHS symbol \"{1}\"\n", v, pctx.QueuedRHSymbol[pctx.QueuedRHSymbols - 1].Name);
                         pctx.FiniteState = FiniteState.RESYNC_AFTER_RULE_ERROR;
                     }
                     break;

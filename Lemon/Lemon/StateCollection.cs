@@ -7,39 +7,37 @@ namespace Lemon
     {
         public State GetState(Context ctx)
         {
-            /* Extract the sorted basis of the new state.  The basis was constructed by prior calls to "Configlist_addbasis()". */
-            var bp = Config.Configs.GetBasisItem();
-            /* Get a state with the same basis */
-            var stp = base[bp];
-            if (stp != null)
+            var basis = Config.Configs.GetBasis();
+            State state;
+            if (base.TryGetValue(basis, out state))
             {
-                /* A state with the same basis already exists!  Copy all the follow-set propagation links from the state under construction into the preexisting state, then return a pointer to the preexisting state */
-                for (Config x = bp, y = stp.bp; (x != null) && (y != null); x = x.Prev, y = y.Prev)
+                /* Copy all the follow-set propagation links from the state under construction into the preexisting state, then return a pointer to the preexisting state */
+                for (Config x = basis, y = state.Basis; x != null && y != null; x = x.Prev, y = y.Prev)
                 {
-                    foreach (var item in x.bplp)
-                        y.bplp.AddFirst(item);
-                    x.fplp.Clear();
-                    x.fplp = x.bplp = null;
+                    foreach (var item in x.Basis)
+                        y.Basis.AddFirst(item);
+                    x.Forwards.Clear();
+                    x.Forwards = x.Basis = null;
                 }
-                var cfp = Config.Configs.GetItem();
-                Config.Configs.Eat(cfp);
+                var config = Config.Configs.GetItem();
+                Config.Configs.Eat(config);
             }
             else
             {
                 /* This really is a new state.  Construct all the details */
-                Config.Configs.Closure(ctx);   
-                var cfp = Config.Configs.GetItem();
-                stp = new State
+                Config.Configs.Closure(ctx);
+                var config = Config.Configs.GetItem();
+                state = new State
                 {
-                    bp = bp,
-                    cfp = cfp,
-                    statenum = ctx.States++,
+                    Basis = basis,
+                    Config = config,
+                    ID = ctx.States++,
                 };
-                State.States.Add(stp.bp, stp);
+                State.States.Add(state.Basis, state);
                 /* Recursively compute successor states */
-                ctx.BuildShifts(stp);
+                ctx.BuildShifts(state);
             }
-            return stp;
+            return state;
         }
     }
 }
