@@ -1,15 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Lemon
 {
     public class ConfigCollection : Dictionary<Config, Config>
     {
         private List<Config> _items = new List<Config>();
-        private List<Config> _basis = new List<Config>();
+        private List<Config> _basises = new List<Config>();
+        private static readonly Config.KeyComparer _keyComparer = new Config.KeyComparer();
 
         public ConfigCollection()
-            : base(new Config.KeyComparer()) { }
+            : base(new Config.KeyEqualityComparer()) { }
 
         public Config AddItem(Rule rule, int dot)
         {
@@ -18,8 +20,11 @@ namespace Lemon
             if (!TryGetValue(key, out config))
             {
                 config = key;
+                config.FwSet = new HashSet<int>();
+                config.Forwards = new List<Config>();
+                config.Basises = new List<Config>();
                 _items.Add(config);
-                Add(config, config);
+                Add(key, config);
             }
             return config;
         }
@@ -31,38 +36,45 @@ namespace Lemon
             if (!TryGetValue(key, out config))
             {
                 config = key;
+                config.FwSet = new HashSet<int>();
+                config.Forwards = new List<Config>();
+                config.Basises = new List<Config>();
                 _items.Add(config);
-                _basis.Add(config);
-                Add(config, config);
+                _basises.Add(config);
+                Add(key, config);
             }
             return config;
         }
 
-        public Config GetItem()
+        public List<Config> SliceAllItems(bool sortFirst)
         {
-            _items.Sort();
+            if (sortFirst)
+                _items.Sort(_keyComparer);
+            var lastItems = (_items.Count > 0 ? _items : null);
             _items = new List<Config>();
-            return (_items.Count > 0 ? _items[0] : null);
+            return lastItems;
         }
 
-        public Config GetBasis()
+        public List<Config> SliceAllBasises()
         {
-            _basis.Sort();
-            _basis = new List<Config>();
-            return (_basis.Count > 0 ? _basis[0] : null);
+            _basises.Sort(_keyComparer);
+            var lastBasises = (_basises.Count > 0 ? _basises : null);
+            _basises = new List<Config>();
+            return lastBasises;
         }
 
         public void ListsReset()
         {
-            _items = new List<Config>();
-            _basis = new List<Config>();
+            _items.Clear();
+            _basises.Clear();
             Clear();
         }
 
         public void Closure(Context ctx)
         {
-            foreach (var item in _items)
+            for (var itemIndex = 0; itemIndex < _items.Count; itemIndex++)
             {
+                var item = _items[itemIndex];
                 var rule = item.Rule;
                 var dot = item.Dot;
                 if (dot >= rule.RHSymbols.Length)
@@ -95,20 +107,27 @@ namespace Lemon
                             }
                             else
                             {
-                                newConfig.FwSet.Union(symbol2.FirstSet);
+                                newConfig.FwSet.AddRange(symbol2.FirstSet);
                                 if (!symbol2.Lambda)
                                     break;
                             }
                         }
                         if (i == rule.RHSymbols.Length)
-                            item.Forwards.AddFirst(newConfig);
+                            item.Forwards.Add(newConfig);
                     }
                 }
             }
         }
 
-        internal void Eat(Config cfp)
+        internal void Eat(List<Config> configs)
         {
+            foreach (var config in configs)
+            {
+                Debug.Assert(config.Forwards.Count == 0);
+                Debug.Assert(config.Basises.Count == 0);
+                if (config.FwSet != null)
+                    config.FwSet.Clear();
+            }
         }
     }
 }

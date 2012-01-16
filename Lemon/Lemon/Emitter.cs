@@ -6,8 +6,10 @@ using System.Text;
 
 namespace Lemon
 {
-    public class Emitter
+    public partial class Emitter
     {
+        public static readonly AX.KeyComparer _keyComparer = new AX.KeyComparer();
+
         /* The following routine emits code for the destructor for the symbol sp */
         private static void emit_destructor_code(StreamWriter w, Symbol symbol, Context ctx, ref int lineno)
         {
@@ -145,9 +147,9 @@ namespace Lemon
             /* Build a hash table of datatypes. The ".dtnum" field of each symbol is filled in with the hash index plus 1.  A ".dtnum" value of 0 is
             ** used for terminal symbols.  If there is no %default_type defined then 0 is also used as the .dtnum value for nonterminals which do not specify
             ** a datatype using the %type directive. */
-            var typeIndex = 0;
+            var dataTypeID = 1;
             var types = new Dictionary<string, int>();
-            for (var i = 0; i < ctx.Symbols.Length; i++)
+            for (var i = 0; i < ctx.Symbols.Length - 1; i++)
             {
                 var symbol = ctx.Symbols[i];
                 if (symbol == ctx.ErrorSymbol)
@@ -163,22 +165,19 @@ namespace Lemon
                 var z = (symbol.DataType ?? ctx.DefaultDataType);
                 var cp = 0;
                 while (char.IsWhiteSpace(z[cp])) cp++;
-                var stddt = z.Substring(cp).TrimEnd();
-                if (ctx.TokenType != null && stddt == ctx.TokenType)
+                var dataType = z.Substring(cp).TrimEnd();
+                if (ctx.TokenType != null && string.Equals(dataType, ctx.TokenType))
                 {
                     symbol.DataTypeID = 0;
                     continue;
                 }
                 int value;
-                if (types.TryGetValue(stddt, out value))
-                {
+                if (types.TryGetValue(dataType, out value))
                     symbol.DataTypeID = value;
-                    break;
-                }
                 else
                 {
-                    types.Add(stddt, typeIndex++);
-                    symbol.DataTypeID = typeIndex;
+                    types.Add(dataType, dataTypeID++);
+                    symbol.DataTypeID = dataTypeID;
                 }
             }
 
@@ -218,44 +217,49 @@ namespace Lemon
         }
 
         /* Each state contains a set of token transaction and a set of nonterminal transactions.  Each of these sets makes an instance of the following structure.  An array of these structures is used to order the creation of entries in the yy_action[] table. */
-        public struct axset : IComparer<axset>
+        public struct AX
         {
-            public static readonly IComparer<axset> DefaultComparable = new axset();
-            public State stp;   /* A pointer to a state */
-            public bool isTkn;           /* True to use tokens.  False for non-terminals */
-            public int nAction;         /* Number of actions */
+            public State State;   /* A pointer to a state */
+            public bool Token;           /* True to use tokens.  False for non-terminals */
+            public int Actions;         /* Number of actions */
             public int iOrder;          /* Original order of action sets */
 
-            public int Compare(axset x, axset y)
+            public class KeyComparer : IComparer<AX>
             {
-                var c = y.nAction - x.nAction;
-                if (c == 0)
-                    c = y.iOrder - x.iOrder;
-                Debug.Assert((c != 0) || x.Equals(y));
-                return c;
+                public int Compare(AX x, AX y)
+                {
+                    if (object.ReferenceEquals(x, y))
+                        return 0;
+                    var c = y.Actions - x.Actions;
+                    if (c == 0)
+                        c = y.iOrder - x.iOrder;
+                    Debug.Assert(c != 0 || x.Equals(y));
+                    return c;
+                }
             }
         }
 
         /* Write text on "w" that describes the rule "rule". */
-        private static void writeRuleText(StreamWriter w, Rule rule)
+        private static void WriteRuleText(StreamWriter w, Rule rule)
         {
             w.Write("{0} ::=", rule.LHSymbol.Name);
             for (var j = 0; j < rule.RHSymbols.Length; j++)
             {
-                var sp = rule.RHSymbols[j];
-                w.Write(" {0}", sp.Name);
-                if (sp.Type == SymbolType.MultiTerminal)
-                    for (var k = 1; k < sp.Children.Length; k++)
-                        w.Write("|{0}", sp.Children[k].Name);
+                var symbol = rule.RHSymbols[j];
+                w.Write(" {0}", symbol.Name);
+                if (symbol.Type == SymbolType.MultiTerminal)
+                    for (var k = 1; k < symbol.Children.Length; k++)
+                        w.Write("|{0}", symbol.Children[k].Name);
             }
         }
 
         /* Generate C source code for the parser */
-        private static void ReportTable(Context ctx, bool makeHeaders) /* Output in makeheaders format if true */
+        public static void ReportTable(Context ctx, bool makeHeaders) /* Output in makeheaders format if true */
         {
-            var filePath = Path.GetFileNameWithoutExtension(ctx.Outname) + ".c";
+            var filePath = Path.GetFullPath(ctx.Outname ?? ctx.Filename);
+            var filePathC = Path.Combine(Path.GetDirectoryName(filePath), Path.GetFileNameWithoutExtension(filePath) + ".c");
             using (var r = Template.tplt_open(ctx))
-            using (var w = new StreamWriter(filePath))
+            using (var w = new StreamWriter(filePathC))
             {
                 if (r == null)
                     return;
@@ -263,13 +267,13 @@ namespace Lemon
                     return;
                 var lineno = 1;
                 Template.tplt_xfer(ctx.Name, r, w, ref lineno);
-
+                
                 /* Generate the include code, if any */
                 Template.tplt_print(w, ctx, ctx.Include, ref lineno);
                 if (makeHeaders)
                 {
-                    var path = Path.GetFileNameWithoutExtension(ctx.Outname) + ".h";
-                    w.WriteLine(ref lineno, "#include \"{0}\"", path);
+                    var filePathH = Path.Combine(Path.GetDirectoryName(filePath), Path.GetFileNameWithoutExtension(filePath) + ".h");
+                    w.WriteLine(ref lineno, "#include \"{0}\"", filePathH);
                 }
                 Template.tplt_xfer(ctx.Name, r, w, ref lineno);
 
@@ -285,8 +289,8 @@ namespace Lemon
                 Template.tplt_xfer(ctx.Name, r, w, ref lineno);
 
                 /* Generate the defines */
-                w.WriteLine(ref lineno, "#define YYCODETYPE {0}", minimum_size_type(0, ctx.Symbols.Length + 1));
-                w.WriteLine(ref lineno, "#define YYNOCODE {0}", ctx.Symbols.Length + 1);
+                w.WriteLine(ref lineno, "#define YYCODETYPE {0}", minimum_size_type(0, ctx.Symbols.Length));
+                w.WriteLine(ref lineno, "#define YYNOCODE {0}", ctx.Symbols.Length);
                 w.WriteLine(ref lineno, "#define YYACTIONTYPE {0}", minimum_size_type(0, ctx.States + ctx.Rules + 5));
                 if (ctx.Wildcard != null)
                     w.WriteLine(ref lineno, "#define YYWILDCARD {0}", ctx.Wildcard.ID);
@@ -303,8 +307,8 @@ namespace Lemon
                 if (!string.IsNullOrEmpty(ctx.ExtraArg))
                 {
                     var i = ctx.ExtraArg.Length;
-                    while ((i >= 1) && char.IsWhiteSpace(ctx.ExtraArg[i - 1])) i--;
-                    while ((i >= 1) && (char.IsLetterOrDigit(ctx.ExtraArg[i - 1]) || (ctx.ExtraArg[i - 1] == '_'))) i--;
+                    while (i >= 1 && char.IsWhiteSpace(ctx.ExtraArg[i - 1])) i--;
+                    while (i >= 1 && (char.IsLetterOrDigit(ctx.ExtraArg[i - 1]) || ctx.ExtraArg[i - 1] == '_')) i--;
                     w.WriteLine(ref lineno, "#define {0}ARG_SDECL {1};", name, ctx.ExtraArg);
                     w.WriteLine(ref lineno, "#define {0}ARG_PDECL ,{1}", name, ctx.ExtraArg);
                     w.WriteLine(ref lineno, "#define {0}ARG_FETCH {1} = yypParser.{2}", name, ctx.ExtraArg, ctx.ExtraArg.Substring(i));
@@ -343,90 +347,77 @@ namespace Lemon
                 */
 
                 /* Compute the actions on all states and count them up */
-                //ax = (struct axset *) calloc(lemp.nstate*2, sizeof(ax[0]));
-                var ax = new axset[ctx.States * 2];
-                if (ax == null)
-                    throw new OutOfMemoryException();
+                var ax = new AX[ctx.States * 2];
                 for (var i = 0; i < ctx.States; i++)
                 {
-                    var stp = ctx.Sorted[i];
-                    ax[i * 2] = new axset
+                    var state = ctx.Sorted[i];
+                    ax[i * 2] = new AX
                     {
-                        stp = stp,
-                        isTkn = true,
-                        nAction = stp.nTknAct,
+                        State = state,
+                        Token = true,
+                        Actions = state.TokenActions,
                     };
-                    ax[i * 2 + 1] = new axset
+                    ax[i * 2 + 1] = new AX
                     {
-                        stp = stp,
-                        isTkn = false,
-                        nAction = stp.nTknAct,
+                        State = state,
+                        Token = false,
+                        Actions = state.TokenActions,
                     };
                 }
-                var mxTknOfst = 0;
-                var mnTknOfst = 0;
-                var mxNtOfst = 0;
-                var mnNtOfst = 0;
-
+                var maxTokenOffset = 0;
+                var minTokenOffset = 0;
+                var maxNonTerminalOffset = 0;
+                var minNonTerminalOffset = 0;
                 /* Compute the action table.  In order to try to keep the size of the action table to a minimum, the heuristic of placing the largest action sets first is used. */
                 for (var i = 0; i < ctx.States * 2; i++)
                     ax[i].iOrder = i;
-                Array.Sort(ax, axset.DefaultComparable);
-                var pActtab = new ActionTable();
-                for (var i = 0; i < ctx.States * 2 && ax[i].nAction > 0; i++)
+                Array.Sort(ax, _keyComparer);
+                var actionTable = new ActionTable();
+                for (var i = 0; i < ctx.States * 2 && ax[i].Actions > 0; i++)
                 {
-                    var stp = ax[i].stp;
-                    if (ax[i].isTkn)
+                    var state = ax[i].State;
+                    if (ax[i].Token)
                     {
-                        for (var ap = stp.Action; ap != null; ap = ap.Next)
+                        foreach (var action in state.Actions)
                         {
-                            if (ap.Symbol.ID >= ctx.Terminals)
-                                continue;
-                            var action = ap.Compute(ctx);
-                            if (action < 0)
-                                continue;
-                            pActtab.Action(ap.Symbol.ID, action);
+                            if (action.Symbol.ID >= ctx.Terminals) continue;
+                            var actionID = action.ComputeID(ctx);
+                            if (actionID < 0) continue;
+                            actionTable.Action(action.Symbol.ID, actionID);
                         }
-                        stp.iTknOfst = pActtab.Insert();
-                        if (stp.iTknOfst < mnTknOfst)
-                            mnTknOfst = stp.iTknOfst;
-                        if (stp.iTknOfst > mxTknOfst)
-                            mxTknOfst = stp.iTknOfst;
+                        state.TokenOffset = actionTable.Insert();
+                        if (state.TokenOffset < minTokenOffset) minTokenOffset = state.TokenOffset;
+                        if (state.TokenOffset > maxTokenOffset) maxTokenOffset = state.TokenOffset;
                     }
                     else
                     {
-                        for (var ap = stp.Action; ap != null; ap = ap.Next)
+                        foreach (var action in state.Actions)
                         {
-                            if (ap.Symbol.ID < ctx.Terminals)
-                                continue;
-                            if (ap.Symbol.ID == ctx.Symbols.Length)
-                                continue;
-                            var action = ap.Compute(ctx);
-                            if (action < 0) continue;
-                            pActtab.Action(ap.Symbol.ID, action);
+                            if (action.Symbol.ID < ctx.Terminals) continue;
+                            if (action.Symbol.ID == ctx.Symbols.Length - 1) continue;
+                            var actionID = action.ComputeID(ctx);
+                            if (actionID < 0) continue;
+                            actionTable.Action(action.Symbol.ID, actionID);
                         }
-                        stp.iNtOfst = pActtab.Insert();
-                        if (stp.iNtOfst < mnNtOfst)
-                            mnNtOfst = stp.iNtOfst;
-                        if (stp.iNtOfst > mxNtOfst)
-                            mxNtOfst = stp.iNtOfst;
+                        state.NonTerminalOffset = actionTable.Insert();
+                        if (state.NonTerminalOffset < minNonTerminalOffset) minNonTerminalOffset = state.NonTerminalOffset;
+                        if (state.NonTerminalOffset > maxNonTerminalOffset) maxNonTerminalOffset = state.NonTerminalOffset;
                     }
                 }
                 ax = null;
-
                 /* Output the yy_action table */
-                var n = pActtab.Size;
+                var n = actionTable.Size;
                 w.WriteLine(ref lineno, "#define YY_ACTTAB_COUNT ({0})", n);
                 w.WriteLine(ref lineno, "static const YYACTIONTYPE yy_action[] = {");
                 for (int i = 0, j = 0; i < n; i++)
                 {
-                    var action = pActtab.GetAction(i);
+                    var action = actionTable.GetAction(i);
                     if (action < 0)
                         action = ctx.States + ctx.Rules + 2;
                     if (j == 0)
                         w.Write(" /* {0,5} */ ", i);
                     w.Write(" {0,4},", action);
-                    if ((j == 9) || (i == n - 1))
+                    if (j == 9 || i == n - 1)
                     {
                         w.WriteLine(ref lineno);
                         j = 0;
@@ -440,13 +431,13 @@ namespace Lemon
                 w.WriteLine(ref lineno, "static const YYCODETYPE yy_lookahead[] = {");
                 for (int i = 0, j = 0; i < n; i++)
                 {
-                    var lookahead = pActtab.GetLookahead(i);
+                    var lookahead = actionTable.GetLookahead(i);
                     if (lookahead < 0)
-                        lookahead = ctx.Symbols.Length;
+                        lookahead = ctx.Symbols.Length - 1;
                     if (j == 0)
                         w.Write(" /* {0,5} */ ", i);
                     w.Write(" {0,4},", lookahead);
-                    if ((j == 9) || (i == n - 1))
+                    if (j == 9 || i == n - 1)
                     {
                         w.WriteLine(ref lineno);
                         j = 0;
@@ -457,20 +448,20 @@ namespace Lemon
                 w.WriteLine(ref lineno, "};");
 
                 /* Output the yy_shift_ofst[] table */
-                w.WriteLine(ref lineno, "#define YY_SHIFT_USE_DFLT ({0})", mnTknOfst - 1);
+                w.WriteLine(ref lineno, "#define YY_SHIFT_USE_DFLT ({0})", minTokenOffset - 1);
                 n = ctx.States;
-                while (n > 0 && ctx.Sorted[n - 1].iTknOfst == State.NO_OFFSET) n--;
+                while (n > 0 && ctx.Sorted[n - 1].TokenOffset == State.NO_OFFSET) n--;
                 w.WriteLine(ref lineno, "#define YY_SHIFT_COUNT ({0})", n - 1);
-                w.WriteLine(ref lineno, "#define YY_SHIFT_MIN   ({0})", mnTknOfst);
-                w.WriteLine(ref lineno, "#define YY_SHIFT_MAX   ({0})", mxTknOfst);
-                w.WriteLine(ref lineno, "static const {0} yy_shift_ofst[] = {", minimum_size_type(mnTknOfst - 1, mxTknOfst));
+                w.WriteLine(ref lineno, "#define YY_SHIFT_MIN   ({0})", minTokenOffset);
+                w.WriteLine(ref lineno, "#define YY_SHIFT_MAX   ({0})", maxTokenOffset);
+                w.WriteLine(ref lineno, "static const {0} yy_shift_ofst[] = {", minimum_size_type(minTokenOffset - 1, maxTokenOffset));
                 for (int i = 0, j = 0; i < n; i++)
                 {
-                    var stp = ctx.Sorted[i];
-                    var ofst = stp.iTknOfst;
-                    if (ofst == State.NO_OFFSET) ofst = mnTknOfst - 1;
+                    var state = ctx.Sorted[i];
+                    var offset = state.TokenOffset;
+                    if (offset == State.NO_OFFSET) offset = minTokenOffset - 1;
                     if (j == 0) w.Write(" /* {0,5} */ ", i);
-                    w.Write(" {0,4},", ofst);
+                    w.Write(" {0,4},", offset);
                     if (j == 9 || i == n - 1)
                     {
                         w.WriteLine(ref lineno);
@@ -482,20 +473,20 @@ namespace Lemon
                 w.WriteLine(ref lineno, "};");
 
                 /* Output the yy_reduce_ofst[] table */
-                w.WriteLine(ref lineno, "#define YY_REDUCE_USE_DFLT ({0})", mnNtOfst - 1);
+                w.WriteLine(ref lineno, "#define YY_REDUCE_USE_DFLT ({0})", minNonTerminalOffset - 1);
                 n = ctx.States;
-                while (n > 0 && ctx.Sorted[n - 1].iNtOfst == State.NO_OFFSET) n--;
+                while (n > 0 && ctx.Sorted[n - 1].NonTerminalOffset == State.NO_OFFSET) n--;
                 w.WriteLine(ref lineno, "#define YY_REDUCE_COUNT ({0})", n - 1);
-                w.WriteLine(ref lineno, "#define YY_REDUCE_MIN   ({0})", mnNtOfst);
-                w.WriteLine(ref lineno, "#define YY_REDUCE_MAX   ({0})", mxNtOfst);
-                w.WriteLine(ref lineno, "static const {0} yy_reduce_ofst[] = {", minimum_size_type(mnNtOfst - 1, mxNtOfst));
+                w.WriteLine(ref lineno, "#define YY_REDUCE_MIN   ({0})", minNonTerminalOffset);
+                w.WriteLine(ref lineno, "#define YY_REDUCE_MAX   ({0})", maxNonTerminalOffset);
+                w.WriteLine(ref lineno, "static const {0} yy_reduce_ofst[] = {", minimum_size_type(minNonTerminalOffset - 1, maxNonTerminalOffset));
                 for (int i = 0, j = 0; i < n; i++)
                 {
-                    var stp = ctx.Sorted[i];
-                    var ofst = stp.iNtOfst;
-                    if (ofst == State.NO_OFFSET) ofst = mnNtOfst - 1;
+                    var state = ctx.Sorted[i];
+                    var offset = state.NonTerminalOffset;
+                    if (offset == State.NO_OFFSET) offset = minNonTerminalOffset - 1;
                     if (j == 0) w.Write(" /* {0,5} */ ", i);
-                    w.Write(" {0,4},", ofst);
+                    w.Write(" {0,4},", offset);
                     if (j == 9 || i == n - 1)
                     {
                         w.WriteLine(ref lineno);
@@ -513,7 +504,7 @@ namespace Lemon
                 {
                     var stp = ctx.Sorted[i];
                     if (j == 0) w.Write(" /* {0,5} */ ", i);
-                    w.Write(" {0,4},", stp.iDflt);
+                    w.Write(" {0,4},", stp.Default);
                     if (j == 9 || i == n - 1)
                     {
                         w.WriteLine(ref lineno);
@@ -543,7 +534,7 @@ namespace Lemon
 
                 /* Generate a table containing the symbolic name of every symbol */
                 var i_ = 0;
-                for (i_ = 0; i_ < ctx.Symbols.Length; i_++)
+                for (i_ = 0; i_ < ctx.Symbols.Length - 1; i_++)
                 {
                     w.Write("  {0,-15}", string.Format("\"{0}\",", ctx.Symbols[i_].Name));
                     if ((i_ & 3) == 3) { w.WriteLine(ref lineno); }
@@ -557,7 +548,7 @@ namespace Lemon
                 {
                     Debug.Assert(rule.ID == i_);
                     w.Write(" /* {0,3} */ \"", i_);
-                    writeRuleText(w, rule);
+                    WriteRuleText(w, rule);
                     w.WriteLine(ref lineno, "\",");
                 }
                 Template.tplt_xfer(ctx.Name, r, w, ref lineno);
@@ -566,7 +557,7 @@ namespace Lemon
                 if (ctx.TokenDestructor != null)
                 {
                     var once = true;
-                    for (var i = 0; i < ctx.Symbols.Length; i++)
+                    for (var i = 0; i < ctx.Symbols.Length - 1; i++)
                     {
                         var symbol = ctx.Symbols[i];
                         if (symbol == null || symbol.Type != SymbolType.Terminal) continue;
@@ -578,8 +569,8 @@ namespace Lemon
                         w.WriteLine(ref lineno, "    case {0}: /* {1} */", symbol.ID, symbol.Name);
                     }
                     var i2 = 0;
-                    for (; i2 < (ctx.Symbols.Length) && (ctx.Symbols[i2].Type != SymbolType.Terminal); i2++) ;
-                    if (i2 < ctx.Symbols.Length)
+                    for (; i2 < (ctx.Symbols.Length - 1) && (ctx.Symbols[i2].Type != SymbolType.Terminal); i2++) ;
+                    if (i2 < ctx.Symbols.Length - 1)
                     {
                         emit_destructor_code(w, ctx.Symbols[i2], ctx, ref lineno);
                         w.WriteLine(ref lineno, "      break;");
@@ -589,7 +580,7 @@ namespace Lemon
                 {
                     var dflt_sp = (Symbol)null;
                     var once = true;
-                    for (var i = 0; i < ctx.Symbols.Length; i++)
+                    for (var i = 0; i < ctx.Symbols.Length - 1; i++)
                     {
                         var sp = ctx.Symbols[i];
                         if (sp == null || sp.Type == SymbolType.Terminal || sp.ID <= 0 || sp.Destructor != null) continue;
@@ -605,13 +596,13 @@ namespace Lemon
                         emit_destructor_code(w, dflt_sp, ctx, ref lineno);
                     w.WriteLine(ref lineno, "      break;");
                 }
-                for (var i = 0; i < ctx.Symbols.Length; i++)
+                for (var i = 0; i < ctx.Symbols.Length - 1; i++)
                 {
                     var symbol = ctx.Symbols[i];
                     if (symbol == null || symbol.Type == SymbolType.Terminal || symbol.Destructor == null) continue;
                     w.WriteLine(ref lineno, "    case {0}: /* {1} */", symbol.ID, symbol.Name);
                     /* Combine duplicate destructors into a single case */
-                    for (var j = i + 1; j < ctx.Symbols.Length; j++)
+                    for (var j = i + 1; j < ctx.Symbols.Length - 1; j++)
                     {
                         var sp2 = ctx.Symbols[j];
                         if (sp2 != null && sp2.Type != SymbolType.Terminal && sp2.Destructor != null && sp2.DataTypeID == symbol.DataTypeID && symbol.Destructor == sp2.Destructor)
@@ -645,13 +636,13 @@ namespace Lemon
                     //TODO:Sky this will break
                     if (rp.Code[0] == '\n' && rp.Code[1] == 0) continue; /* Will be default: */
                     w.Write("      case {0}: /* ", rp.ID);
-                    writeRuleText(w, rp);
+                    WriteRuleText(w, rp);
                     w.WriteLine(ref lineno, " */");
                     for (var rp2 = rp.Next; rp2 != null; rp2 = rp2.Next)
                         if (rp2.Code == rp.Code)
                         {
                             w.Write("      case {0}: /* ", rp2.ID);
-                            writeRuleText(w, rp2);
+                            WriteRuleText(w, rp2);
                             w.WriteLine(ref lineno, " */ yytestcase(yyruleno=={0});", rp2.ID);
                             rp2.Code = null;
                         }
@@ -667,7 +658,7 @@ namespace Lemon
                     //TODO:Sky this will break
                     Debug.Assert(rp.Code[0] == '\n' && rp.Code[1] == 0);
                     w.Write("      /* ({0}) ", rp.ID);
-                    writeRuleText(w, rp);
+                    WriteRuleText(w, rp);
                     w.WriteLine(ref lineno, " */ yytestcase(yyruleno=={0});", rp.ID);
                 }
                 w.WriteLine(ref lineno, "        break;");
@@ -691,16 +682,16 @@ namespace Lemon
         }
 
         /* Generate a header file for the parser */
-        private static void ReportHeader(Context ctx)
+        public static void ReportHeader(Context ctx)
         {
             var prefix = (ctx.TokenPrefix ?? string.Empty);
-            var filePath = Path.GetFileNameWithoutExtension(ctx.Outname) + ".h";
+            var filePath = Path.GetFileNameWithoutExtension(ctx.Outname ?? ctx.Filename) + ".h";
             if (File.Exists(filePath))
                 using (var fp = new StreamReader(filePath))
                 {
                     string line = null;
                     var i = 1;
-                    for (; (i < ctx.Terminals) && ((line = fp.ReadLine()) != null); i++)
+                    for (; i < ctx.Terminals && (line = fp.ReadLine()) != null; i++)
                         if (line == string.Format("#define {0}{1,-30} {2,2}\n", prefix, ctx.Symbols[i].Name, i))
                             break;
                     /* No change in the file.  Don't rewrite it. */

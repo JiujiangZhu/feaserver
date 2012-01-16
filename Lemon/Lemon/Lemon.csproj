@@ -38,14 +38,14 @@
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ActionTable.cs">
+    <Compile Include="Emitter+ActionTable.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Config.cs" />
     <Compile Include="Action.cs" />
     <Compile Include="ActionType.cs" />
     <Compile Include="ConfigCollection.cs" />
-    <Compile Include="Template.cs" />
+    <Compile Include="Emitter+Template.cs" />
     <Compile Include="Reporter.cs" />
     <Compile Include="Emitter.cs" />
     <Compile Include="Parser.cs" />

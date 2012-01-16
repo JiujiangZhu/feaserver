@@ -6,11 +6,11 @@ namespace Lemon
 {
     public static class Extensions
     {
-        public static bool Union<T>(this HashSet<T> source, HashSet<T> set)
+        public static bool AddRange<T>(this HashSet<T> source, HashSet<T> set)
         {
             var change = false;
-            foreach (var item in source)
-                change |= set.Add(item);
+            foreach (var item in set)
+                change |= source.Add(item);
             return change;
         }
 

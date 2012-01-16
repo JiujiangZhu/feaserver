@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Diagnostics;
 
@@ -6,15 +7,19 @@ namespace Lemon
 {
     public class Context
     {
+        public static readonly SymbolCollection AllSymbols = new SymbolCollection();
+        public static readonly ConfigCollection AllConfigs = new ConfigCollection();
+        public static readonly StateCollection AllStates = new StateCollection();
+        private static readonly Action.KeyComparer _actionComparer = new Action.KeyComparer();
+        private static readonly State.KeyComparer _stateComparer = new State.KeyComparer();
         public State[] Sorted;
         public Rule Rule;
         public int States;
         public int Rules;
-        //public int _Symbols;
         public int Terminals;
         public Symbol[] Symbols;
         public int Errors;
-        public Symbol ErrorSymbol = Symbol.New("error", false);
+        public Symbol ErrorSymbol;
         public Symbol Wildcard;
         public string Name;
         public string ExtraArg;
@@ -39,6 +44,12 @@ namespace Lemon
         public bool HasFallback;
         public bool NoShowLinenos;
         public string argv0;
+
+        public Context()
+        {
+            Symbol.New("$", false);
+            ErrorSymbol = Symbol.New("error", false);
+        }
 
         public static void ErrorMsg(ref int errors, string filename, int lineno, string format, params object[] args)
         {
@@ -70,9 +81,9 @@ namespace Lemon
 
         public void BuildFirstSets()
         {
-            for (var i = 0; i < Symbols.Length; i++)
+            for (var i = 0; i < Symbols.Length - 1; i++)
                 Symbols[i].Lambda = false;
-            for (var i = Terminals; i < Symbols.Length; i++)
+            for (var i = Terminals; i < Symbols.Length - 1; i++)
                 Symbols[i].FirstSet = new HashSet<int>();
             /* First compute all lambdas */
             bool progress = false;
@@ -125,7 +136,7 @@ namespace Lemon
                         }
                         else
                         {
-                            progress |= lhSymbol.FirstSet.Union(rhSymbol.FirstSet);
+                            progress |= lhSymbol.FirstSet.AddRange(rhSymbol.FirstSet);
                             if (!rhSymbol.Lambda)
                                 break;
                         }
@@ -139,9 +150,9 @@ namespace Lemon
             States = 0;
             /* Find the start symbol */
             Symbol symbol;
-            if (StartSymbol != null)
+            if (!string.IsNullOrEmpty(StartSymbol))
             {
-                symbol = Symbol.Symbols[StartSymbol];
+                symbol = Context.AllSymbols[StartSymbol];
                 if (symbol == null)
                 {
                     ErrorMsg(ref Errors, Filename, 0, "The specified start symbol \"{0}\" is not in a nonterminal of the grammar.  \"{1}\" will be used as the start symbol instead.", StartSymbol, Rule.LHSymbol.Name);
@@ -159,53 +170,51 @@ namespace Lemon
             /* The basis configuration set for the first state is all rules which have the start symbol as their left-hand side */
             for (var rule = symbol.Rule; rule != null; rule = rule.NextLHSymbol)
             {
-                rule.LhSymbolStart = 1;
-                var basisConfig = Config.Configs.AddBasis(rule, 0);
-                basisConfig.FwSet.Add(0);
+                rule.LHSymbolStart = 1;
+                var newConfig = Context.AllConfigs.AddBasis(rule, 0);
+                newConfig.FwSet.Add(0);
             }
             /* Compute the first state.  All other states will be computed automatically during the computation of the first one. The returned pointer to the first state is not used. */
-            State.States.GetState(this);
+            Context.AllStates.GetState(this);
+            Sorted = Context.AllStates.ToStateArray();
         }
 
         public void BuildLinks()
         {
-            /* Add to every propagate link a pointer back to the state to which the link is attached. */
             for (var i = 0; i < States; i++)
             {
                 var state = Sorted[i];
-                for (var config = state.Config; config != null; config = config.Next)
+                foreach (var config in state.Configs)
+                {
+                    /* Add to every propagate link a pointer back to the state to which the link is attached. */
                     config.State = state;
-            }
-            /* Convert all backlinks into forward links.  Only the forward links are used in the follow-set computation. */
-            for (var i = 0; i < States; i++)
-            {
-                var state = Sorted[i];
-                for (var config = state.Config; config != null; config = config.Next)
-                    foreach (var other in config.Basis)
-                        other.Forwards.AddFirst(config);
+                    /* Convert all backlinks into forward links.  Only the forward links are used in the follow-set computation. */
+                    foreach (var other in config.Basises)
+                        other.Forwards.Add(config);
+                }
             }
         }
 
         public void BuildFollowSets()
         {
             for (var i = 0; i < States; i++)
-                for (var config = Sorted[i].Config; config != null; config = config.Next)
+                foreach (var config in Sorted[i].Configs)
                     config.Complete = false;
             bool progress = false;
             do
             {
                 progress = false;
                 for (var i = 0; i < States; i++)
-                    for (var config = Sorted[i].Config; config != null; config = config.Next)
+                    foreach (var config in Sorted[i].Configs)
                     {
                         if (config.Complete)
                             continue;
-                        foreach (var other in config.Forwards)
+                        foreach (var config2 in config.Forwards)
                         {
-                            var change = other.FwSet.Union(config.FwSet);
+                            var change = config2.FwSet.AddRange(config.FwSet);
                             if (change)
                             {
-                                other.Complete = false;
+                                config2.Complete = false;
                                 progress = true;
                             }
                         }
@@ -219,102 +228,104 @@ namespace Lemon
             /* Add all of the reduce actions. A reduce action is added for each element of the followset of a configuration which has its dot at the extreme right. */
             for (var i = 0; i < States; i++)
             {
-                var stp = Sorted[i];
-                for (var cfp = stp.Config; cfp != null; cfp = cfp.Next)
-                    if (cfp.Rule.RHSymbols.Length == cfp.Dot)
+                var state = Sorted[i];
+                foreach (var config in state.Configs)
+                    if (config.Rule.RHSymbols.Length == config.Dot)
                         for (var j = 0; j < Terminals; j++)
-                            if (cfp.FwSet.Contains(j))
+                            if (config.FwSet.Contains(j))
                                 /* Add a reduce action to the state "stp" which will reduce by the rule "cfp->rp" if the lookahead symbol is "lemp->symbols[j]" */
-                                new Action(ref stp.Action)
+                                state.Actions.Add(new Action
                                 {
                                     Type = ActionType.Reduce,
                                     Symbol = Symbols[j],
-                                    Rule = cfp.Rule,
-                                };
+                                    Rule = config.Rule,
+                                });
             }
-
             /* Add the accepting token */
-            var sp = (StartSymbol != null ? (Symbol.Symbols[StartSymbol] ?? Rule.LHSymbol) : Rule.LHSymbol);
+            var symbol2 = ((!string.IsNullOrEmpty(StartSymbol) ? Context.AllSymbols[StartSymbol] : null) ?? Rule.LHSymbol);
             /* Add to the first state (which is always the starting state of the finite state machine) an action to ACCEPT if the lookahead is the start nonterminal.  */
-            new Action(ref Sorted[0].Action)
+            Sorted[0].Actions.Add(new Action
             {
                 Type = ActionType.Accept,
-                Symbol = sp,
-            };
-
+                Symbol = symbol2,
+            });
             /* Resolve conflicts */
             for (var i = 0; i < States; i++)
             {
                 var symbol = Sorted[i];
-                Debug.Assert(symbol.Action != null);
-                symbol.Action = Action.Sort(symbol.Action);
-                for (var ap = symbol.Action; ap != null && ap.Next != null; ap = ap.Next)
-                    for (var nap = ap.Next; nap != null && nap.Symbol == ap.Symbol; nap = nap.Next)
+                var symbolActions = symbol.Actions;
+                Debug.Assert(symbolActions.Count > 0);
+                symbolActions.Sort(_actionComparer);
+                Action action, action2;
+                for (var actionIndex = 0; actionIndex < symbolActions.Count && (action = symbolActions[actionIndex]) != null; actionIndex++)
+                    for (var actionIndex2 = actionIndex + 1; actionIndex2 < symbolActions.Count && (action2 = symbolActions[actionIndex2]) != null && action2.Symbol == action.Symbol; actionIndex2++)
                         /* The two actions "ap" and "nap" have the same lookahead. Figure out which one should be used */
-                        Conflicts += Action.ResolveConflict(ap, nap, ErrorSymbol);
+                        Conflicts += Action.ResolveConflict(action, action2, ErrorSymbol);
             }
-
             /* Report an error for each rule that can never be reduced. */
             for (var rule = Rule; rule != null; rule = rule.Next)
                 rule.CanReduce = false;
             for (var i = 0; i < States; i++)
-                for (var ap = Sorted[i].Action; ap != null; ap = ap.Next)
-                    if (ap.Type == ActionType.Reduce)
-                        ap.Rule.CanReduce = true;
-            for (var rp = Rule; rp != null; rp = rp.Next)
+                foreach (var action in Sorted[i].Actions)
+                    if (action.Type == ActionType.Reduce)
+                        action.Rule.CanReduce = true;
+            for (var rule = Rule; rule != null; rule = rule.Next)
             {
-                if (rp.CanReduce)
+                if (rule.CanReduce)
                     continue;
-                ErrorMsg(ref Errors, Filename, rp.RuleLineno, "This rule can not be reduced.\n");
+                ErrorMsg(ref Errors, Filename, rule.RuleLineno, "This rule can not be reduced.\n");
             }
         }
 
         public void BuildShifts(State state)
         {
             /* Each configuration becomes complete after it contibutes to a successor state.  Initially, all configurations are incomplete */
-            for (var config = state.Config; config != null; config = config.Next)
-                config.Complete = false;
+            foreach (var config2 in state.Configs)
+                config2.Complete = false;
             /* Loop through all configurations of the state "stp" */
-            for (var config = state.Config; config != null; config = config.Next)
+            var stateConfigs = state.Configs;
+            for (var configIndex = 0; configIndex < stateConfigs.Count; configIndex++)
             {
+                var config = stateConfigs[configIndex];
                 if (config.Complete)
                     continue;
                 if (config.Dot >= config.Rule.RHSymbols.Length)
                     continue;
-                Config.Configs.ListsReset();
+                Context.AllConfigs.ListsReset();
                 var symbol = config.Rule.RHSymbols[config.Dot];
                 /* For every configuration in the state "stp" which has the symbol "sp" following its dot, add the same configuration to the basis set under construction but with the dot shifted one symbol to the right. */
-                for (var basisConfig = config; basisConfig != null; basisConfig = basisConfig.Next)
+                for (var basisConfigIndex = configIndex; basisConfigIndex < stateConfigs.Count; basisConfigIndex++)
                 {
+                    var basisConfig = stateConfigs[basisConfigIndex];
                     if (basisConfig.Complete)
                         continue;
                     if (basisConfig.Dot >= basisConfig.Rule.RHSymbols.Length)
                         continue;
                     var scanSymbol = basisConfig.Rule.RHSymbols[basisConfig.Dot];
-                    if (!scanSymbol.Equals(symbol))
+                    if (scanSymbol != symbol)
                         continue;
                     basisConfig.Complete = true;
-                    var newConfig = Config.Configs.AddBasis(basisConfig.Rule, basisConfig.Dot + 1);
-                    newConfig.Basis.AddFirst(basisConfig);
+                    var newConfig = Context.AllConfigs.AddBasis(basisConfig.Rule, basisConfig.Dot + 1);
+                    newConfig.Basises.Add(basisConfig);
                 }
                 /* Get a pointer to the state described by the basis configuration set constructed in the preceding loop */
-                var newState = State.States.GetState(this);
+                var newState = Context.AllStates.GetState(this);
                 /* The state "newstp" is reached from the state "stp" by a shift action on the symbol "sp" */
                 if (symbol.Type == SymbolType.MultiTerminal)
                     for (var i = 0; i < symbol.Children.Length; i++)
-                        new Action(ref state.Action)
+                        state.Actions.Add(new Action
                         {
                             Type = ActionType.Shift,
                             Symbol = symbol.Children[i],
                             State = newState,
-                        };
+                        });
                 else
-                    new Action(ref state.Action)
+                    state.Actions.Add(new Action
                     {
                         Type = ActionType.Shift,
                         Symbol = symbol,
                         State = newState,
-                    };
+                    });
             }
         }
 
@@ -322,54 +333,49 @@ namespace Lemon
         {
             for (var i = 0; i < States; i++)
             {
-                var stp = Sorted[i];
-                var nbest = 0;
-                Rule rbest = null;
+                var state = Sorted[i];
+                var stateActions = state.Actions;
+                //
+                var bestN = 0;
+                Rule bestRule = null;
                 var usesWildcard = false;
-                for (var ap = stp.Action; ap != null; ap = ap.Next)
+                Action action;
+                for (var actionIndex = 0; actionIndex < stateActions.Count && (action = stateActions[actionIndex]) != null; actionIndex++)
                 {
-                    if ((ap.Type == ActionType.Shift) && (ap.Symbol == Wildcard))
-                        usesWildcard = true;
-                    if (ap.Type != ActionType.Reduce)
-                        continue;
-                    var rp = ap.Rule;
-                    if (rp.LhSymbolStart > 0)
-                        continue;
-                    if (rp == rbest)
-                        continue;
+                    if (action.Type == ActionType.Shift && action.Symbol == Wildcard) usesWildcard = true;
+                    if (action.Type != ActionType.Reduce) continue;
+                    var rule = action.Rule;
+                    if (rule.LHSymbolStart > 0) continue;
+                    if (rule == bestRule) continue;
                     var n = 1;
-                    for (var ap2 = ap.Next; ap2 != null; ap2 = ap2.Next)
+                    Action action2;
+                    for (var actionIndex2 = actionIndex + 1; actionIndex2 < stateActions.Count && (action2 = stateActions[actionIndex2]) != null; actionIndex2++)
                     {
-                        if (ap2.Type != ActionType.Reduce)
-                            continue;
-                        var rp2 = ap2.Rule;
-                        if (rp2 == rbest)
-                            continue;
-                        if (rp2 == rp)
-                            n++;
+                        if (action2.Type != ActionType.Reduce) continue;
+                        var rule2 = action2.Rule;
+                        if (rule2 == bestRule) continue;
+                        if (rule2 == rule) n++;
                     }
-                    if (n > nbest)
+                    if (n > bestN)
                     {
-                        nbest = n;
-                        rbest = rp;
+                        bestN = n;
+                        bestRule = rule;
                     }
                 }
-
                 /* Do not make a default if the number of rules to default is not at least 1 or if the wildcard token is a possible lookahead. */
-                if ((nbest < 1) || (usesWildcard))
-                    continue;
-
+                if (bestN < 1 || usesWildcard) continue;
                 /* Combine matching REDUCE actions into a single default */
-                var ap3 = stp.Action;
-                for (; ap3 != null; ap3 = ap3.Next)
-                    if ((ap3.Type == ActionType.Reduce) && (ap3.Rule == rbest))
+                Action action3 = null;
+                var actionIndex3 = 0;
+                for (; actionIndex3 < stateActions.Count && (action3 = stateActions[actionIndex3]) != null; actionIndex3++)
+                    if (action3.Type == ActionType.Reduce && action3.Rule == bestRule)
                         break;
-                Debug.Assert(ap3 != null);
-                ap3.Symbol = Symbol.New("{default}");
-                for (ap3 = ap3.Next; ap3 != null; ap3 = ap3.Next)
-                    if ((ap3.Type == ActionType.Reduce) && (ap3.Rule == rbest))
-                        ap3.Type = ActionType.NotUsed;
-                stp.Action = Action.Sort(stp.Action);
+                Debug.Assert(action3 != null);
+                action3.Symbol = Symbol.New("{default}");
+                for (actionIndex3++; actionIndex3 < stateActions.Count && (action3 = stateActions[actionIndex3]) != null; actionIndex3++)
+                    if (action3.Type == ActionType.Reduce && action3.Rule == bestRule)
+                        action3.Type = ActionType.NotUsed;
+                state.Actions.Sort(_actionComparer);
             }
         }
 
@@ -420,6 +426,32 @@ namespace Lemon
                 //if (rule.Code != null) Console.Write("\n    {0}", rule.Code);
                 Console.Write("\n");
             }
+        }
+
+        public void ResortStates()
+        {
+            for (var i = 0; i < States; i++)
+            {
+                var state = Sorted[i];
+                state.TokenActions = state.NonTerminalActions = 0;
+                state.Default = States + Rules;
+                state.TokenOffset = State.NO_OFFSET;
+                state.NonTerminalOffset = State.NO_OFFSET;
+                int computeID;
+                foreach (var action in state.Actions)
+                    if ((computeID = action.ComputeID(this)) >= 0)
+                    {
+                        if (action.Symbol.ID < Terminals)
+                            state.TokenActions++;
+                        else if (action.Symbol.ID < Symbols.Length - 1)
+                            state.NonTerminalActions++;
+                        else
+                            state.Default = computeID;
+                    }
+            }
+            Array.Sort(Sorted, 1, Sorted.Length - 1, _stateComparer);
+            for (var i = 0; i < States; i++)
+                Sorted[i].ID = i;
         }
     }
 }

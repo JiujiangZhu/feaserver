@@ -378,7 +378,7 @@ namespace Lemon
                     else
                     {
                         Symbol symbol;
-                        if (!Symbol.Symbols.TryGetValue(v, out symbol))
+                        if (!Context.AllSymbols.TryGetValue(v, out symbol))
                             symbol = null;
                         if (symbol != null && symbol.DataType != null)
                         {

@@ -6,7 +6,7 @@ namespace Lemon
     {
         public Symbol LHSymbol;
         public string LHSymbolAlias;
-        public int LhSymbolStart;
+        public int LHSymbolStart;
         public int RuleLineno;
         //public int nrhs;
         public Symbol[] RHSymbols;

@@ -7,48 +7,33 @@ namespace Lemon
     public class State
     {
         public const int NO_OFFSET = int.MaxValue;
-        public static StateCollection States = new StateCollection();
 
-        //: IComparer<State>
-
-        public Config Basis;
-        public Config Config;
         public int ID;
-        public Action Action;
-        public int nTknAct;
-        public int nNtAct;
-        public int iTknOfst;
-        public int iNtOfst;
-        public int iDflt;
+        public List<Config> Basises = new List<Config>();
+        public List<Config> Configs = new List<Config>();
+        public List<Action> Actions = new List<Action>();
+        internal int TokenActions;
+        internal int NonTerminalActions;
+        internal int TokenOffset;
+        internal int NonTerminalOffset;
+        internal int Default;
 
-        public int Compare(State x, State y)
+        public class KeyComparer : IComparer<State>
         {
-            var n = y.nNtAct - x.nNtAct;
-            if (n == 0)
+            public int Compare(State x, State y)
             {
-                n = y.nTknAct - x.nTknAct;
-                if (n == 0)
-                    n = y.ID - x.ID;
+                if (object.ReferenceEquals(x, y))
+                    return 0;
+                var v = y.NonTerminalActions - x.NonTerminalActions;
+                if (v == 0)
+                {
+                    v = y.TokenActions - x.TokenActions;
+                    if (v == 0)
+                        v = y.ID - x.ID;
+                }
+                Debug.Assert(v != 0);
+                return v;
             }
-            Debug.Assert(n != 0);
-            return n;
         }
     }
-
-    //    static int stateResortCompare(const void *a, const void *b){
-    //  const struct state *pA = *(const struct state**)a;
-    //  const struct state *pB = *(const struct state**)b;
-    //  int n;
-
-    //  n = pB->nNtAct - pA->nNtAct;
-    //  if( n==0 ){
-    //    n = pB->nTknAct - pA->nTknAct;
-    //    if( n==0 ){
-    //      n = pB->statenum - pA->statenum;
-    //    }
-    //  }
-    //  assert( n!=0 );
-    //  return n;
-    //}
-
 }
