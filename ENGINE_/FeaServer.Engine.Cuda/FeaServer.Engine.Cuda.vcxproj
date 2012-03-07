@@ -1,0 +1,231 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{866B96CE-324A-4B70-B899-0F42E2909BB9}</ProjectGuid>
+    <RootNamespace>TimeServicesEngineCuda</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <CharacterSet>MultiByte</CharacterSet>
+    <CLRSupport>true</CLRSupport>
+    <ConfigurationType>Application</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 4.0.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Configuration)\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Platform)\$(Configuration)\</IntDir>
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Engines\bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">bin\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <TargetEnvironment>X64</TargetEnvironment>
+    </Midl>
+    <ClCompile>
+      <AdditionalIncludeDirectories>%CUDA_PATH%\include\</AdditionalIncludeDirectories>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>%CUDA_PATH%\lib\x64\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>cuda.lib;cudart.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Midl>
+      <TargetEnvironment>X64</TargetEnvironment>
+    </Midl>
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <TargetMachine>MachineX64</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FeaServer.Engine\FeaServer.Engine.csproj">
+      <Project>{3122a91f-396a-4765-8431-654a7fc42796}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\CuContext.cpp" />
+    <ClCompile Include="src\CudaEngine.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Element.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\InElement.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\LoadStore\Shard.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\LoadStore\ShardCollection.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\OutElement.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\Element.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\ElementCollection.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\ElementList.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\ElementRef.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\Hibernate.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\HibernateCollection.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\Slice.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceFractionCache.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceFractionCollection.hpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceFraction.hpp" />
+    <ClInclude Include="src\CudaElementTypeCollection.cpp" />
+    <ClInclude Include="src\System\LinkedList.h" />
+    <ClInclude Include="src\System\TreeSet.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="src\MockElementKernel.cu">
+      <FileType>Document</FileType>
+      <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ptx</NvccCompilation>
+      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Engines\cu\%(Filename).ptx</CompileOut>
+      <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
+      <CInterleavedPTX Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</CInterleavedPTX>
+    </CudaCompile>
+    <None Include="src\System\cuFalloc.cu">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="src\System\cuFallocWTrace.cuh" />
+    <None Include="src\System\cuPrintf.cu">
+      <FileType>Document</FileType>
+    </None>
+    <CudaCompile Include="src\Program.cu">
+      <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
+    </CudaCompile>
+    <None Include="src\System\cuFallocWTrace.cu">
+      <FileType>Document</FileType>
+    </None>
+    <CudaCompile Include="src\TestFalloc.cu">
+      <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
+    </CudaCompile>
+    <CudaCompile Include="src\TestLoadStore.cu">
+      <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
+    </CudaCompile>
+    <CudaCompile Include="src\TestScheduler.cu">
+      <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
+    </CudaCompile>
+    <CudaCompile Include="src\TestTreeSet.cu">
+      <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
+    </CudaCompile>
+    <CudaCompile Include="src\Time\SchedulerKernel.cu">
+      <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_11,sm_11</CodeGeneration>
+      <CInterleavedPTX Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</CInterleavedPTX>
+      <CompileOut Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Engines\cu\%(Filename).obj</CompileOut>
+      <NvccCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compile</NvccCompilation>
+    </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Engines\cu\ControlKernel.ptx" />
+    <None Include="..\Engines\cu\MockElementKernel.ptx" />
+    <None Include="..\Engines\cu\SchedulerKernel.ptx" />
+    <None Include="src\Core.h" />
+    <None Include="src\System\cuFalloc.cuh" />
+    <None Include="src\System\cuPrintf.cuh" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 4.0.targets" />
+  </ImportGroup>
+</Project>

@@ -1,0 +1,131 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="src\CuContext.cpp" />
+    <ClCompile Include="src\CudaEngine.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\CudaElementTypeCollection.cpp" />
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\Element.hpp">
+      <Filter>Time\Scheduler+Cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\ElementCollection.hpp">
+      <Filter>Time\Scheduler+Cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\ElementList.hpp">
+      <Filter>Time\Scheduler+Cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\Hibernate.hpp">
+      <Filter>Time\Scheduler+Cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\HibernateCollection.hpp">
+      <Filter>Time\Scheduler+Cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\Slice.hpp">
+      <Filter>Time\Scheduler+Cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceCollection.hpp">
+      <Filter>Time\Scheduler+Cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceFractionCache.hpp">
+      <Filter>Time\Scheduler+Cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceFractionCollection.hpp">
+      <Filter>Time\Scheduler+Cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\ElementRef.hpp">
+      <Filter>Time\Scheduler+Cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Scheduler\SliceFraction.hpp">
+      <Filter>Time\Scheduler+Cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="src\System\LinkedList.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\System\TreeSet.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\LoadStore\Shard.hpp">
+      <Filter>Time\LoadStore+Cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\LoadStore\ShardCollection.hpp">
+      <Filter>Time\LoadStore+Cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\Element.hpp">
+      <Filter>Time</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\InElement.hpp">
+      <Filter>Time</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FeaServer.Engine.Cpu\src\Time\OutElement.hpp">
+      <Filter>Time</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="src\MockElementKernel.cu" />
+    <CudaCompile Include="src\Time\SchedulerKernel.cu">
+      <Filter>Time</Filter>
+    </CudaCompile>
+    <CudaCompile Include="src\TestFalloc.cu" />
+    <CudaCompile Include="src\TestTreeSet.cu" />
+    <CudaCompile Include="src\Program.cu" />
+    <CudaCompile Include="src\TestLoadStore.cu" />
+    <CudaCompile Include="src\TestScheduler.cu" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Time">
+      <UniqueIdentifier>{024b7516-5f45-4bc4-a374-3779bad7f05e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="cu">
+      <UniqueIdentifier>{6a0930ce-97c5-458a-90c1-a5e1b54122dc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Time\Scheduler+Cpu">
+      <UniqueIdentifier>{23ba66e3-ba13-4aa5-bb28-dda56bd5a170}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System">
+      <UniqueIdentifier>{e9f04abd-64fe-4719-aef3-8b66206759cc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Time\LoadStore+Cpu">
+      <UniqueIdentifier>{82856d7a-825e-4950-97a6-2541ce578c48}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Time\Query+Cpu">
+      <UniqueIdentifier>{728fe1ba-6bef-4e79-8dd1-916197f0aea9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Time\Work+Cpu">
+      <UniqueIdentifier>{c05fe8dc-8900-478d-a5de-ccc1e5873cde}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Time\Plan+Cpu">
+      <UniqueIdentifier>{372024e5-337c-4bc0-9b44-762d28800a17}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Engines\cu\MockElementKernel.ptx">
+      <Filter>cu</Filter>
+    </None>
+    <None Include="..\Engines\cu\SchedulerKernel.ptx">
+      <Filter>cu</Filter>
+    </None>
+    <None Include="src\Core.h" />
+    <None Include="..\Engines\cu\ControlKernel.ptx">
+      <Filter>cu</Filter>
+    </None>
+    <None Include="src\System\cuFalloc.cuh">
+      <Filter>System</Filter>
+    </None>
+    <None Include="src\System\cuPrintf.cuh">
+      <Filter>System</Filter>
+    </None>
+    <None Include="src\System\cuPrintf.cu">
+      <Filter>System</Filter>
+    </None>
+    <None Include="src\System\cuFalloc.cu">
+      <Filter>System</Filter>
+    </None>
+    <None Include="src\System\cuFallocWTrace.cu">
+      <Filter>System</Filter>
+    </None>
+    <None Include="src\System\cuFallocWTrace.cuh">
+      <Filter>System</Filter>
+    </None>
+  </ItemGroup>
+</Project>

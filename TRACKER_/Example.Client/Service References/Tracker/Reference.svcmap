@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ReferenceGroup xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" ID="44b8347a-5ec5-4623-bd9b-de93b83d8dbc" xmlns="urn:schemas-microsoft-com:xml-wcfservicemap">
+  <ClientOptions>
+    <GenerateAsynchronousMethods>false</GenerateAsynchronousMethods>
+    <EnableDataBinding>true</EnableDataBinding>
+    <ExcludedTypes />
+    <ImportXmlTypes>false</ImportXmlTypes>
+    <GenerateInternalTypes>false</GenerateInternalTypes>
+    <GenerateMessageContracts>false</GenerateMessageContracts>
+    <NamespaceMappings />
+    <CollectionMappings />
+    <GenerateSerializableTypes>true</GenerateSerializableTypes>
+    <Serializer>Auto</Serializer>
+    <UseSerializerForFaults>true</UseSerializerForFaults>
+    <ReferenceAllAssemblies>true</ReferenceAllAssemblies>
+    <ReferencedAssemblies />
+    <ReferencedDataContractTypes />
+    <ServiceContractMappings />
+  </ClientOptions>
+  <MetadataSources>
+    <MetadataSource Address="net.tcp://localhost/FeaTracker/mex" Protocol="mex" SourceId="1" />
+  </MetadataSources>
+  <Metadata>
+    <MetadataFile FileName="service.wsdl" MetadataType="Wsdl" ID="352441d0-1ff6-47eb-95c9-1561977f5ebf" SourceId="1" SourceUrl="net.tcp://localhost/FeaTracker/mex" />
+    <MetadataFile FileName="service.xsd" MetadataType="Schema" ID="03bcda87-a653-4ec3-a7fc-4ddff2b36f6f" SourceId="1" SourceUrl="net.tcp://localhost/FeaTracker/mex" />
+    <MetadataFile FileName="service1.xsd" MetadataType="Schema" ID="81beebc3-4c20-4c0e-803f-f327325a1df4" SourceId="1" SourceUrl="net.tcp://localhost/FeaTracker/mex" />
+    <MetadataFile FileName="FeaTracker.Services.Tracker.xsd" MetadataType="Schema" ID="1f8c0821-888d-4fe2-9c29-a52ea3ce6c36" SourceId="1" SourceUrl="net.tcp://localhost/FeaTracker/mex" />
+  </Metadata>
+  <Extensions>
+    <ExtensionFile FileName="configuration91.svcinfo" Name="configuration91.svcinfo" />
+    <ExtensionFile FileName="configuration.svcinfo" Name="configuration.svcinfo" />
+  </Extensions>
+</ReferenceGroup>

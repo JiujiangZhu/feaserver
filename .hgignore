@@ -1,0 +1,18 @@
+syntax: glob
+*.pdb
+*.suo
+*.user
+*.sdf
+*.opensdf
+*.cubin
+*.nvuser
+*/bin/*
+*/obj/*
+*/Debug/*
+*/Release/*
+*/ipch/*
+packages/*
+*/TestResults/*
+
+*/tmpxft_*
+*/Engines/cu/*

@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="src\CpuContext.cpp" />
+    <ClCompile Include="src\CpuEngine.cpp" />
+    <ClCompile Include="src\Program.cpp" />
+    <ClCompile Include="src\TestFalloc.cpp" />
+    <ClCompile Include="src\TestTreeSet.cpp" />
+    <ClCompile Include="src\TestLoadStore.cpp" />
+    <ClCompile Include="src\TestScheduler.cpp" />
+    <ClCompile Include="src\System\cpuFallocWTrace.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Time\LoadStore\CpuLoadStore.cpp">
+      <Filter>Time\LoadStore</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Query\Vdbe.cpp">
+      <Filter>Query</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\CpuElementTypeCollection.cpp" />
+    <ClInclude Include="src\Core.h" />
+    <ClInclude Include="src\Time\Scheduler\Hibernate.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\HibernateCollection.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\Slice.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\SliceCollection.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\SliceFractionCache.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\SliceFractionCollection.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\Element.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\ElementCollection.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\ElementList.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\ElementRef.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Scheduler\SliceFraction.hpp">
+      <Filter>Time\Scheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="src\System\LinkedList.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\system\cpuFalloc.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\System\TreeSet.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\LoadStore\Shard.hpp">
+      <Filter>Time\LoadStore</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\LoadStore\ShardCollection.hpp">
+      <Filter>Time\LoadStore</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\Element.hpp">
+      <Filter>Time</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\InElement.hpp">
+      <Filter>Time</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time\OutElement.hpp">
+      <Filter>Time</Filter>
+    </ClInclude>
+    <ClInclude Include="src\System\cpuFallocWTrace.h">
+      <Filter>System</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Time">
+      <UniqueIdentifier>{e5d6f3d3-04c3-4ab8-8c28-b62aba5c2bb6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Time\Scheduler">
+      <UniqueIdentifier>{8fd0352c-18eb-4b75-b424-796a179df748}</UniqueIdentifier>
+      <Extensions>Time\Scheduler\*</Extensions>
+    </Filter>
+    <Filter Include="System">
+      <UniqueIdentifier>{4a6da77a-cdb9-4bdb-9380-a4a95207ce17}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Time\LoadStore">
+      <UniqueIdentifier>{105c6f34-7a92-4143-94c7-e42b65affaa7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Time\Plan">
+      <UniqueIdentifier>{3cad9323-0b87-4e0d-99fa-997ab8c790c2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Time\Work">
+      <UniqueIdentifier>{aab3da7f-cb14-4b62-bc3d-332049f3bbc4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Time\Query">
+      <UniqueIdentifier>{0d821341-2d58-4af6-aefe-1f0afdaf98f3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Query">
+      <UniqueIdentifier>{3123277a-e8ae-4646-aae0-467686b013fc}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="src\System\cpuFalloc.cpp">
+      <Filter>System</Filter>
+    </None>
+  </ItemGroup>
+</Project>

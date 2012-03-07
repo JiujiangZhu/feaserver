@@ -1,0 +1,5 @@
+//#pragma OPENCL EXTENSION cl_khr_global_int32_base_atomics : enable
+//#pragma OPENCL EXTENSION cl_khr_local_int32_base_atomics : enable
+//#pragma OPENCL EXTENSION cl_amd_printf : enable
+//#pragma OPENCL EXTENSION cl_khr_byte_addressable_store : enable
+#define nullptr 0
