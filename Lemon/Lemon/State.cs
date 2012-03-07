@@ -7,14 +7,11 @@ namespace Lemon
     public class State
     {
         public const int NO_OFFSET = int.MaxValue;
-        public static StateCollection States = new StateCollection();
 
-        //: IComparer<State>
-
-        public Config Basis;
-        public Config Config;
+        public List<Config> Basises = new List<Config>();
+        public List<Config> Configs = new List<Config>();
         public int ID;
-        public Action Action;
+        public List<Action> Actions = new List<Action>();
         public int nTknAct;
         public int nNtAct;
         public int iTknOfst;

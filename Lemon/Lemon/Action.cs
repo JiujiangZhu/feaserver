@@ -10,34 +10,22 @@ namespace Lemon
         public ActionType Type;
         public State State;
         public Rule Rule;
-        public Action Next;
+        //public Action Next;
         public Action Collide;
 
-        //: IComparer<Action>
-
-        public Action(ref Action head)
+        public class KeyComparer : IComparer<Action>
         {
-            Next = head;
-            head = this;
-        }
-
-        public static Action Sort(Action action)
-        {
-            //var ap = msort((char *)ap,(char **)&ap->next, (int(*)(const char*,const char*))actioncmp);
-            //return ap;
-            return null;
-        }
-
-        public int Compare(Action x, Action y)
-        {
-            var v = x.Symbol.ID - y.Symbol.ID;
-            if (v == 0)
-                v = (int)x.Type - (int)y.Type;
-            if (v == 0 && x.Type == ActionType.Reduce)
-                v = x.Rule.ID - y.Rule.ID;
-            if (v == 0)
-                v = (object.ReferenceEquals(y, x) ? 0 : -1);
-            return v;
+            public int Compare(Action x, Action y)
+            {
+                var v = x.Symbol.ID - y.Symbol.ID;
+                if (v == 0)
+                    v = (int)x.Type - (int)y.Type;
+                if (v == 0 && x.Type == ActionType.Reduce)
+                    v = x.Rule.ID - y.Rule.ID;
+                if (v == 0)
+                    v = (object.ReferenceEquals(y, x) ? 0 : -1);
+                return v;
+            }
         }
 
         public static int ResolveConflict(Action x, Action y, Symbol errorSymbol)
@@ -56,7 +44,6 @@ namespace Lemon
                 /* Not enough precedence information. */
                 if (y2 == null || x2.Precedence < 0 || y2.Precedence < 0)
                 {
-
                     y.Type = ActionType.SRConflict;
                     errors++;
                 }

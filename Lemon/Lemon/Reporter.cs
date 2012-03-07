@@ -43,7 +43,7 @@ namespace Lemon
         }
 
         /* Print a plink chain */
-        private static void PlinkPrint(TextWriter w, LinkedList<Config> configs, string tag)
+        private static void PlinkPrint(TextWriter w, List<Config> configs, string tag)
         {
             foreach (var config in configs)
             {
@@ -102,56 +102,55 @@ namespace Lemon
         /* Generate the "y.output" log file */
         public static void ReportOutput(Context ctx)
         {
-            using (TextWriter fp = null) //new file_open(lemp,".out","wb");
+            using (TextWriter w = null) //new file_open(lemp,".out","wb");
             {
-                if (fp == null)
+                if (w == null)
                     return;
                 for (var i = 0; i < ctx.States; i++)
                 {
-                    var stp = ctx.Sorted[i];
-                    fp.Write("State %d:\n", stp.ID);
-                    var cfp = (ctx.wantBasis ? stp.Basis : stp.Config);
-                    while (cfp != null)
+                    var states = ctx.Sorted[i];
+                    w.Write("State %d:\n", states.ID);
+                    var configs = (ctx.wantBasis ? states.Basises : states.Configs);
+                    foreach (var config in configs)
                     {
                         var buf = new char[20];
-                        if (cfp.Dot == cfp.Rule.RHSymbols.Length)
+                        if (config.Dot == config.Rule.RHSymbols.Length)
                         {
                             //sprintf(buf,"(%d)",cfp.rp.index);
-                            fp.Write("    %5s ", buf);
+                            w.Write("    %5s ", buf);
                         }
                         else
-                            fp.Write("          ");
-                        ConfigPrint(fp, cfp);
-                        fp.Write("\n");
+                            w.Write("          ");
+                        ConfigPrint(w, config);
+                        w.Write("\n");
 #if true
-                        SetPrint(fp, cfp.FwSet, ctx);
-                        PlinkPrint(fp, cfp.Forwards, "To  ");
-                        PlinkPrint(fp, cfp.Basis, "From");
+                        SetPrint(w, config.FwSet, ctx);
+                        PlinkPrint(w, config.Forwards, "To  ");
+                        PlinkPrint(w, config.Basises, "From");
 #endif
-                        cfp = (ctx.wantBasis ? cfp.Prev : cfp.Next);
                     }
-                    fp.Write("\n");
-                    for (var ap = stp.Action; ap != null; ap = ap.Next)
-                        if (PrintAction(ap, fp, 30))
-                            fp.Write("\n");
-                    fp.Write("\n");
+                    w.Write("\n");
+                    for (var action = states.Action; action != null; action = action.Next)
+                        if (PrintAction(action, w, 30))
+                            w.Write("\n");
+                    w.Write("\n");
                 }
-                fp.Write("----------------------------------------------------\n");
-                fp.Write("Symbols:\n");
+                w.Write("----------------------------------------------------\n");
+                w.Write("Symbols:\n");
                 for (var i = 0; i < ctx.Symbols.Length; i++)
                 {
                     var symbol = ctx.Symbols[i];
-                    fp.Write("  %3d: %s", i, symbol.Name);
+                    w.Write("  %3d: %s", i, symbol.Name);
                     if (symbol.Type == SymbolType.NonTerminal)
                     {
-                        fp.Write(":");
+                        w.Write(":");
                         if (symbol.Lambda)
-                            fp.Write(" <lambda>");
+                            w.Write(" <lambda>");
                         for (var j = 0; j < ctx.Terminals; j++)
-                            if ((symbol.FirstSet != null) && symbol.FirstSet.Contains(j))
-                                fp.Write(" %s", ctx.Symbols[j].Name);
+                            if (symbol.FirstSet != null && symbol.FirstSet.Contains(j))
+                                w.Write(" %s", ctx.Symbols[j].Name);
                     }
-                    fp.Write("\n");
+                    w.Write("\n");
                 }
             }
         }
