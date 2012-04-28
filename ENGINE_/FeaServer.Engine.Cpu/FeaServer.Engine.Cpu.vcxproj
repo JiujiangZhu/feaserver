@@ -35,6 +35,7 @@
     <ClInclude Include="src\CpuElementTypeCollection.cpp" />
     <ClCompile Include="src\Query\Vdbe.cpp">
       <FileType>CppHeader</FileType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClInclude Include="src\system\cpuFalloc.h" />
     <ClInclude Include="src\System\cpuFallocWTrace.h" />

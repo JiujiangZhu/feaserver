@@ -99,6 +99,7 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="Query\" />
     <Folder Include="Time\Plan\" />
     <Folder Include="Time\Query\" />
     <Folder Include="Time\Work\" />
