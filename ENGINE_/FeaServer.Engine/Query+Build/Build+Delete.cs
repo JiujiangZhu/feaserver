@@ -1,7 +1,7 @@
 using System.Diagnostics;
 namespace FeaServer.Engine.Query
 {
-    public class Build
+    public partial class Build
     {
         // Reclaim the memory used by an index
         internal static void freeIndex(sqlite3 db, ref Index p)

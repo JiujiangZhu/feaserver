@@ -10,7 +10,7 @@ using ynVar = System.Int16;
 #else
 using ynVar = System.Int32; 
 #endif
-using TK = FeaServer.Engine.Query.Parser.TK;
+using FeaServer.Engine.Core;
 namespace FeaServer.Engine.Query
 {
     public class Expressions
@@ -69,7 +69,7 @@ namespace FeaServer.Engine.Query
         // Set the collating sequence for expression pExpr to be the collating sequence named by pToken.   Return a pointer to the revised expression.
         // The collating sequence is marked as "explicit" using the EP_ExpCollate flag.  An explicit collating sequence will override implicit
         // collating sequences.
-        internal static Expr sqlite3ExprSetCollByToken(Parse pParse, Expr pExpr, ParseToken pCollName)
+        internal static Expr sqlite3ExprSetCollByToken(Parse pParse, Expr pExpr, Token pCollName)
         {
             var db = pParse.db;
             var zColl = sqlite3NameFromToken(db, pCollName); // Dequoted name of collation sequence
@@ -236,7 +236,7 @@ namespace FeaServer.Engine.Query
             p5 = binaryCompareP5(pLeft, pRight, jumpIfNull);
             addr = sqlite3VdbeAddOp4(pParse.pVdbe, opcode, in2, dest, in1,
             p4, P4_COLLSEQ);
-            sqlite3VdbeChangeP5(pParse.pVdbe, (u8)p5);
+            sqlite3VdbeChangeP5(pParse.pVdbe, (byte)p5);
             return addr;
         }
 
@@ -396,7 +396,7 @@ namespace FeaServer.Engine.Query
             pNew = new Expr();//sqlite3DbMallocZero(db, sizeof(Expr)+nExtra);
             if (pNew != null)
             {
-                pNew.op = (u8)op;
+                pNew.op = (byte)op;
                 pNew.iAgg = -1;
                 if (pToken != null)
                 {
@@ -632,7 +632,7 @@ sqlite3Dequote(ref pNew.u._zToken);
                 {
                     /* Wildcard of the form "?nnn".  Convert "nnn" to an integer and
                     ** use it as the variable number */
-                    i64 i = 0;
+                    long i = 0;
                     bool bOk = 0 == sqlite3Atoi64(z.Substring(1), ref i, n - 1, SQLITE_UTF8);
                     pExpr.iColumn = x = (ynVar)i;
                     testcase(i == 0);
@@ -2293,7 +2293,7 @@ sqlite3ErrorMsg(pParse, "oversized integer: %s%s", negFlag ? "-" : "", z);
         /*
         ** Clear a cache entry.
         */
-        static void cacheEntryClear(Parse pParse, yColCache p)
+        static void cacheEntryClear(Parse pParse, Parse.yColCache p)
         {
             if (p.tempReg != 0)
             {
@@ -2470,7 +2470,7 @@ return;
         */
         static void sqlite3ExprCodeGetColumnOfTable(
           Vdbe v,         /* The VDBE under construction */
-          Table pTab,     /* The table containing the value */
+          ITable pTab,     /* The table containing the value */
           int iTabCur,    /* The cursor for this table */
           int iCol,       /* Index of the column to extract */
           int regOut      /* Extract the value into this register */
@@ -2502,7 +2502,7 @@ return;
         */
         static int sqlite3ExprCodeGetColumn(
         Parse pParse,     /* Parsing and code generating context */
-        Table pTab,       /* Description of the table we are reading from */
+        ITable pTab,       /* Description of the table we are reading from */
         int iColumn,      /* Index of the table column */
         int iTable,       /* The cursor pointing to the table */
         int iReg          /* Store results here */
