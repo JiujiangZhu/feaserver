@@ -23,15 +23,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 #endregion
-//[]http://en.wikipedia.org/wiki/Connectome
-using System;
-using FeaServer.Engine.Compounds.Neuron;
-
-namespace FeaServer.Engine.Compounds
+namespace FeaServer.Engine.Core
 {
-    public class NeuronCompound : CompoundType
+    public interface IBackup
     {
-        public NeuronCompound()
-            : base(new IElementType[] { new Soma(), new Axon(), new Dendrite() }) { }
     }
 }

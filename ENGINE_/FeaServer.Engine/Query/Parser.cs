@@ -1893,25 +1893,29 @@ switch (ruleno) {
     if (gotoMinor.yy0.pExpr != null) { gotoMinor.yy0.pExpr.x.pSelect = _stack[_idx + -1].minor.yy0; Expr.ExprSetProperty(gotoMinor.yy0.pExpr, EP_xIsSelect); sqlite3ExprSetHeight(pParse, gotoMinor.yy0.pExpr);
     else sqlite3SelectDelete(pParse.db, ref _stack[_idx + -1].minor.yy0);
     if (_stack[_idx + -3].minor.yy0 != 0) gotoMinor.yy0.pExpr = sqlite3PExpr(pParse, TK.NOT, gotoMinor.yy0.pExpr, 0, 0);
-    gotoMinor.yy0.zStart = _stack[_idx + -4].minor.yy0.zStart; gotoMinor.yy0.zEnd = _stack[_idx + 0].minor.yy0.z.Substring(_stack[_idx + 0].minor.yy0.n); }
+    gotoMinor.yy0.zStart = _stack[_idx + -4].minor.yy0.zStart; gotoMinor.yy0.zEnd = _stack[_idx + 0].minor.yy0.z.Substring(_stack[_idx + 0].minor.yy0.n);
+}
 expr(gotoMinor.yy0) ::= expr(_stack[_idx + -4].minor.yy0) in_op(_stack[_idx + -3].minor.yy0) nm(_stack[_idx + -1].minor.yy0) dbnm(Z). [IN] {
 	var pSrc = sqlite3SrcListAppend(pParse.db, 0, _stack[_idx + -1].minor.yy0, Z);
     gotoMinor.yy0.pExpr = sqlite3PExpr(pParse, TK.IN, _stack[_idx + -4].minor.yy0.pExpr, 0, 0);
     if (gotoMinor.yy0.pExpr != null) { gotoMinor.yy0.pExpr.x.pSelect = sqlite3SelectNew(pParse, 0,pSrc,0,0,0,0,0,0,0); Expr.ExprSetProperty(gotoMinor.yy0.pExpr, EP_xIsSelect); sqlite3ExprSetHeight(pParse, gotoMinor.yy0.pExpr); }
 	else sqlite3SrcListDelete(pParse.db, ref pSrc);
     if (_stack[_idx + -3].minor.yy0 != 0) gotoMinor.yy0.pExpr = sqlite3PExpr(pParse, TK.NOT, gotoMinor.yy0.pExpr, 0, 0);
-    gotoMinor.yy0.zStart = _stack[_idx + -4].minor.yy0.zStart; gotoMinor.yy0.zEnd = (Z.z != null ? Z.z.Substring(Z.n) : _stack[_idx + -1].minor.yy0.z.Substring(_stack[_idx + -1].minor.yy0.n)); }
+    gotoMinor.yy0.zStart = _stack[_idx + -4].minor.yy0.zStart; gotoMinor.yy0.zEnd = (Z.z != null ? Z.z.Substring(Z.n) : _stack[_idx + -1].minor.yy0.z.Substring(_stack[_idx + -1].minor.yy0.n));
+}
 expr(gotoMinor.yy0) ::= EXISTS(B) LP select(_stack[_idx + -1].minor.yy0) RP(_stack[_idx + 0].minor.yy0). {
     var p = gotoMinor.yy0.pExpr = sqlite3PExpr(pParse, TK.EXISTS, 0, 0, 0);
     if (p != null) { p.x.pSelect = _stack[_idx + -1].minor.yy0; Expr.ExprSetProperty(p, EP_xIsSelect); sqlite3ExprSetHeight(pParse, p); }
 	else sqlite3SelectDelete(pParse.db, ref _stack[_idx + -1].minor.yy0);
-    gotoMinor.yy0.zStart = B.z; gotoMinor.yy0.zEnd = _stack[_idx + 0].minor.yy0.z.Substring(_stack[_idx + 0].minor.yy0.n); }
+    gotoMinor.yy0.zStart = B.z; gotoMinor.yy0.zEnd = _stack[_idx + 0].minor.yy0.z.Substring(_stack[_idx + 0].minor.yy0.n);
+}
 // CASE expressions
 expr(gotoMinor.yy0) ::= CASE(C) case_operand(_stack[_idx + -4].minor.yy0) case_exprlist(_stack[_idx + -1].minor.yy0) case_else(Z) END(_stack[_idx + 0].minor.yy0). {
 	gotoMinor.yy0.pExpr = sqlite3PExpr(pParse, TK.CASE, _stack[_idx + -4].minor.yy0, Z, 0);
 	if (gotoMinor.yy0.pExpr != null) { gotoMinor.yy0.pExpr.x.pList = _stack[_idx + -1].minor.yy0; sqlite3ExprSetHeight(pParse, gotoMinor.yy0.pExpr); }
 	else sqlite3ExprListDelete(pParse.db, _stack[_idx + -1].minor.yy0);
-	gotoMinor.yy0.zStart = C.z; gotoMinor.yy0.zEnd = _stack[_idx + 0].minor.yy0.z.Substring(_stack[_idx + 0].minor.yy0.n); }
+	gotoMinor.yy0.zStart = C.z; gotoMinor.yy0.zEnd = _stack[_idx + 0].minor.yy0.z.Substring(_stack[_idx + 0].minor.yy0.n);
+}
 %type case_exprlist {ExprList}
 %destructor case_exprlist { sqlite3ExprListDelete(pParse.db, $$); }
 case_exprlist(gotoMinor.yy0) ::= case_exprlist(_stack[_idx + -4].minor.yy0) WHEN expr(_stack[_idx + -1].minor.yy0) THEN expr(Z).	{ gotoMinor.yy0 = sqlite3ExprListAppend(pParse, _stack[_idx + -4].minor.yy0, _stack[_idx + -1].minor.yy0.pExpr); gotoMinor.yy0 = sqlite3ExprListAppend(pParse, gotoMinor.yy0, Z.pExpr); }

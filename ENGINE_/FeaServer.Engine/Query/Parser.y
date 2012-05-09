@@ -546,25 +546,29 @@ expr(A) ::= expr(X) in_op(N) LP select(Y) RP(E). [IN] {
     if (A.pExpr != null) { A.pExpr.x.pSelect = Y; Expr.ExprSetProperty(A.pExpr, EP_xIsSelect); sqlite3ExprSetHeight(pParse, A.pExpr);
     else sqlite3SelectDelete(pParse.db, ref Y);
     if (N != 0) A.pExpr = sqlite3PExpr(pParse, TK.NOT, A.pExpr, 0, 0);
-    A.zStart = X.zStart; A.zEnd = E.z.Substring(E.n); }
+    A.zStart = X.zStart; A.zEnd = E.z.Substring(E.n);
+}
 expr(A) ::= expr(X) in_op(N) nm(Y) dbnm(Z). [IN] {
 	var pSrc = sqlite3SrcListAppend(pParse.db, 0, Y, Z);
     A.pExpr = sqlite3PExpr(pParse, TK.IN, X.pExpr, 0, 0);
     if (A.pExpr != null) { A.pExpr.x.pSelect = sqlite3SelectNew(pParse, 0,pSrc,0,0,0,0,0,0,0); Expr.ExprSetProperty(A.pExpr, EP_xIsSelect); sqlite3ExprSetHeight(pParse, A.pExpr); }
 	else sqlite3SrcListDelete(pParse.db, ref pSrc);
     if (N != 0) A.pExpr = sqlite3PExpr(pParse, TK.NOT, A.pExpr, 0, 0);
-    A.zStart = X.zStart; A.zEnd = (Z.z != null ? Z.z.Substring(Z.n) : Y.z.Substring(Y.n)); }
+    A.zStart = X.zStart; A.zEnd = (Z.z != null ? Z.z.Substring(Z.n) : Y.z.Substring(Y.n));
+}
 expr(A) ::= EXISTS(B) LP select(Y) RP(E). {
     var p = A.pExpr = sqlite3PExpr(pParse, TK.EXISTS, 0, 0, 0);
     if (p != null) { p.x.pSelect = Y; Expr.ExprSetProperty(p, EP_xIsSelect); sqlite3ExprSetHeight(pParse, p); }
 	else sqlite3SelectDelete(pParse.db, ref Y);
-    A.zStart = B.z; A.zEnd = E.z.Substring(E.n); }
+    A.zStart = B.z; A.zEnd = E.z.Substring(E.n);
+}
 // CASE expressions
 expr(A) ::= CASE(C) case_operand(X) case_exprlist(Y) case_else(Z) END(E). {
 	A.pExpr = sqlite3PExpr(pParse, TK.CASE, X, Z, 0);
 	if (A.pExpr != null) { A.pExpr.x.pList = Y; sqlite3ExprSetHeight(pParse, A.pExpr); }
 	else sqlite3ExprListDelete(pParse.db, Y);
-	A.zStart = C.z; A.zEnd = E.z.Substring(E.n); }
+	A.zStart = C.z; A.zEnd = E.z.Substring(E.n);
+}
 %type case_exprlist {ExprList}
 %destructor case_exprlist { sqlite3ExprListDelete(pParse.db, $$); }
 case_exprlist(A) ::= case_exprlist(X) WHEN expr(Y) THEN expr(Z).	{ A = sqlite3ExprListAppend(pParse, X, Y.pExpr); A = sqlite3ExprListAppend(pParse, A, Z.pExpr); }

@@ -1,31 +1,7 @@
-﻿#region License
-/*
-The MIT License
-
-Copyright (c) 2009 Sky Morey
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-*/
-#endregion
-using FeaServer.Engine.System;
+﻿using Contoso.Sys;
 using System;
-namespace FeaServer.Engine.Core
+using Pgno = System.UInt32;
+namespace Contoso.Core
 {
     public class BtShared
     {
@@ -51,7 +27,7 @@ namespace FeaServer.Engine.Core
         public uint pageSize;           // Total number of bytes on a page
         public uint usableSize;         // Number of usable bytes on each page
         public int nTransaction;        // Number of open transactions (read + write)
-        public uint nPage;              // Number of pages in the database
+        public Pgno nPage;              // Number of pages in the database
         public ISchema pSchema;          // Pointer to space allocated by sqlite3BtreeSchema()
         public Action<ISchema> xFreeSchema;// Destructor for BtShared.pSchema
         public sqlite3_mutex mutex;     // Non-recursive mutex required to access this object

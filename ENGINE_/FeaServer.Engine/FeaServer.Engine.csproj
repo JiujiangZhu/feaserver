@@ -73,9 +73,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="System.Abstract">
-      <HintPath>..\..\..\BCLCONTRIB-ABSTRACT\nuget\BclContrib-Abstract\lib\NET40\System.Abstract.dll</HintPath>
-    </Reference>
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
@@ -96,6 +93,7 @@
     <Compile Include="Core+Btree\BtShared.cs" />
     <Compile Include="Core+Btree\CellInfo.cs" />
     <Compile Include="Core+Pager\Pager.cs" />
+    <Compile Include="Core+Pager\PagerSavepoint.cs" />
     <Compile Include="Core+PCache\PCache.cs" />
     <Compile Include="Core+PCache\PGroup.cs" />
     <Compile Include="Core+PCache\PCache1.cs" />
@@ -107,7 +105,9 @@
     <Compile Include="Core+Btree\BtCursor.cs" />
     <Compile Include="Core+Btree\Btree.cs" />
     <Compile Include="Core\Bitvec.cs" />
-    <Compile Include="Hold\IElementMetadata.cs" />
+    <Compile Include="Core\IBackup.cs" />
+    <Compile Include="Core\ISchema.cs" />
+    <Compile Include="IElementMetadata.cs" />
     <Compile Include="ElementScheduleStyle.cs" />
     <Compile Include="ElementImage.cs" />
     <Compile Include="EngineProvider.cs" />
@@ -118,18 +118,6 @@
     <Compile Include="EngineFactory.cs" />
     <Compile Include="IEngine.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Query+Build\Build+Find.cs" />
-    <Compile Include="Query+Build\Build+Delete.cs" />
-    <Compile Include="Query+Build\Build+Table.cs" />
-    <Compile Include="Query+Build\Build+Schema.cs" />
-    <Compile Include="Query+Build\Build+View.cs" />
-    <Compile Include="Query+Build\Build+Index.cs" />
-    <Compile Include="Query+Build\Build+IdList.cs" />
-    <Compile Include="Query+Build\Build+SrcList.cs" />
-    <Compile Include="Query+Build\Build+Transaction.cs" />
-    <Compile Include="Query+Build\Build+Ident.cs" />
-    <Compile Include="Query+Build\Build+Write.cs" />
-    <Compile Include="Query+Build\Build+Reindex.cs" />
     <Compile Include="Query+Vbde\VdbeCursor.cs" />
     <Compile Include="Query+Vbde\VdbeFrame.cs" />
     <Compile Include="Query+Vbde\Mem.cs" />
@@ -139,8 +127,6 @@
     <Compile Include="Query+Vbde\VdbeOp.cs" />
     <Compile Include="Query+Vbde\sqlite3_context.cs" />
     <Compile Include="Query+Vbde\Vdbe.cs" />
-    <Compile Include="Query+Build\Build+TableLock.cs" />
-    <Compile Include="Query+Build\Build.cs" />
     <Compile Include="Query+Expressions\ExprList.cs" />
     <Compile Include="Query+Expressions\ExprSpan.cs" />
     <Compile Include="Query+Expressions\Expr.cs" />
@@ -160,11 +146,6 @@
     <Compile Include="Query\Select.cs" />
     <Compile Include="Query\Token.cs" />
     <Compile Include="Query\Parse.cs" />
-    <Compile Include="Query\Parser.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Parser.y</DependentUpon>
-    </Compile>
     <Compile Include="System\sqlite3_mutex.cs" />
     <Compile Include="TimePrec.cs" />
     <Compile Include="EngineSettings.cs" />
@@ -189,15 +170,6 @@
       <ProductName>Windows Installer 3.1</ProductName>
       <Install>true</Install>
     </BootstrapperPackage>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Query\Parser.out">
-      <DependentUpon>Parser.y</DependentUpon>
-    </None>
-    <None Include="Query\Parser.y">
-      <Generator>LALR</Generator>
-      <LastGenOutput>Parser.cs</LastGenOutput>
-    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
