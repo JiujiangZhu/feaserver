@@ -1,6 +1,4 @@
 ﻿namespace Contoso.Core
 {
-    public interface ISchema
-    {
-    }
+    public interface ISchema { }
 }

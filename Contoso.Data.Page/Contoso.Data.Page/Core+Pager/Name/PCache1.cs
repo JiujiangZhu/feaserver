@@ -1,7 +1,9 @@
 ﻿using Pgno = System.UInt32;
-namespace Contoso.Core
+using IPgHdr = Contoso.Core.Name.PgHdr1;
+using IPCache = Contoso.Core.Name.PCache1;
+namespace Contoso.Core.Name
 {
-    public class PCache1
+    public partial class PCache1
     {
         // Cache configuration parameters. Page size (szPage) and the purgeable flag (bPurgeable) are set when the cache is created. nMax may be 
         // modified at any time by a call to the pcache1CacheSize() method. The PGroup mutex must be held when accessing nMax.
@@ -27,5 +29,10 @@ namespace Contoso.Core
             apHash = null;
             iMaxKey = 0;
         }
+
+        private static PgHdr PGHDR1_TO_PAGE(PgHdr1 p) { return p.pPgHdr; }
+        private static PgHdr1 PAGE_TO_PGHDR1(PCache1 c, PgHdr p) { return (PgHdr1)p.pPgHdr1; }
+        private static void pcache1EnterMutex(PGroup X) { MutexEx.sqlite3_mutex_enter(X.mutex); }
+        private static void pcache1LeaveMutex(PGroup X) { MutexEx.sqlite3_mutex_leave(X.mutex); }
     }
 }

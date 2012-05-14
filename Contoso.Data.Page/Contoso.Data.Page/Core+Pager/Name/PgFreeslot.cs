@@ -1,5 +1,4 @@
-﻿using System;
-namespace Contoso.Core
+﻿namespace Contoso.Core.Name
 {
     public class PgFreeslot
     {

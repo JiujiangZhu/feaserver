@@ -1,6 +1,5 @@
-﻿using System;
-using Pgno = System.UInt32;
-namespace Contoso.Core
+﻿using Pgno = System.UInt32;
+namespace Contoso.Core.Name
 {
     public class PgHdr1
     {

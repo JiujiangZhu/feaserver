@@ -30,5 +30,30 @@
         {
             return (b != null);
         }
+
+        internal int sqlite3BitvecTest(uint pg)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        internal static Bitvec sqlite3BitvecCreate(uint p)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        internal static void sqlite3BitvecDestroy(ref Bitvec pDone)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        internal Sys.SQLITE sqlite3BitvecSet(uint pgno)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        internal void sqlite3BitvecClear(uint needSyncPgno, uint[] pTemp)
+        {
+            throw new System.NotImplementedException();
+        }
     }
 }

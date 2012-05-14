@@ -1,6 +1,4 @@
 ﻿namespace Contoso.Core
 {
-    public interface sqlite3
-    {
-    }
+    public interface sqlite3 { }
 }

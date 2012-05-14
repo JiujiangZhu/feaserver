@@ -1,11 +1,16 @@
 ﻿using System;
-using Pgno = System.UInt32;
-using Contoso.Sys;
 using System.Diagnostics;
+using Contoso.Sys;
+using Pgno = System.UInt32;
 namespace Contoso.Core
 {
-    public class Pager
+    public partial class Pager
     {
+        const int SQLITE_DEFAULT_JOURNAL_SIZE_LIMIT = -1;
+        const int SQLITE_DEFAULT_PAGE_SIZE = 1024;
+        const int SQLITE_MAX_DEFAULT_PAGE_SIZE = 8192;
+        const int SQLITE_MAX_PAGE_SIZE = 65535;
+        const int SQLITE_MAX_PAGE_COUNT = 1073741823;
         const int MAX_SECTOR_SIZE = 0x10000;
         const int PAGER_MAX_PGNO = 2147483647;
 
@@ -20,16 +25,6 @@ namespace Contoso.Core
             ERROR = 6,
         }
 
-        public enum LOCK : byte
-        {
-            NO = 0,
-            SHARED = 1,
-            RESERVED = 2,
-            PENDING = 3,
-            EXCLUSIVE = 4,
-            UNKNOWN = 5,
-        }
-
         public enum LOCKINGMODE
         {
             QUERY = -1,
@@ -37,6 +32,7 @@ namespace Contoso.Core
             EXCLUSIVE = 1,
         }
 
+        [Flags]
         public enum JOURNALMODE : sbyte
         {
             QUERY = -1,
@@ -48,15 +44,23 @@ namespace Contoso.Core
             WAL = 5,
         }
 
-        public sqlite3_vfs pVfs;            // OS functions to use for IO
+        [Flags]
+        public enum PAGEROPEN
+        {
+            OMIT_JOURNAL = 0x0001,
+            NO_READLOCK = 0x0002,
+            MEMORY = 0x0004,
+        }
+
+        public VirtualFileSystem pVfs;            // OS functions to use for IO
         public bool exclusiveMode;          // Boolean. True if locking_mode==EXCLUSIVE
         public JOURNALMODE journalMode;     // One of the PAGER_JOURNALMODE_* values
         public byte useJournal;             // Use a rollback journal on this file
         public byte noReadlock;             // Do not bother to obtain readlocks
         public bool noSync;                 // Do not sync the journal if true
         public bool fullSync;               // Do extra syncs of the journal for robustness
-        public byte ckptSyncFlags;          // SYNC_NORMAL or SYNC_FULL for checkpoint
-        public byte syncFlags;              // SYNC_NORMAL or SYNC_FULL otherwise
+        public VirtualFile.SYNC ckptSyncFlags;          // SYNC_NORMAL or SYNC_FULL for checkpoint
+        public VirtualFile.SYNC syncFlags;              // SYNC_NORMAL or SYNC_FULL otherwise
         public bool tempFile;               // zFilename is a temporary file
         public bool readOnly;               // True for a read-only database
         public bool alwaysRollback;         // Disable DontRollback() for all pages
@@ -66,7 +70,7 @@ namespace Contoso.Core
         // or the journal_mode).  From another view, these class members describe the "state" of the pager, while other class members describe the
         // "configuration" of the pager.
         public PAGER eState;                // Pager state (OPEN, READER, WRITER_LOCKED..) 
-        public LOCK eLock;                  // Current lock held on database file 
+        public VirtualFile.LOCK eLock;      // Current lock held on database file 
         public bool changeCountDone;        // Set after incrementing the change-counter 
         public int setMaster;               // True if a m-j name has been written to jrnl 
         public byte doNotSpill;             // Do not spill the cache when non-zero 
@@ -81,9 +85,9 @@ namespace Contoso.Core
         public uint cksumInit;              // Quasi-random value added to every checksum 
         public uint nSubRec;                // Number of records written to sub-journal 
         public Bitvec pInJournal;           // One bit for each page in the database file 
-        public sqlite3_file fd;             // File descriptor for database 
-        public sqlite3_file jfd;            // File descriptor for main journal 
-        public sqlite3_file sjfd;           // File descriptor for sub-journal 
+        public VirtualFile fd;             // File descriptor for database 
+        public VirtualFile jfd;            // File descriptor for main journal 
+        public VirtualFile sjfd;           // File descriptor for sub-journal 
         public long journalOff;             // Current write offset in the journal file 
         public long journalHdr;             // Byte offset to previous journal header 
         public IBackup pBackup;             // Pointer to list of ongoing backup processes 
@@ -93,7 +97,7 @@ namespace Contoso.Core
         // End of the routinely-changing class members
         public ushort nExtra;               // Add this many bytes to each in-memory page
         public short nReserve;              // Number of unused bytes at end of each page
-        public uint vfsFlags;               // Flags for sqlite3_vfs.xOpen() 
+        public VirtualFileSystem.OPEN vfsFlags;               // Flags for VirtualFileSystem.xOpen() 
         public uint sectorSize;             // Assumed sector size during rollback 
         public int pageSize;                // Number of bytes in a page 
         public Pgno mxPgno;                 // Maximum allowed size of the database 
@@ -110,9 +114,9 @@ namespace Contoso.Core
 #endif
         public Action<PgHdr> xReiniter;     // Call this routine when reloading pages
 #if SQLITE_HAS_CODEC
-        public dxCodec xCodec;                 // Routine for en/decoding data
-        public dxCodecSizeChng xCodecSizeChng; // Notify of page size changes
-        public dxCodecFree xCodecFree;         // Destructor for the codec
+        public codec_ctx.dxCodec xCodec;                 // Routine for en/decoding data
+        public codec_ctx.dxCodecSizeChng xCodecSizeChng; // Notify of page size changes
+        public codec_ctx.dxCodecFree xCodecFree;         // Destructor for the codec
         public codec_ctx pCodec;               // First argument to xCodec... methods
 #endif
         public byte[] pTmpSpace;               // Pager.pageSize bytes of space for tmp use
@@ -121,8 +125,10 @@ namespace Contoso.Core
         public Wal pWal;                       // Write-ahead log used by "journal_mode=wal"
         public string zWal;                    // File name for write-ahead log
 #else
-        public sqlite3_vfs pWal = null;             // Having this dummy here makes C# easier
+        public Wal pWal = null;             // Having this dummy here makes C# easier
 #endif
+
+        internal static Pgno PAGER_MJ_PGNO(Pager x) { return ((Pgno)((VirtualFile.PENDING_BYTE / ((x).pageSize)) + 1)); }
 
 #if SQLITE_HAS_CODEC
         internal static bool CODEC1(Pager P, byte[] D, uint N, int X) { return (P.xCodec != null && P.xCodec(P.pCodec, D, N, X) == null); }
@@ -136,18 +142,14 @@ namespace Contoso.Core
         internal static bool CODEC2(Pager P, byte[] D, uint N, int X, ref byte[] O) { O = D; return false; }
 #endif
 
-
 #if false && !SQLITE_OMIT_WAL
-        internal static int pagerUseWal(Pager pPager)
-        {
-            return (pPager.pWal != 0);
-        }
+        internal static int pagerUseWal(Pager pPager) { return (pPager.pWal != 0); }
 #else
-        internal static bool pagerUseWal(Pager x) { return false; }
-        internal static int pagerRollbackWal(Pager x) { return 0; }
-        internal static int pagerWalFrames(Pager v, PgHdr w, Pgno x, int y, int z) { return 0; }
-        internal static SQLITE pagerOpenWalIfPresent(Pager z) { return SQLITE.OK; }
-        internal static SQLITE pagerBeginReadTransaction(Pager z) { return SQLITE.OK; }
+        internal bool pagerUseWal() { return false; }
+        internal SQLITE pagerRollbackWal() { return SQLITE.OK; }
+        internal SQLITE pagerWalFrames(PgHdr w, Pgno x, int y, VirtualFile.SYNC z) { return SQLITE.OK; }
+        internal SQLITE pagerOpenWalIfPresent() { return SQLITE.OK; }
+        internal SQLITE pagerBeginReadTransaction() { return SQLITE.OK; }
 #endif
 
 #if SQLITE_ENABLE_ATOMIC_WRITE
