@@ -4,33 +4,28 @@ namespace Contoso.Sys
 {
     public static class ArrayEx
     {
-        [DllImport("msvcrt.dll")]
-        private static extern unsafe int memcmp(byte* b1, byte* b2, int count);
+        //[DllImport("msvcrt.dll")]
+        //private static extern unsafe int memcmp(byte* a, byte* b, int count);
 
-        public static unsafe int Compare(byte[] buffer1, byte[] buffer2, int count)
-        {
-            fixed (byte* b1 = buffer1, b2 = buffer2)
-                return memcmp(b1, b2, count);
-        }
-
-        //public static int memcmp(byte[] bA, byte[] bB, int Limit)
+        //public static unsafe int Compare(byte[] a, byte[] b, int count)
         //{
-        //    if (bA.Length < Limit)
-        //        return (bA.Length < bB.Length) ? -1 : +1;
-        //    if (bB.Length < Limit)
-        //        return +1;
-        //    for (int i = 0; i < Limit; i++)
-        //    {
-        //        if (bA[i] != bB[i])
-        //            return (bA[i] < bB[i]) ? -1 : 1;
-        //    }
-        //    return 0;
+        //    fixed (byte* a1 = a, b1 = b)
+        //        return memcmp(a1, b1, count);
         //}
 
-        public static unsafe int Compare(byte[] buffer1, int offset1, byte[] buffer2, int offset2, int count)
+        public static int Compare(byte[] a, byte[] b, int count)
         {
-            fixed (byte* b1 = buffer1, b2 = buffer2)
-                return memcmp(b1 + offset1, b2 + offset2, count);
+            if (a.Length < count) return (a.Length < b.Length ? -1 : 1);
+            if (b.Length < count) return 1;
+            for (int i = 0; i < count; i++)
+                if (a[i] != b[i]) return (a[i] < b[i] ? -1 : 1);
+            return 0;
         }
+
+        //public static unsafe int Compare(byte[] buffer1, int offset1, byte[] buffer2, int offset2, int count)
+        //{
+        //    fixed (byte* b1 = buffer1, b2 = buffer2)
+        //        return memcmp(b1 + offset1, b2 + offset2, count);
+        //}
     }
 }

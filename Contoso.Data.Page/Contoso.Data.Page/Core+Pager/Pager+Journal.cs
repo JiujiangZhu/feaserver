@@ -3,6 +3,7 @@ using Pgno = System.UInt32;
 using Contoso.Sys;
 using System.Diagnostics;
 using System.Text;
+using LOCK = Contoso.Sys.VirtualFile.LOCK;
 namespace Contoso.Core
 {
     public partial class Pager
@@ -11,10 +12,14 @@ namespace Contoso.Core
         internal static uint JOURNAL_PG_SZ(Pager pPager) { return (uint)pPager.pageSize + 8; }
         internal static uint JOURNAL_HDR_SZ(Pager pPager) { return pPager.sectorSize; }
 
-        // Return true if it is necessary to write page *pPg into the sub-journal.  A page needs to be written into the sub-journal if there exists one
-        // or more open savepoints for which:
-        //   * The page-number is less than or equal to PagerSavepoint.nOrig, and
-        //   * The bit corresponding to the page-number is not set in PagerSavepoint.pInSavepoint.
+#if SQLITE_ENABLE_ATOMIC_WRITE
+//  int sqlite3JournalOpen(sqlite3_vfs *, string , sqlite3_file *, int, int);
+//  int sqlite3JournalSize(sqlite3_vfs );
+//  int sqlite3JournalCreate(sqlite3_file );
+#else
+        internal static int sqlite3JournalSize(VirtualFileSystem pVfs) { return pVfs.szOsFile; }
+#endif
+
         internal static bool subjRequiresPage(PgHdr pPg)
         {
             var pgno = pPg.pgno;
@@ -22,33 +27,18 @@ namespace Contoso.Core
             for (var i = 0; i < pPager.nSavepoint; i++)
             {
                 var p = pPager.aSavepoint[i];
-                if (p.nOrig >= pgno && sqlite3BitvecTest(p.pInSavepoint, pgno) == 0)
+                if (p.nOrig >= pgno && p.pInSavepoint.sqlite3BitvecTest(pgno) == 0)
                     return true;
             }
             return false;
         }
 
-        // Return true if the page is already in the journal file.
         internal static bool pageInJournal(PgHdr pPg)
         {
-            return sqlite3BitvecTest(pPg.pPager.pInJournal, pPg.pgno) != 0;
+            return pPg.pPager.pInJournal.sqlite3BitvecTest(pPg.pgno) != 0;
         }
 
-        // When this is called the journal file for pager pPager must be open. This function attempts to read a master journal file name from the
-        // end of the file and, if successful, copies it into memory supplied by the caller. See comments above writeMasterJournal() for the format
-        // used to store a master journal file name at the end of a journal file.
-        //
-        // zMaster must point to a buffer of at least nMaster bytes allocated by the caller. This should be sqlite3_vfs.mxPathname+1 (to ensure there is
-        // enough space to write the master journal name). If the master journal name in the journal is longer than nMaster bytes (including a
-        // nul-terminator), then this is handled as if no master journal name were present in the journal.
-        //
-        // If a master journal file name is present at the end of the journal file, then it is copied into the buffer pointed to by zMaster. A
-        // nul-terminator byte is appended to the buffer following the master journal file name.
-        //
-        // If it is determined that no master journal file name is present zMaster[0] is set to 0 and SQLITE_OK returned.
-        //
-        // If an error occurs while reading from the journal file, an SQLite error code is returned.
-        internal static SQLITE readMasterJournal(sqlite3_file pJrnl, byte[] zMaster, uint nMaster)
+        internal static SQLITE readMasterJournal(VirtualFile pJrnl, byte[] zMaster, uint nMaster)
         {
             int len = 0;                // Length in bytes of master journal name 
             long szJ = 0;               // Total size in bytes of journal file pJrnl 
@@ -56,38 +46,27 @@ namespace Contoso.Core
             zMaster[0] = 0;
             var aMagic = new byte[8];   // A buffer to hold the magic header
             SQLITE rc;
-            if (SQLITE.OK != (rc = sqlite3OsFileSize(pJrnl, ref szJ))
+            if (SQLITE.OK != (rc = FileEx.sqlite3OsFileSize(pJrnl, ref szJ))
                 || szJ < 16
                 || SQLITE.OK != (rc = read32bits(pJrnl, (int)(szJ - 16), ref len))
                 || len >= nMaster
                 || SQLITE.OK != (rc = read32bits(pJrnl, szJ - 12, ref cksum))
-                || SQLITE.OK != (rc = sqlite3OsRead(pJrnl, aMagic, 8, szJ - 8))
+                || SQLITE.OK != (rc = FileEx.sqlite3OsRead(pJrnl, aMagic, 8, szJ - 8))
                 || ArrayEx.Compare(aMagic, aJournalMagic, 8) != 0
-                || SQLITE.OK != (rc = sqlite3OsRead(pJrnl, zMaster, len, (long)(szJ - 16 - len))))
+                || SQLITE.OK != (rc = FileEx.sqlite3OsRead(pJrnl, zMaster, len, (long)(szJ - 16 - len))))
                 return rc;
             // See if the checksum matches the master journal name
             for (var u = 0; u < len; u++)
                 cksum -= zMaster[u];
             if (cksum != 0)
                 // If the checksum doesn't add up, then one or more of the disk sectors containing the master journal filename is corrupted. This means
-                // definitely roll back, so just return SQLITE_OK and report a (nul) master-journal filename.
+                // definitely roll back, so just return SQLITE.OK and report a (nul) master-journal filename.
                 len = 0;
             if (len == 0)
                 zMaster[0] = 0;
             return SQLITE.OK;
         }
 
-        // Return the offset of the sector boundary at or immediately following the value in pPager.journalOff, assuming a sector
-        // size of pPager.sectorSize bytes.
-        //
-        // i.e for a sector size of 512:
-        //
-        //   Pager.journalOff          Return value
-        //   ---------------------------------------
-        //   0                         0
-        //   512                       512
-        //   100                       512
-        //   2000                      2048
         internal static long journalHdrOffset(Pager pPager)
         {
             long offset = 0;
@@ -105,15 +84,6 @@ namespace Contoso.Core
             pPager.journalOff = journalHdrOffset(pPager);
         }
 
-        // The journal file must be open when this function is called.
-        // This function is a no-op if the journal file has not been written to within the current transaction (i.e. if Pager.journalOff==0).
-        // If doTruncate is non-zero or the Pager.journalSizeLimit variable is set to 0, then truncate the journal file to zero bytes in size. Otherwise,
-        // zero the 28-byte header at the start of the journal file. In either case, if the pager is not in no-sync mode, sync the journal file immediately
-        // after writing or truncating it.
-        // If Pager.journalSizeLimit is set to a positive, non-zero value, and following the truncation or zeroing described above the size of the
-        // journal file in bytes is larger than this value, then truncate the journal file to Pager.journalSizeLimit bytes. The journal file does
-        // not need to be synced following this operation.
-        // If an IO error occurs, abandon processing and return the IO error code. Otherwise, return SQLITE_OK.
         internal static SQLITE zeroJournalHdr(Pager pPager, int doTruncate)
         {
             var rc = SQLITE.OK;
@@ -121,41 +91,30 @@ namespace Contoso.Core
             if (pPager.journalOff != 0)
             {
                 var iLimit = pPager.journalSizeLimit; // Local cache of jsl
-                IOTRACE("JZEROHDR %p\n", pPager);
+                SysEx.IOTRACE("JZEROHDR %p\n", pPager);
                 if (doTruncate != 0 || iLimit == 0)
-                    rc = sqlite3OsTruncate(pPager.jfd, 0);
+                    rc = FileEx.sqlite3OsTruncate(pPager.jfd, 0);
                 else
                 {
                     var zeroHdr = new byte[28];
-                    rc = sqlite3OsWrite(pPager.jfd, zeroHdr, zeroHdr.Length, 0);
+                    rc = FileEx.sqlite3OsWrite(pPager.jfd, zeroHdr, zeroHdr.Length, 0);
                 }
                 if (rc == SQLITE.OK && !pPager.noSync)
-                    rc = sqlite3OsSync(pPager.jfd, SQLITE_SYNC_DATAONLY | pPager.syncFlags);
-
+                    rc = FileEx.sqlite3OsSync(pPager.jfd, VirtualFile.SYNC.DATAONLY | pPager.syncFlags);
                 // At this point the transaction is committed but the write lock is still held on the file. If there is a size limit configured for
                 // the persistent journal and the journal file currently consumes more space than that limit allows for, truncate it now. There is no need
                 // to sync the file following this operation.
                 if (rc == SQLITE.OK && iLimit > 0)
                 {
                     long sz = 0;
-                    rc = sqlite3OsFileSize(pPager.jfd, ref sz);
+                    rc = FileEx.sqlite3OsFileSize(pPager.jfd, ref sz);
                     if (rc == SQLITE.OK && sz > iLimit)
-                        rc = sqlite3OsTruncate(pPager.jfd, iLimit);
+                        rc = FileEx.sqlite3OsTruncate(pPager.jfd, iLimit);
                 }
             }
             return rc;
         }
 
-        // The journal file must be open when this routine is called. A journal header (JOURNAL_HDR_SZ bytes) is written into the journal file at the
-        // current location.
-        // The format for the journal header is as follows:
-        // - 8 bytes: Magic identifying journal format.
-        // - 4 bytes: Number of records in journal, or -1 no-sync mode is on.
-        // - 4 bytes: Random number used for page hash.
-        // - 4 bytes: Initial database page count.
-        // - 4 bytes: Sector size used by the process that wrote this journal.
-        // - 4 bytes: Database page size.
-        // Followed by (JOURNAL_HDR_SZ - 28) bytes of unused space.
         internal static SQLITE writeJournalHdr(Pager pPager)
         {
             Debug.Assert(pPager.jfd.isOpen);    // Journal file must be open.
@@ -178,24 +137,24 @@ namespace Contoso.Core
             //   * When the SQLITE_IOCAP_SAFE_APPEND flag is set. This guarantees that garbage data is never appended to the journal file.
             Debug.Assert(pPager.fd.isOpen || pPager.noSync);
             var zHeader = pPager.pTmpSpace;  // Temporary space used to build header
-            if (pPager.noSync || (pPager.journalMode == JOURNALMODE.MEMORY) || (sqlite3OsDeviceCharacteristics(pPager.fd) & SQLITE_IOCAP_SAFE_APPEND) != 0)
+            if (pPager.noSync || (pPager.journalMode == JOURNALMODE.MEMORY) || (FileEx.sqlite3OsDeviceCharacteristics(pPager.fd) & VirtualFile.IOCAP.SAFE_APPEND) != 0)
             {
                 aJournalMagic.CopyTo(zHeader, 0);
-                put32bits(zHeader, aJournalMagic.Length, 0xffffffff);
+                ConvertEx.put32bits(zHeader, aJournalMagic.Length, 0xffffffff);
             }
             else
                 Array.Clear(zHeader, 0, aJournalMagic.Length + 4);
             // The random check-hash initialiser
             long i64Temp = 0;
-            sqlite3_randomness(sizeof(long), ref i64Temp);
+            UtilEx.sqlite3_randomness(sizeof(long), ref i64Temp);
             pPager.cksumInit = (Pgno)i64Temp;
-            put32bits(zHeader, aJournalMagic.Length + 4, pPager.cksumInit);
+            ConvertEx.put32bits(zHeader, aJournalMagic.Length + 4, pPager.cksumInit);
             // The initial database size
-            put32bits(zHeader, aJournalMagic.Length + 8, pPager.dbOrigSize);
+            ConvertEx.put32bits(zHeader, aJournalMagic.Length + 8, pPager.dbOrigSize);
             // The assumed sector size for this process
-            put32bits(zHeader, aJournalMagic.Length + 12, pPager.sectorSize);
+            ConvertEx.put32bits(zHeader, aJournalMagic.Length + 12, pPager.sectorSize);
             // The page size
-            put32bits(zHeader, aJournalMagic.Length + 16, (uint)pPager.pageSize);
+            ConvertEx.put32bits(zHeader, aJournalMagic.Length + 16, (uint)pPager.pageSize);
             // Initializing the tail of the buffer is not necessary.  Everything works find if the following memset() is omitted.  But initializing
             // the memory prevents valgrind from complaining, so we are willing to take the performance hit.
             Array.Clear(zHeader, aJournalMagic.Length + 20, (int)nHeader - aJournalMagic.Length + 20);
@@ -210,28 +169,17 @@ namespace Contoso.Core
             SQLITE rc = SQLITE.OK;                 // Return code
             for (uint nWrite = 0; rc == SQLITE.OK && nWrite < JOURNAL_HDR_SZ(pPager); nWrite += nHeader)
             {
-                IOTRACE("JHDR %p %lld %d\n", pPager, pPager.journalHdr, nHeader);
-                rc = sqlite3OsWrite(pPager.jfd, zHeader, (int)nHeader, pPager.journalOff);
+                SysEx.IOTRACE("JHDR %p %lld %d\n", pPager, pPager.journalHdr, nHeader);
+                rc = FileEx.sqlite3OsWrite(pPager.jfd, zHeader, (int)nHeader, pPager.journalOff);
                 Debug.Assert(pPager.journalHdr <= pPager.journalOff);
                 pPager.journalOff += (int)nHeader;
             }
             return rc;
         }
 
-        // The journal file must be open when this is called. A journal header file (JOURNAL_HDR_SZ bytes) is read from the current location in the journal
-        // file. The current location in the journal file is given by pPager.journalOff. See comments above function writeJournalHdr() for
-        // a description of the journal header format.
-        //
-        // If the header is read successfully, *pNRec is set to the number of page records following this header and *pDbSize is set to the size of the
-        // database before the transaction began, in pages. Also, pPager.cksumInit is set to the value read from the journal header. SQLITE_OK is returned
-        // in this case.
-        //
-        // If the journal header file appears to be corrupted, SQLITE_DONE is returned and *pNRec and *PDbSize are undefined.  If JOURNAL_HDR_SZ bytes
-        // cannot be read from the journal file an error code is returned.
-        internal static SQLITE readJournalHdr(Pager pPager, int isHot, long journalSize, out uint pNRec, out uint pDbSize)
+        internal static SQLITE readJournalHdr(Pager pPager, int isHot, long journalSize, out uint pNRec, out Pgno pDbSize)
         {
             var aMagic = new byte[8]; // A buffer to hold the magic header
-
             Debug.Assert(pPager.jfd.isOpen);    // Journal file must be open.
             pNRec = 0;
             pDbSize = 0;
@@ -246,10 +194,10 @@ namespace Contoso.Core
             SQLITE rc;
             if (isHot != 0 || iHdrOff != pPager.journalHdr)
             {
-                rc = sqlite3OsRead(pPager.jfd, aMagic, aMagic.Length, iHdrOff);
+                rc = FileEx.sqlite3OsRead(pPager.jfd, aMagic, aMagic.Length, iHdrOff);
                 if (rc != SQLITE.OK)
                     return rc;
-                if (memcmp(aMagic, aJournalMagic, aMagic.Length) != 0)
+                if (ArrayEx.Compare(aMagic, aJournalMagic, aMagic.Length) != 0)
                     return SQLITE.DONE;
             }
             // Read the first three 32-bit fields of the journal header: The nRec field, the checksum-initializer and the database size at the start
@@ -290,16 +238,6 @@ namespace Contoso.Core
             return rc;
         }
 
-        // Write the supplied master journal name into the journal file for pager pPager at the current location. The master journal name must be the last
-        // thing written to a journal file. If the pager is in full-sync mode, the journal file descriptor is advanced to the next sector boundary before
-        // anything is written. The format is:
-        //   + 4 bytes: PAGER_MJ_PGNO.
-        //   + N bytes: Master journal filename in utf-8.
-        //   + 4 bytes: N (length of master journal name in bytes, no nul-terminator).
-        //   + 4 bytes: Master journal name checksum.
-        //   + 8 bytes: aJournalMagic[].
-        // The master journal page checksum is the sum of the bytes in the master journal name, where each byte is interpreted as a signed 8-bit integer.
-        // If zMaster is a NULL pointer (occurs for a single database transaction), this call is a no-op.
         internal static SQLITE writeMasterJournal(Pager pPager, string zMaster)
         {
             Debug.Assert(pPager.setMaster == 0);
@@ -324,10 +262,10 @@ namespace Contoso.Core
             // Write the master journal data to the end of the journal file. If an error occurs, return the error code to the caller.
             SQLITE rc;
             if (SQLITE.OK != (rc = write32bits(pPager.jfd, iHdrOff, (uint)PAGER_MJ_PGNO(pPager)))
-                || SQLITE.OK != (rc = sqlite3OsWrite(pPager.jfd, Encoding.UTF8.GetBytes(zMaster), nMaster, iHdrOff + 4))
+                || SQLITE.OK != (rc = FileEx.sqlite3OsWrite(pPager.jfd, Encoding.UTF8.GetBytes(zMaster), nMaster, iHdrOff + 4))
                 || SQLITE.OK != (rc = write32bits(pPager.jfd, iHdrOff + 4 + nMaster, (uint)nMaster))
                 || SQLITE.OK != (rc = write32bits(pPager.jfd, iHdrOff + 4 + nMaster + 4, cksum))
-                || SQLITE.OK != (rc = sqlite3OsWrite(pPager.jfd, aJournalMagic, 8, iHdrOff + 4 + nMaster + 8)))
+                || SQLITE.OK != (rc = FileEx.sqlite3OsWrite(pPager.jfd, aJournalMagic, 8, iHdrOff + 4 + nMaster + 8)))
                 return rc;
             pPager.journalOff += nMaster + 20;
             // If the pager is in peristent-journal mode, then the physical journal-file may extend past the end of the master-journal name
@@ -335,8 +273,228 @@ namespace Contoso.Core
             // will not be able to find the master-journal name to determine whether or not the journal is hot.
             // Easiest thing to do in this scenario is to truncate the journal file to the required size.
             long jrnlSize = 0;  // Size of journal file on disk
-            if (SQLITE.OK == (rc = sqlite3OsFileSize(pPager.jfd, ref jrnlSize)) && jrnlSize > pPager.journalOff)
-                rc = sqlite3OsTruncate(pPager.jfd, pPager.journalOff);
+            if (SQLITE.OK == (rc = FileEx.sqlite3OsFileSize(pPager.jfd, ref jrnlSize)) && jrnlSize > pPager.journalOff)
+                rc = FileEx.sqlite3OsTruncate(pPager.jfd, pPager.journalOff);
+            return rc;
+        }
+
+        internal static SQLITE pagerSyncHotJournal(Pager pPager)
+        {
+            var rc = SQLITE.OK;
+            if (!pPager.noSync)
+                rc = FileEx.sqlite3OsSync(pPager.jfd, VirtualFile.SYNC.NORMAL);
+            if (rc == SQLITE.OK)
+                rc = FileEx.sqlite3OsFileSize(pPager.jfd, ref pPager.journalHdr);
+            return rc;
+        }
+
+        internal static SQLITE syncJournal(Pager pPager, int newHdr)
+        {
+            var rc = SQLITE.OK;
+            Debug.Assert(pPager.eState == PAGER.WRITER_CACHEMOD || pPager.eState == PAGER.WRITER_DBMOD);
+            Debug.Assert(assert_pager_state(pPager));
+            Debug.Assert(!pagerUseWal(pPager));
+            rc = sqlite3PagerExclusiveLock(pPager);
+            if (rc != SQLITE.OK)
+                return rc;
+            if (!pPager.noSync)
+            {
+                Debug.Assert(!pPager.tempFile);
+                if (pPager.jfd.isOpen && pPager.journalMode != JOURNALMODE.MEMORY)
+                {
+                    var iDc = FileEx.sqlite3OsDeviceCharacteristics(pPager.fd);
+                    Debug.Assert(pPager.jfd.isOpen);
+                    if (0 == (iDc & VirtualFile.IOCAP.SAFE_APPEND))
+                    {
+                        // This block deals with an obscure problem. If the last connection that wrote to this database was operating in persistent-journal
+                        // mode, then the journal file may at this point actually be larger than Pager.journalOff bytes. If the next thing in the journal
+                        // file happens to be a journal-header (written as part of the previous connection's transaction), and a crash or power-failure
+                        // occurs after nRec is updated but before this connection writes anything else to the journal file (or commits/rolls back its
+                        // transaction), then SQLite may become confused when doing the hot-journal rollback following recovery. It may roll back all
+                        // of this connections data, then proceed to rolling back the old, out-of-date data that follows it. Database corruption.
+                        // To work around this, if the journal file does appear to contain a valid header following Pager.journalOff, then write a 0x00
+                        // byte to the start of it to prevent it from being recognized.
+                        // Variable iNextHdrOffset is set to the offset at which this problematic header will occur, if it exists. aMagic is used
+                        // as a temporary buffer to inspect the first couple of bytes of the potential journal header.
+                        var zHeader = new byte[aJournalMagic.Length + 4];
+                        aJournalMagic.CopyTo(zHeader, 0);
+                        ConvertEx.put32bits(zHeader, aJournalMagic.Length, pPager.nRec);
+                        var iNextHdrOffset = journalHdrOffset(pPager);
+                        var aMagic = new byte[8];
+                        rc = FileEx.sqlite3OsRead(pPager.jfd, aMagic, 8, iNextHdrOffset);
+                        if (rc == SQLITE.OK && 0 == ArrayEx.Compare(aMagic, aJournalMagic, 8))
+                        {
+                            var zerobyte = new byte[1];
+                            rc = FileEx.sqlite3OsWrite(pPager.jfd, zerobyte, 1, iNextHdrOffset);
+                        }
+                        if (rc != SQLITE.OK && rc != SQLITE.IOERR_SHORT_READ)
+                            return rc;
+                        // Write the nRec value into the journal file header. If in full-synchronous mode, sync the journal first. This ensures that
+                        // all data has really hit the disk before nRec is updated to mark it as a candidate for rollback.
+                        // This is not required if the persistent media supports the SAFE_APPEND property. Because in this case it is not possible
+                        // for garbage data to be appended to the file, the nRec field is populated with 0xFFFFFFFF when the journal header is written
+                        // and never needs to be updated.
+                        if (pPager.fullSync && 0 == (iDc & VirtualFile.IOCAP.SEQUENTIAL))
+                        {
+                            PAGERTRACE("SYNC journal of %d\n", PAGERID(pPager));
+                            SysEx.IOTRACE("JSYNC %p\n", pPager);
+                            rc = FileEx.sqlite3OsSync(pPager.jfd, pPager.syncFlags);
+                            if (rc != SQLITE.OK)
+                                return rc;
+                        }
+                        SysEx.IOTRACE("JHDR %p %lld\n", pPager, pPager.journalHdr);
+                        rc = FileEx.sqlite3OsWrite(pPager.jfd, zHeader, zHeader.Length, pPager.journalHdr);
+                        if (rc != SQLITE.OK)
+                            return rc;
+                    }
+                    if (0 == (iDc & VirtualFile.IOCAP.SEQUENTIAL))
+                    {
+                        PAGERTRACE("SYNC journal of %d\n", PAGERID(pPager));
+                        SysEx.IOTRACE("JSYNC %p\n", pPager);
+                        rc = FileEx.sqlite3OsSync(pPager.jfd, pPager.syncFlags | (pPager.syncFlags == VirtualFile.SYNC.FULL ? VirtualFile.SYNC.DATAONLY : 0));
+                        if (rc != SQLITE.OK)
+                            return rc;
+                    }
+                    pPager.journalHdr = pPager.journalOff;
+                    if (newHdr != 0 && 0 == (iDc & VirtualFile.IOCAP.SAFE_APPEND))
+                    {
+                        pPager.nRec = 0;
+                        rc = writeJournalHdr(pPager);
+                        if (rc != SQLITE.OK)
+                            return rc;
+                    }
+                }
+                else
+                    pPager.journalHdr = pPager.journalOff;
+            }
+            // Unless the pager is in noSync mode, the journal file was just successfully synced. Either way, clear the PGHDR_NEED_SYNC flag on all pages.
+            pPager.pPCache.sqlite3PcacheClearSyncFlags();
+            pPager.eState = PAGER.WRITER_DBMOD;
+            Debug.Assert(assert_pager_state(pPager));
+            return SQLITE.OK;
+        }
+
+        internal static SQLITE openSubJournal(Pager pPager)
+        {
+            var rc = SQLITE.OK;
+            if (!pPager.sjfd.isOpen)
+            {
+                if (pPager.journalMode == JOURNALMODE.MEMORY || pPager.subjInMemory != 0)
+                    pPager.sjfd = new MemJournalFile();
+                else
+                    rc = pagerOpentemp(pPager, ref pPager.sjfd, VirtualFileSystem.OPEN.SUBJOURNAL);
+            }
+            return rc;
+        }
+
+        internal static SQLITE subjournalPage(PgHdr pPg)
+        {
+            var rc = SQLITE.OK;
+            var pPager = pPg.pPager;
+            if (pPager.journalMode != JOURNALMODE.OFF)
+            {
+                // Open the sub-journal, if it has not already been opened
+                Debug.Assert(pPager.useJournal != 0);
+                Debug.Assert(pPager.jfd.isOpen || pPager.pagerUseWal());
+                Debug.Assert(pPager.sjfd.isOpen || pPager.nSubRec == 0);
+                Debug.Assert(pPager.pagerUseWal() || pageInJournal(pPg) || pPg.pgno > pPager.dbOrigSize);
+                rc = openSubJournal(pPager);
+                // If the sub-journal was opened successfully (or was already open), write the journal record into the file. 
+                if (rc == SQLITE.OK)
+                {
+                    var pData = pPg.pData;
+                    long offset = pPager.nSubRec * (4 + pPager.pageSize);
+                    byte[] pData2 = null;
+                    if (CODEC2(pPager, pData, pPg.pgno, codec_ctx.ENCRYPT_READ_CTX, ref pData2))
+                        return SQLITE.NOMEM;
+                    PAGERTRACE("STMT-JOURNAL %d page %d\n", PAGERID(pPager), pPg.pgno);
+                    rc = write32bits(pPager.sjfd, offset, pPg.pgno);
+                    if (rc == SQLITE.OK)
+                        rc = FileEx.sqlite3OsWrite(pPager.sjfd, pData2, pPager.pageSize, offset + 4);
+                }
+            }
+            if (rc == SQLITE.OK)
+            {
+                pPager.nSubRec++;
+                Debug.Assert(pPager.nSavepoint > 0);
+                rc = addToSavepointBitvecs(pPager, pPg.pgno);
+            }
+            return rc;
+        }
+
+        internal static SQLITE hasHotJournal(Pager pPager, ref int pExists)
+        {
+            var pVfs = pPager.pVfs;
+            var exists = 1;               // True if a journal file is present
+            var jrnlOpen = (pPager.jfd.isOpen ? 1 : 0);
+            Debug.Assert(pPager.useJournal != 0);
+            Debug.Assert(pPager.fd.isOpen);
+            Debug.Assert(pPager.eState == PAGER.OPEN);
+            Debug.Assert(jrnlOpen == 0 || (FileEx.sqlite3OsDeviceCharacteristics(pPager.jfd) & VirtualFile.IOCAP.UNDELETABLE_WHEN_OPEN) != 0);
+            pExists = 0;
+            var rc = SQLITE.OK;
+            if (0 == jrnlOpen)
+                rc = FileEx.sqlite3OsAccess(pVfs, pPager.zJournal, VirtualFileSystem.ACCESS.EXISTS, ref exists);
+            if (rc == SQLITE.OK && exists != 0)
+            {
+                int locked = 0;                 // True if some process holds a RESERVED lock
+                // Race condition here:  Another process might have been holding the the RESERVED lock and have a journal open at the sqlite3OsAccess()
+                // call above, but then delete the journal and drop the lock before we get to the following sqlite3OsCheckReservedLock() call.  If that
+                // is the case, this routine might think there is a hot journal when in fact there is none.  This results in a false-positive which will
+                // be dealt with by the playback routine.
+                rc = FileEx.sqlite3OsCheckReservedLock(pPager.fd, ref locked);
+                if (rc == SQLITE.OK && locked == 0)
+                {
+                    Pgno nPage = 0; // Number of pages in database file
+                    // Check the size of the database file. If it consists of 0 pages, then delete the journal file. See the header comment above for
+                    // the reasoning here.  Delete the obsolete journal file under a RESERVED lock to avoid race conditions and to avoid violating [H33020].
+                    rc = pagerPagecount(pPager, ref nPage);
+                    if (rc == SQLITE.OK)
+                    {
+                        if (nPage == 0)
+                        {
+                            MallocEx.sqlite3BeginBenignMalloc();
+                            if (pagerLockDb(pPager, LOCK.RESERVED) == SQLITE.OK)
+                            {
+                                FileEx.sqlite3OsDelete(pVfs, pPager.zJournal, 0);
+                                if (!pPager.exclusiveMode)
+                                    pagerUnlockDb(pPager, LOCK.SHARED);
+                            }
+                            MallocEx.sqlite3EndBenignMalloc();
+                        }
+                        else
+                        {
+                            // The journal file exists and no other connection has a reserved or greater lock on the database file. Now check that there is
+                            // at least one non-zero bytes at the start of the journal file. If there is, then we consider this journal to be hot. If not,
+                            // it can be ignored.
+                            if (0 == jrnlOpen)
+                            {
+                                var f = VirtualFileSystem.OPEN.READONLY | VirtualFileSystem.OPEN.MAIN_JOURNAL;
+                                rc = FileEx.sqlite3OsOpen(pVfs, pPager.zJournal, pPager.jfd, f, ref f);
+                            }
+                            if (rc == SQLITE.OK)
+                            {
+                                var first = new byte[1];
+                                rc = FileEx.sqlite3OsRead(pPager.jfd, first, 1, 0);
+                                if (rc == SQLITE.IOERR_SHORT_READ)
+                                    rc = SQLITE.OK;
+                                if (0 == jrnlOpen)
+                                    FileEx.sqlite3OsClose(pPager.jfd);
+                                pExists = (first[0] != 0) ? 1 : 0;
+                            }
+                            else if (rc == SQLITE.CANTOPEN)
+                            {
+                                // If we cannot open the rollback journal file in order to see if its has a zero header, that might be due to an I/O error, or
+                                // it might be due to the race condition.  Either way, assume that the journal is hot. This might be a false positive.  But if it is, then the
+                                // automatic journal playback and recovery mechanism will deal with it under an EXCLUSIVE lock where we do not need to
+                                // worry so much with race conditions.
+                                pExists = 1;
+                                rc = SQLITE.OK;
+                            }
+                        }
+                    }
+                }
+            }
             return rc;
         }
     }

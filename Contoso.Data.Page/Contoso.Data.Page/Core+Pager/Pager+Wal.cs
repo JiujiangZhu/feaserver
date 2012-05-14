@@ -4,14 +4,13 @@ namespace Contoso.Core
 {
     public partial class Pager
     {
-
 #if !SQLITE_OMIT_WAL
         // This function is invoked once for each page that has already been written into the log file when a WAL transaction is rolled back.
         // Parameter iPg is the page number of said page. The pCtx argument is actually a pointer to the Pager structure.
         //
         // If page iPg is present in the cache, and has no outstanding references, it is discarded. Otherwise, if there are one or more outstanding
         // references, the page content is reloaded from the database. If the attempt to reload content from the database is required and fails, 
-        // return an SQLite error code. Otherwise, SQLITE_OK.
+        // return an SQLite error code. Otherwise, SQLITE.OK.
         static int pagerUndoCallback(Pager pCtx, Pgno iPg)
         {
             var rc = SQLITE.OK;
@@ -112,7 +111,7 @@ assert( p->pgno < p->pDirty->pgno );
             rc = sqlite3WalFrames(pPager.pWal,
             pPager.pageSize, pList, nTruncate, isCommit, syncFlags
             );
-            if (rc == SQLITE_OK && pPager.pBackup)
+            if (rc == SQLITE.OK && pPager.pBackup)
             {
                 PgHdr* p;
                 for (p = pList; p; p = p->pDirty)
@@ -155,17 +154,13 @@ pager_set_pagehash(p);
             sqlite3WalEndReadTransaction(pPager.pWal);
 
             rc = sqlite3WalBeginReadTransaction(pPager.pWal, &changed);
-            if (rc != SQLITE_OK || changed)
+            if (rc != SQLITE.OK || changed)
             {
                 pager_reset(pPager);
             }
 
             return rc;
         }
-#endif
-
-
-#if !SQLITE_OMIT_WAL
         /*
 ** Check if the *-wal file that corresponds to the database opened by pPager
 ** exists if the database is not empy, or verify that the *-wal file does
@@ -176,7 +171,7 @@ pager_set_pagehash(p);
 ** if no error occurs, make sure Pager.journalMode is not set to
 ** PAGER_JOURNALMODE_WAL.
 **
-** Return SQLITE_OK or an error code.
+** Return SQLITE.OK or an error code.
 **
 ** The caller must hold a SHARED lock on the database file to call this
 ** function. Because an EXCLUSIVE lock on the db file is required to delete 
@@ -186,7 +181,7 @@ pager_set_pagehash(p);
 */
         static int pagerOpenWalIfPresent(Pager* pPager)
         {
-            int rc = SQLITE_OK;
+            int rc = SQLITE.OK;
             Debug.Assert(pPager.eState == PAGER_OPEN);
             Debug.Assert(pPager.eLock >= SHARED_LOCK || pPager.noReadlock);
 
@@ -208,7 +203,7 @@ pager_set_pagehash(p);
                     pPager.pVfs, pPager.zWal, SQLITE_ACCESS_EXISTS, &isWal
                     );
                 }
-                if (rc == SQLITE_OK)
+                if (rc == SQLITE.OK)
                 {
                     if (isWal)
                     {
@@ -223,10 +218,7 @@ pager_set_pagehash(p);
             }
             return rc;
         }
-#endif
 
-
-#if !SQLITE_OMIT_WAL
 /*
 ** This function is called when the user invokes "PRAGMA wal_checkpoint",
 ** "PRAGMA wal_blocking_checkpoint" or calls the sqlite3_wal_checkpoint()
@@ -235,7 +227,7 @@ pager_set_pagehash(p);
 ** Parameter eMode is one of SQLITE_CHECKPOINT_PASSIVE, FULL or RESTART.
 */
 int sqlite3PagerCheckpoint(Pager *pPager, int eMode, int *pnLog, int *pnCkpt){
-  int rc = SQLITE_OK;
+  int rc = SQLITE.OK;
   if( pPager.pWal ){
     rc = sqlite3WalCheckpoint(pPager.pWal, eMode,
         pPager.xBusyHandler, pPager.pBusyHandlerArg,
@@ -268,7 +260,7 @@ int rc;                         /* Return code */
 
 assert( pPager.eLock==SHARED_LOCK || pPager.eLock==EXCLUSIVE_LOCK );
 rc = pagerLockDb(pPager, EXCLUSIVE_LOCK);
-if( rc!=SQLITE_OK ){
+if( rc!=SQLITE.OK ){
 /* If the attempt to grab the exclusive lock failed, release the
 ** pending lock that may have been obtained instead.  */
 pagerUnlockDb(pPager, SHARED_LOCK);
@@ -284,7 +276,7 @@ return rc;
 ** in. Otherwise, use the normal shared-memory.
 */
 static int pagerOpenWal(Pager *pPager){
-int rc = SQLITE_OK;
+int rc = SQLITE.OK;
 
 assert( pPager.pWal==0 && pPager.tempFile==0 );
 assert( pPager.eLock==SHARED_LOCK || pPager.eLock==EXCLUSIVE_LOCK || pPager.noReadlock);
@@ -301,7 +293,7 @@ rc = pagerExclusiveLock(pPager);
 /* Open the connection to the log file. If this operation fails, 
 ** (e.g. due to malloc() failure), return an error code.
 */
-if( rc==SQLITE_OK ){
+if( rc==SQLITE.OK ){
 rc = sqlite3WalOpen(pPager.pVfs, 
 pPager.fd, pPager.zWal, pPager.exclusiveMode, &pPager.pWal
         pPager.journalSizeLimit, &pPager.pWal
@@ -319,19 +311,19 @@ return rc;
 ** If the pager passed as the first argument is open on a real database
 ** file (not a temp file or an in-memory database), and the WAL file
 ** is not already open, make an attempt to open it now. If successful,
-** return SQLITE_OK. If an error occurs or the VFS used by the pager does 
+** return SQLITE.OK. If an error occurs or the VFS used by the pager does 
 ** not support the xShmXXX() methods, return an error code. *pbOpen is
 ** not modified in either case.
 **
 ** If the pager is open on a temp-file (or in-memory database), or if
-** the WAL file is already open, set *pbOpen to 1 and return SQLITE_OK
+** the WAL file is already open, set *pbOpen to 1 and return SQLITE.OK
 ** without doing anything.
 */
 int sqlite3PagerOpenWal(
 Pager *pPager,                  /* Pager object */
 int *pbOpen                     /* OUT: Set to true if call is a no-op */
 ){
-int rc = SQLITE_OK;             /* Return code */
+int rc = SQLITE.OK;             /* Return code */
 
 assert( assert_pager_state(pPager) );
 assert( pPager.eState==PAGER_OPEN   || pbOpen );
@@ -346,7 +338,7 @@ if( !sqlite3PagerWalSupported(pPager) ) return SQLITE_CANTOPEN;
 sqlite3OsClose(pPager.jfd);
 
 rc = pagerOpenWal(pPager);
-if( rc==SQLITE_OK ){
+if( rc==SQLITE.OK ){
 pPager.journalMode = PAGER_JOURNALMODE_WAL;
 pPager.eState = PAGER_OPEN;
 }
@@ -367,7 +359,7 @@ return rc;
 ** If successful, the EXCLUSIVE lock is not released before returning.
 */
 int sqlite3PagerCloseWal(Pager *pPager){
-int rc = SQLITE_OK;
+int rc = SQLITE.OK;
 
 assert( pPager.journalMode==PAGER_JOURNALMODE_WAL );
 
@@ -378,12 +370,12 @@ assert( pPager.journalMode==PAGER_JOURNALMODE_WAL );
 if( !pPager.pWal ){
 int logexists = 0;
 rc = pagerLockDb(pPager, SHARED_LOCK);
-if( rc==SQLITE_OK ){
+if( rc==SQLITE.OK ){
 rc = sqlite3OsAccess(
 pPager.pVfs, pPager.zWal, SQLITE_ACCESS_EXISTS, &logexists
 );
 }
-if( rc==SQLITE_OK && logexists ){
+if( rc==SQLITE.OK && logexists ){
 rc = pagerOpenWal(pPager);
 }
 }
@@ -391,9 +383,9 @@ rc = pagerOpenWal(pPager);
 /* Checkpoint and close the log. Because an EXCLUSIVE lock is held on
 ** the database file, the log and log-summary files will be deleted.
 */
-if( rc==SQLITE_OK && pPager.pWal ){
+if( rc==SQLITE.OK && pPager.pWal ){
 rc = pagerExclusiveLock(pPager);
-if( rc==SQLITE_OK ){
+if( rc==SQLITE.OK ){
 rc = sqlite3WalClose(pPager.pWal, pPager.ckptSyncFlags,
            pPager.pageSize, (u8*)pPager.pTmpSpace);
 pPager.pWal = 0;

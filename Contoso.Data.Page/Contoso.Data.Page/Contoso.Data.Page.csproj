@@ -43,33 +43,54 @@
     <Compile Include="Core+Btree\BtShared.cs" />
     <Compile Include="Core+Btree\CellInfo.cs" />
     <Compile Include="Core+Btree\MemPage.cs" />
-    <Compile Include="Core+Pager\Copy %282%29 of Pager+x.cs" />
-    <Compile Include="Core+Pager\Copy %283%29 of Pager+x.cs" />
-    <Compile Include="Core+Pager\Copy %285%29 of Pager+x.cs" />
-    <Compile Include="Core+Pager\Copy %286%29 of Pager+x.cs" />
-    <Compile Include="Core+Pager\Copy of Pager+x.cs" />
-    <Compile Include="Core+Pager\Pager+x.cs" />
+    <Compile Include="Sys\MemJournalFile.cs" />
+    <Compile Include="Core+Pager\Name\PCache1+Allocation.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core+Pager\Name\PCache1+General.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core+Pager\Name\PCache1+Interface.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core+Pager\Pager+Aquire.cs" />
+    <Compile Include="Core+Pager\Pager+Commit.cs" />
+    <Compile Include="Core+Pager\Pager+Debug.cs" />
+    <Compile Include="Core+Pager\Pager+File.cs" />
+    <Compile Include="Core+Pager\Pager+Journal.cs" />
+    <Compile Include="Core+Pager\Pager+Lock.cs" />
+    <Compile Include="Core+Pager\Pager+Pager.cs" />
+    <Compile Include="Core+Pager\Pager+Properties.cs" />
     <Compile Include="Core+Pager\Pager+Savepoint.cs" />
     <Compile Include="Core+Pager\Pager+Stream.cs" />
-    <Compile Include="Core+Pager\Pager+Unknown.cs" />
-    <Compile Include="Core+Pager\Pager+Lock.cs" />
-    <Compile Include="Core+Pager\Pager+Debug.cs" />
-    <Compile Include="Core+Pager\Pager+Journal.cs" />
-    <Compile Include="Core+Pager\Pager+Wal.cs" />
+    <Compile Include="Core+Pager\Pager+Wal.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core+Pager\PCache+LinkedList.cs" />
+    <Compile Include="Core+Pager\Wal.cs" />
+    <Compile Include="Core+Pager\PCache+General.cs" />
     <Compile Include="Core+Pager\PagerSavepoint.cs" />
     <Compile Include="Core+Pager\Pager.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Core+Pager\PCache.cs" />
-    <Compile Include="Core+Pager\PCache1.cs" />
-    <Compile Include="Core+Pager\PCacheGlobal.cs" />
-    <Compile Include="Core+Pager\PgFreeslot.cs" />
+    <Compile Include="Core+Pager\Name\PCache1.cs" />
+    <Compile Include="Core+Pager\Name\PCacheGlobal.cs" />
+    <Compile Include="Core+Pager\Name\PgFreeslot.cs" />
     <Compile Include="Core+Pager\PgHdr.cs" />
-    <Compile Include="Core+Pager\PgHdr1.cs" />
-    <Compile Include="Core+Pager\PGroup.cs" />
+    <Compile Include="Core+Pager\Name\PgHdr1.cs" />
+    <Compile Include="Core+Pager\Name\PGroup.cs" />
     <Compile Include="Core\Bitvec.cs" />
     <Compile Include="Core\CollSeq.cs" />
-    <Compile Include="Core\DbPage.cs" />
+    <Compile Include="Core\cipher_ctx.cs" />
+    <Compile Include="Core\codec_ctx.cs" />
+    <Compile Include="Core\FileEx+Vfs.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core\FileEx.cs" />
+    <Compile Include="Core\StatusEx.cs" />
+    <Compile Include="Core\MallocEx.cs" />
+    <Compile Include="Core\MutexEx.cs" />
     <Compile Include="Core\IBackup.cs" />
     <Compile Include="Core\ISchema.cs" />
     <Compile Include="Core\KeyInfo.cs" />
@@ -77,10 +98,16 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Sys\ArrayEx.cs" />
+    <Compile Include="Sys\Check.cs" />
+    <Compile Include="Sys\ConvertEx.cs" />
+    <Compile Include="Sys\UtilEx.cs" />
+    <Compile Include="Sys\StringEx.cs" />
+    <Compile Include="Sys\VirtualFile+Locking.cs" />
+    <Compile Include="Sys\VirtualFile+Wal.cs" />
+    <Compile Include="Sys\SysEx.cs" />
     <Compile Include="Sys\SQLITE.cs" />
-    <Compile Include="Sys\sqlite3_vfs.cs" />
-    <Compile Include="Sys\sqlite3_io_methods.cs" />
-    <Compile Include="Sys\sqlite3_file.cs" />
+    <Compile Include="Sys\VirtualFileSystem.cs" />
+    <Compile Include="Sys\VirtualFile.cs" />
     <Compile Include="Sys\sqlite3_mutex.cs" />
   </ItemGroup>
   <ItemGroup />

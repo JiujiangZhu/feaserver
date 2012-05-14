@@ -1,5 +1,7 @@
 ﻿using System;
+using Contoso.Sys;
 using Pgno = System.UInt32;
+using DbPage = Contoso.Core.PgHdr;
 namespace Contoso.Core
 {
     public class MemPage
@@ -13,7 +15,7 @@ namespace Contoso.Core
                 var cp = new _OvflCell();
                 if (pCell != null)
                 {
-                    cp.pCell = new byte[pCell.Length];
+                    cp.pCell = MallocEx.sqlite3Malloc(pCell.Length);
                     Buffer.BlockCopy(pCell, 0, cp.pCell, 0, pCell.Length);
                 }
                 cp.idx = idx;
@@ -51,7 +53,7 @@ namespace Contoso.Core
             }
             if (aData != null)
             {
-                cp.aData = new byte[aData.Length];
+                cp.aData = MallocEx.sqlite3Malloc(aData.Length);
                 Buffer.BlockCopy(aData, 0, cp.aData, 0, aData.Length);
             }
             return cp;
