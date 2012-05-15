@@ -1,9 +1,7 @@
-﻿using System;
-using Pgno = System.UInt32;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Contoso.Sys;
-using System.Text;
 using DbPage = Contoso.Core.PgHdr;
+using Pgno = System.UInt32;
 namespace Contoso.Core
 {
     public partial class Pager
@@ -65,20 +63,20 @@ namespace Contoso.Core
                     // in 'direct' mode. In this case the journal file will never be created for this transaction.
 #if SQLITE_ENABLE_ATOMIC_WRITE
                     PgHdr pPg;
-                    Debug.Assert(pPager.jfd.isOpen || pPager.journalMode == JOURNALMODE.OFF || pPager.journalMode == JOURNALMODE.WAL);
-                    if (!zMaster && pPager.jfd.isOpen
-                        && pPager.journalOff == jrnlBufferSize(pPager)
-                        && pPager.dbSize >= pPager.dbOrigSize
-                        && (0 == (pPg = sqlite3PcacheDirtyList(pPager.pPCache)) || 0 == pPg.pDirty))
+                    Debug.Assert(this.jfd.isOpen || this.journalMode == JOURNALMODE.OFF || this.journalMode == JOURNALMODE.WAL);
+                    if (!zMaster && this.jfd.isOpen
+                        && this.journalOff == jrnlBufferSize(this)
+                        && this.dbSize >= this.dbOrigSize
+                        && (0 == (pPg = sqlite3PcacheDirtyList(this.pPCache)) || 0 == pPg.pDirty))
                         // Update the db file change counter via the direct-write method. The following call will modify the in-memory representation of page 1
                         // to include the updated change counter and then write page 1 directly to the database file. Because of the atomic-write
                         // property of the host file-system, this is safe.
-                        rc = pager_incr_changecounter(pPager, 1);
+                        rc = pager_incr_changecounter(this, 1);
                     else
                     {
-                        rc = sqlite3JournalCreate(pPager.jfd);
+                        rc = sqlite3JournalCreate(this.jfd);
                         if (rc == SQLITE.OK)
-                            rc = pager_incr_changecounter(pPager, 0);
+                            rc = pager_incr_changecounter(this, 0);
                     }
 #else
                     rc = pager_incr_changecounter(false);
@@ -93,10 +91,10 @@ namespace Contoso.Core
 #if !SQLITE_OMIT_AUTOVACUUM
                     if (dbSize < dbOrigSize && journalMode != JOURNALMODE.OFF)
                     {
-                        Pgno iSkip = PAGER_MJ_PGNO(this); // Pending lock page
-                        Pgno dbSize = this.dbSize;       // Database image size
-                        pPager.dbSize = dbOrigSize;
-                        for (Pgno i = dbSize + 1; i <= dbOrigSize; i++)
+                        var iSkip = PAGER_MJ_PGNO(this); // Pending lock page
+                        var lastDbSize = this.dbSize;       // Database image size
+                        this.dbSize = dbOrigSize;
+                        for (Pgno i = lastDbSize + 1; i <= dbOrigSize; i++)
                             if (0 == pInJournal.sqlite3BitvecTest(i) && i != iSkip)
                             {
                                 PgHdr pPage = null;             // Page to journal
@@ -108,7 +106,7 @@ namespace Contoso.Core
                                 if (rc != SQLITE.OK)
                                     goto commit_phase_one_exit;
                             }
-                        this.dbSize = dbSize;
+                        this.dbSize = lastDbSize;
                     }
 #endif
 
@@ -135,108 +133,108 @@ namespace Contoso.Core
                     // If the file on disk is not the same size as the database image, then use pager_truncate to grow or shrink the file here.
                     if (this.dbSize != dbFileSize)
                     {
-                        var nNew = (Pgno)(pPager.dbSize - (pPager.dbSize == PAGER_MJ_PGNO(pPager) ? 1 : 0));
-                        Debug.Assert(pPager.eState >= PAGER.WRITER_DBMOD);
-                        rc = pager_truncate(pPager, nNew);
+                        var nNew = (Pgno)(this.dbSize - (this.dbSize == PAGER_MJ_PGNO(this) ? 1 : 0));
+                        Debug.Assert(this.eState >= PAGER.WRITER_DBMOD);
+                        rc = pager_truncate(nNew);
                         if (rc != SQLITE.OK)
                             goto commit_phase_one_exit;
                     }
                     // Finally, sync the database file.
                     if (!noSync)
-                        rc = sqlite3PagerSync(pPager);
-                    SysEx.IOTRACE("DBSYNC %p\n", pPager);
+                        rc = sqlite3PagerSync();
+                    SysEx.IOTRACE("DBSYNC %p\n", this);
                 }
             }
         commit_phase_one_exit:
-            if (rc == SQLITE.OK && !pagerUseWal(pPager))
-                pPager.eState = PAGER.WRITER_FINISHED;
+            if (rc == SQLITE.OK && !pagerUseWal())
+                this.eState = PAGER.WRITER_FINISHED;
             return rc;
         }
 
-        internal static SQLITE sqlite3PagerCommitPhaseTwo(Pager pPager)
+        internal SQLITE sqlite3PagerCommitPhaseTwo()
         {
             var rc = SQLITE.OK;
             // This routine should not be called if a prior error has occurred. But if (due to a coding error elsewhere in the system) it does get
             // called, just return the same error code without doing anything. */
-            if (Check.NEVER(pPager.errCode))
-                return pPager.errCode;
-            Debug.Assert(pPager.eState == PAGER.WRITER_LOCKED || pPager.eState == PAGER.WRITER_FINISHED || (pagerUseWal(pPager) && pPager.eState == PAGER.WRITER_CACHEMOD));
-            Debug.Assert(assert_pager_state(pPager));
+            if (Check.NEVER(this.errCode))
+                return this.errCode;
+            Debug.Assert(this.eState == PAGER.WRITER_LOCKED || this.eState == PAGER.WRITER_FINISHED || (pagerUseWal() && this.eState == PAGER.WRITER_CACHEMOD));
+            Debug.Assert(assert_pager_state());
             // An optimization. If the database was not actually modified during this transaction, the pager is running in exclusive-mode and is
             // using persistent journals, then this function is a no-op.
             // The start of the journal file currently contains a single journal header with the nRec field set to 0. If such a journal is used as
             // a hot-journal during hot-journal rollback, 0 changes will be made to the database file. So there is no need to zero the journal
             // header. Since the pager is in exclusive mode, there is no need to drop any locks either.
-            if (pPager.eState == PAGER.WRITER_LOCKED && pPager.exclusiveMode && pPager.journalMode == JOURNALMODE.PERSIST)
+            if (this.eState == PAGER.WRITER_LOCKED && this.exclusiveMode && this.journalMode == JOURNALMODE.PERSIST)
             {
-                Debug.Assert(pPager.journalOff == JOURNAL_HDR_SZ(pPager) || 0 == pPager.journalOff);
-                pPager.eState = PAGER.READER;
+                Debug.Assert(this.journalOff == JOURNAL_HDR_SZ(this) || 0 == this.journalOff);
+                this.eState = PAGER.READER;
                 return SQLITE.OK;
             }
-            PAGERTRACE("COMMIT %d\n", PAGERID(pPager));
-            rc = pager_end_transaction(pPager, pPager.setMaster);
-            return pager_error(pPager, rc);
+            PAGERTRACE("COMMIT %d\n", PAGERID(this));
+            rc = pager_end_transaction(this.setMaster);
+            return pager_error(rc);
         }
 
-        internal static SQLITE sqlite3PagerRollback(Pager pPager)
+        internal SQLITE sqlite3PagerRollback()
         {
             var rc = SQLITE.OK;
-            PAGERTRACE("ROLLBACK %d\n", PAGERID(pPager));
+            PAGERTRACE("ROLLBACK %d\n", PAGERID(this));
             // PagerRollback() is a no-op if called in READER or OPEN state. If the pager is already in the ERROR state, the rollback is not 
             // attempted here. Instead, the error code is returned to the caller.
-            Debug.Assert(assert_pager_state(pPager));
-            if (pPager.eState == PAGER.ERROR)
-                return pPager.errCode;
-            if (pPager.eState <= PAGER.READER)
+            Debug.Assert(assert_pager_state());
+            if (this.eState == PAGER.ERROR)
+                return this.errCode;
+            if (this.eState <= PAGER.READER)
                 return SQLITE.OK;
-            if (pagerUseWal(pPager))
+            if (pagerUseWal())
             {
-                rc = sqlite3PagerSavepoint(pPager, SAVEPOINT.ROLLBACK, -1);
-                var rc2 = pager_end_transaction(pPager, pPager.setMaster);
+                rc = sqlite3PagerSavepoint(SAVEPOINT.ROLLBACK, -1);
+                var rc2 = pager_end_transaction(this.setMaster);
                 if (rc == SQLITE.OK)
                     rc = rc2;
-                rc = pager_error(pPager, rc);
+                rc = pager_error(rc);
             }
-            else if (!pPager.jfd.isOpen || pPager.eState == PAGER.WRITER_LOCKED)
+            else if (!this.jfd.isOpen || this.eState == PAGER.WRITER_LOCKED)
             {
-                var eState = pPager.eState;
-                rc = pager_end_transaction(pPager, 0);
+                var eState = this.eState;
+                rc = pager_end_transaction(0);
                 if (
 #if SQLITE_OMIT_MEMORYDB
 0==MEMDB
 #else
-0 == pPager.memDb
+0 == this.memDb
 #endif
  && eState > PAGER.WRITER_LOCKED)
                 {
                     // This can happen using journal_mode=off. Move the pager to the error  state to indicate that the contents of the cache may not be trusted.
                     // Any active readers will get SQLITE_ABORT.
-                    pPager.errCode = SQLITE.ABORT;
-                    pPager.eState = PAGER.ERROR;
+                    this.errCode = SQLITE.ABORT;
+                    this.eState = PAGER.ERROR;
                     return rc;
                 }
             }
             else
-                rc = pager_playback(pPager, 0);
-            Debug.Assert(pPager.eState == PAGER.READER || rc != SQLITE.OK);
+                rc = pager_playback(0);
+            Debug.Assert(this.eState == PAGER.READER || rc != SQLITE.OK);
             Debug.Assert(rc == SQLITE.OK || rc == SQLITE.FULL || ((int)rc & 0xFF) == (int)SQLITE.IOERR);
             // If an error occurs during a ROLLBACK, we can no longer trust the pager cache. So call pager_error() on the way out to make any error persistent.
-            return pager_error(pPager, rc);
+            return pager_error(rc);
         }
 
 #if !SQLITE_OMIT_AUTOVACUUM
-        internal static SQLITE sqlite3PagerMovepage(Pager pPager, DbPage pPg, Pgno pgno, int isCommit)
+        internal SQLITE sqlite3PagerMovepage(DbPage pPg, Pgno pgno, int isCommit)
         {
             Debug.Assert(pPg.nRef > 0);
-            Debug.Assert(pPager.eState == PAGER.WRITER_CACHEMOD || pPager.eState == PAGER.WRITER_DBMOD);
-            Debug.Assert(assert_pager_state(pPager));
+            Debug.Assert(this.eState == PAGER.WRITER_CACHEMOD || this.eState == PAGER.WRITER_DBMOD);
+            Debug.Assert(assert_pager_state());
             // In order to be able to rollback, an in-memory database must journal the page we are moving from.
             var rc = SQLITE.OK;
             if (
 #if SQLITE_OMIT_MEMORYDB
 1==MEMDB
 #else
-pPager.memDb != 0
+this.memDb != 0
 #endif
 )
             {
@@ -261,21 +259,21 @@ pPager.memDb != 0
             if ((pPg.flags & PgHdr.PGHDR.DIRTY) != 0 && subjRequiresPage(pPg) && SQLITE.OK != (rc = subjournalPage(pPg)))
                 return rc;
             PAGERTRACE("MOVE %d page %d (needSync=%d) moves to %d\n",
-            PAGERID(pPager), pPg.pgno, (pPg.flags & PgHdr.PGHDR.NEED_SYNC) != 0 ? 1 : 0, pgno);
-            SysEx.IOTRACE("MOVE %p %d %d\n", pPager, pPg.pgno, pgno);
+            PAGERID(this), pPg.pgno, (pPg.flags & PgHdr.PGHDR.NEED_SYNC) != 0 ? 1 : 0, pgno);
+            SysEx.IOTRACE("MOVE %p %d %d\n", this, pPg.pgno, pgno);
             // If the journal needs to be sync()ed before page pPg.pgno can be written to, store pPg.pgno in local variable needSyncPgno.
             // If the isCommit flag is set, there is no need to remember that the journal needs to be sync()ed before database page pPg.pgno
             // can be written to. The caller has already promised not to write to it.
             if (((pPg.flags & PgHdr.PGHDR.NEED_SYNC) != 0) && 0 == isCommit)
             {
                 needSyncPgno = pPg.pgno;
-                Debug.Assert(pageInJournal(pPg) || pPg.pgno > pPager.dbOrigSize);
+                Debug.Assert(pageInJournal(pPg) || pPg.pgno > this.dbOrigSize);
                 Debug.Assert((pPg.flags & PgHdr.PGHDR.DIRTY) != 0);
             }
             // If the cache contains a page with page-number pgno, remove it from its hash chain. Also, if the PGHDR_NEED_SYNC was set for
             // page pgno before the 'move' operation, it needs to be retained for the page moved there.
             pPg.flags &= ~PgHdr.PGHDR.NEED_SYNC;
-            pPgOld = pager_lookup(pPager, pgno);
+            pPgOld = pager_lookup(pgno);
             Debug.Assert(null == pPgOld || pPgOld.nRef == 1);
             if (pPgOld != null)
             {
@@ -284,11 +282,11 @@ pPager.memDb != 0
 #if SQLITE_OMIT_MEMORYDB
 1==MEMDB
 #else
-pPager.memDb != 0
+this.memDb != 0
 #endif
 )
                     // Do not discard pages from an in-memory database since we might need to rollback later.  Just move the page out of the way.
-                    PCache.sqlite3PcacheMove(pPgOld, pPager.dbSize + 1);
+                    PCache.sqlite3PcacheMove(pPgOld, this.dbSize + 1);
                 else
                     PCache.sqlite3PcacheDrop(pPgOld);
             }
@@ -301,7 +299,7 @@ pPager.memDb != 0
 #if SQLITE_OMIT_MEMORYDB
 0!=MEMDB
 #else
-0 != pPager.memDb
+0 != this.memDb
 #endif
 )
             {
@@ -318,14 +316,14 @@ pPager.memDb != 0
                 // array. Otherwise, if the page is loaded and written again in this transaction, it may be written to the database file before
                 // it is synced into the journal file. This way, it may end up in the journal file twice, but that is not a problem.
                 PgHdr pPgHdr = null;
-                rc = sqlite3PagerGet(pPager, needSyncPgno, ref pPgHdr);
+                rc = sqlite3PagerGet(needSyncPgno, ref pPgHdr);
                 if (rc != SQLITE.OK)
                 {
-                    if (needSyncPgno <= pPager.dbOrigSize)
+                    if (needSyncPgno <= this.dbOrigSize)
                     {
-                        Debug.Assert(pPager.pTmpSpace != null);
-                        var pTemp = new uint[pPager.pTmpSpace.Length];
-                        pPager.pInJournal.sqlite3BitvecClear(needSyncPgno, pTemp);
+                        Debug.Assert(this.pTmpSpace != null);
+                        var pTemp = new uint[this.pTmpSpace.Length];
+                        this.pInJournal.sqlite3BitvecClear(needSyncPgno, pTemp);
                     }
                     return rc;
                 }

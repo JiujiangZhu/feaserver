@@ -1,9 +1,8 @@
 ﻿using System;
-using Pgno = System.UInt32;
 using System.Diagnostics;
 using Contoso.Sys;
-using System.Text;
 using DbPage = Contoso.Core.PgHdr;
+using Pgno = System.UInt32;
 namespace Contoso.Core
 {
     public partial class Pager
@@ -86,7 +85,7 @@ memDb != 0
             Debug.Assert(rc != SQLITE.OK);
             if (pPg != null)
                 PCache.sqlite3PcacheDrop(pPg);
-            pagerUnlockIfUnused(this);
+            pagerUnlockIfUnused();
             ppPage = null;
             return rc;
         }
@@ -107,7 +106,7 @@ memDb != 0
             {
                 var pPager = pPg.pPager;
                 PCache.sqlite3PcacheRelease(pPg);
-                pagerUnlockIfUnused(pPager);
+                pPager.pagerUnlockIfUnused();
             }
         }
     }
