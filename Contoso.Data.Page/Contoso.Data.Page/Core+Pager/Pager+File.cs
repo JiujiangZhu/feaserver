@@ -1,33 +1,33 @@
 ﻿using System;
-using Pgno = System.UInt32;
 using System.Diagnostics;
-using Contoso.Sys;
 using System.Text;
+using Contoso.Sys;
 using ACCESS = Contoso.Sys.VirtualFileSystem.ACCESS;
-using OPEN = Contoso.Sys.VirtualFileSystem.OPEN;
 using LOCK = Contoso.Sys.VirtualFile.LOCK;
+using OPEN = Contoso.Sys.VirtualFileSystem.OPEN;
+using Pgno = System.UInt32;
 namespace Contoso.Core
 {
     public partial class Pager
     {
-        internal static SQLITE sqlite3PagerClose(Pager pPager)
+        internal SQLITE sqlite3PagerClose()
         {
-            var pTmp = pPager.pTmpSpace;
+            var pTmp = this.pTmpSpace;
             MallocEx.sqlite3BeginBenignMalloc();
-            pPager.exclusiveMode = false;
+            this.exclusiveMode = false;
 #if !SQLITE_OMIT_WAL
-            sqlite3WalClose(pPager.pWal, pPager.ckptSyncFlags, pPager.pageSize, pTmp);
+            pPager.pWal.sqlite3WalClose(pPager.ckptSyncFlags, pPager.pageSize, pTmp);
             pPager.pWal = 0;
 #endif
-            pager_reset(pPager);
+            pager_reset();
             if (
 #if SQLITE_OMIT_MEMORYDB
 1==MEMDB
 #else
-1 == pPager.memDb
+1 == this.memDb
 #endif
 )
-                pager_unlock(pPager);
+                pager_unlock();
             else
             {
                 // If it is open, sync the journal file before calling UnlockAndRollback.
@@ -36,22 +36,22 @@ namespace Contoso.Core
                 // If an error occurs while trying to sync the journal, shift the pager into the ERROR state. This causes UnlockAndRollback to unlock the
                 // database and close the journal file without attempting to roll it back or finalize it. The next database user will have to do hot-journal
                 // rollback before accessing the database file.
-                if (pPager.jfd.isOpen)
-                    pager_error(pPager, pagerSyncHotJournal(pPager));
-                pagerUnlockAndRollback(pPager);
+                if (this.jfd.isOpen)
+                    pager_error(pagerSyncHotJournal());
+                pagerUnlockAndRollback();
             }
             MallocEx.sqlite3EndBenignMalloc();
-            PAGERTRACE("CLOSE %d\n", PAGERID(pPager));
-            SysEx.IOTRACE("CLOSE %p\n", pPager);
-            FileEx.sqlite3OsClose(pPager.jfd);
-            FileEx.sqlite3OsClose(pPager.fd);
-            pPager.pPCache.sqlite3PcacheClose();
+            PAGERTRACE("CLOSE %d\n", PAGERID(this));
+            SysEx.IOTRACE("CLOSE %p\n", this);
+            FileEx.sqlite3OsClose(this.jfd);
+            FileEx.sqlite3OsClose(this.fd);
+            this.pPCache.sqlite3PcacheClose();
 #if SQLITE_HAS_CODEC
-            if (pPager.xCodecFree != null)
-                pPager.xCodecFree(ref pPager.pCodec);
+            if (this.xCodecFree != null)
+                this.xCodecFree(ref this.pCodec);
 #endif
-            Debug.Assert(null == pPager.aSavepoint && !pPager.pInJournal);
-            Debug.Assert(!pPager.jfd.isOpen && !pPager.sjfd.isOpen);
+            Debug.Assert(null == this.aSavepoint && !this.pInJournal);
+            Debug.Assert(!this.jfd.isOpen && !this.sjfd.isOpen);
             return SQLITE.OK;
         }
 
@@ -76,9 +76,9 @@ namespace Contoso.Core
                 Array.Clear(pPg.pData, 0, pPager.pageSize);
                 return SQLITE.OK;
             }
-            if (pagerUseWal(pPager))
+            if (pPager.pagerUseWal())
                 // Try to pull the page from the write-ahead log.
-                rc = Wal.sqlite3WalRead(pPager.pWal, pgno, ref isInWal, pgsz, pPg.pData);
+                rc = pPager.pWal.sqlite3WalRead(pgno, ref isInWal, pgsz, pPg.pData);
             if (rc == SQLITE.OK && 0 == isInWal)
             {
                 long iOffset = (pgno - 1) * (long)pPager.pageSize;
@@ -107,106 +107,105 @@ namespace Contoso.Core
             return rc;
         }
 
-        internal static SQLITE pagerPagecount(Pager pPager, ref Pgno pnPage)
+        internal SQLITE pagerPagecount(ref Pgno pnPage)
         {
             // Query the WAL sub-system for the database size. The WalDbsize() function returns zero if the WAL is not open (i.e. Pager.pWal==0), or
             // if the database size is not available. The database size is not available from the WAL sub-system if the log file is empty or
             // contains no valid committed transactions.
-            Debug.Assert(pPager.eState == PAGER.OPEN);
-            Debug.Assert(pPager.eLock >= LOCK.SHARED || pPager.noReadlock != 0);
-            var nPage = Wal.sqlite3WalDbsize(pPager.pWal);
+            Debug.Assert(this.eState == PAGER.OPEN);
+            Debug.Assert(this.eLock >= LOCK.SHARED || this.noReadlock != 0);
+            var nPage = this.pWal.sqlite3WalDbsize();
             // If the database size was not available from the WAL sub-system, determine it based on the size of the database file. If the size
             // of the database file is not an integer multiple of the page-size, round down to the nearest page. Except, any file larger than 0
             // bytes in size is considered to contain at least one page.
             if (nPage == 0)
             {
                 var n = 0L; // Size of db file in bytes
-                Debug.Assert(pPager.fd.isOpen || pPager.tempFile);
-                if (pPager.fd.isOpen)
+                Debug.Assert(this.fd.isOpen || this.tempFile);
+                if (this.fd.isOpen)
                 {
-                    var rc = FileEx.sqlite3OsFileSize(pPager.fd, ref n);
+                    var rc = FileEx.sqlite3OsFileSize(this.fd, ref n);
                     if (rc != SQLITE.OK)
                         return rc;
                 }
-                nPage = (Pgno)(n / pPager.pageSize);
+                nPage = (Pgno)(n / this.pageSize);
                 if (nPage == 0 && n > 0)
                     nPage = 1;
             }
             // If the current number of pages in the file is greater than the configured maximum pager number, increase the allowed limit so
             // that the file can be read.
-            if (nPage > pPager.mxPgno)
-                pPager.mxPgno = (Pgno)nPage;
+            if (nPage > this.mxPgno)
+                this.mxPgno = (Pgno)nPage;
             pnPage = nPage;
             return SQLITE.OK;
         }
 
-        internal static SQLITE pagerOpentemp(Pager pPager, ref VirtualFile pFile, OPEN vfsFlags)
+        internal SQLITE pagerOpentemp(ref VirtualFile pFile, OPEN vfsFlags)
         {
             vfsFlags |= OPEN.READWRITE | OPEN.CREATE | OPEN.EXCLUSIVE | OPEN.DELETEONCLOSE;
             OPEN dummy = 0;
-            var rc = FileEx.sqlite3OsOpen(pPager.pVfs, null, pFile, vfsFlags, ref dummy);
+            var rc = FileEx.sqlite3OsOpen(this.pVfs, null, pFile, vfsFlags, ref dummy);
             Debug.Assert(rc != SQLITE.OK || pFile.isOpen);
             return rc;
         }
 
-
-        internal static SQLITE sqlite3PagerReadFileheader(Pager pPager, int N, byte[] pDest)
+        internal SQLITE sqlite3PagerReadFileheader(int N, byte[] pDest)
         {
             var rc = SQLITE.OK;
             Array.Clear(pDest, 0, N);
-            Debug.Assert(pPager.fd.isOpen || pPager.tempFile);
+            Debug.Assert(this.fd.isOpen || this.tempFile);
             // This routine is only called by btree immediately after creating the Pager object.  There has not been an opportunity to transition
             // to WAL mode yet.
-            Debug.Assert(!pPager.pagerUseWal());
-            if (pPager.fd.isOpen)
+            Debug.Assert(!this.pagerUseWal());
+            if (this.fd.isOpen)
             {
-                SysEx.IOTRACE("DBHDR %p 0 %d\n", pPager, N);
-                rc = FileEx.sqlite3OsRead(pPager.fd, pDest, N, 0);
+                SysEx.IOTRACE("DBHDR %p 0 %d\n", this, N);
+                rc = FileEx.sqlite3OsRead(this.fd, pDest, N, 0);
                 if (rc == SQLITE.IOERR_SHORT_READ)
                     rc = SQLITE.OK;
             }
             return rc;
         }
 
-        internal static SQLITE sqlite3PagerSharedLock(Pager pPager)
+        internal SQLITE sqlite3PagerSharedLock()
         {
             var rc = SQLITE.OK;
             // This routine is only called from b-tree and only when there are no outstanding pages. This implies that the pager state should either
             // be OPEN or READER. READER is only possible if the pager is or was in exclusive access mode.
-            Debug.Assert(pPager.pPCache.sqlite3PcacheRefCount() == 0);
-            Debug.Assert(assert_pager_state(pPager));
-            Debug.Assert(pPager.eState == PAGER.OPEN || pPager.eState == PAGER.READER);
+            Debug.Assert(this.pPCache.sqlite3PcacheRefCount() == 0);
+            Debug.Assert(assert_pager_state());
+            Debug.Assert(this.eState == PAGER.OPEN || this.eState == PAGER.READER);
             if (Check.NEVER(
 #if SQLITE_OMIT_MEMORYDB
 0!=MEMDB
 #else
-0 != pPager.memDb
+0 != this.memDb
 #endif
- && pPager.errCode != 0))
-                return pPager.errCode;
-            if (!pagerUseWal(pPager) && pPager.eState == PAGER.OPEN)
+ && this.errCode != 0))
+                return this.errCode;
+            if (!pagerUseWal() && this.eState == PAGER.OPEN)
             {
                 int bHotJournal = 1; // True if there exists a hot journal-file
                 Debug.Assert(
 #if SQLITE_OMIT_MEMORYDB
 0==MEMDB
 #else
-0 == pPager.memDb
+0 == this.memDb
 #endif
 );
-                Debug.Assert(pPager.noReadlock == 0 || pPager.readOnly);
-                if (pPager.noReadlock == 0)
+                Debug.Assert(this.noReadlock == 0 || this.readOnly);
+                if (this.noReadlock == 0)
                 {
-                    rc = pager_wait_on_lock(pPager, LOCK.SHARED);
+                    rc = pager_wait_on_lock(LOCK.SHARED);
                     if (rc != SQLITE.OK)
                     {
-                        Debug.Assert(pPager.eLock == LOCK.NO || pPager.eLock == LOCK.UNKNOWN);
+                        Debug.Assert(this.eLock == LOCK.NO || this.eLock == LOCK.UNKNOWN);
                         goto failed;
                     }
                 }
                 // If a journal file exists, and there is no RESERVED lock on the database file, then it either needs to be played back or deleted.
-                if (pPager.eLock <= LOCK.SHARED)
-                    rc = hasHotJournal(pPager, ref bHotJournal);
+                if (this.eLock <= LOCK.SHARED)
+                    rc = hasHotJournal(ref bHotJournal);
                 if (rc != SQLITE.OK)
                     goto failed;
                 if (bHotJournal != 0)
@@ -218,7 +217,7 @@ namespace Contoso.Core
                     // Because the intermediate RESERVED lock is not requested, any other process attempting to access the database file will get to 
                     // this point in the code and fail to obtain its own EXCLUSIVE lock on the database file.
                     // Unless the pager is in locking_mode=exclusive mode, the lock is downgraded to SHARED_LOCK before this function returns.
-                    rc = pagerLockDb(pPager, LOCK.EXCLUSIVE);
+                    rc = pagerLockDb(LOCK.EXCLUSIVE);
                     if (rc != SQLITE.OK)
                         goto failed;
                     // If it is not already open and the file exists on disk, open the journal for read/write access. Write access is required because 
@@ -227,21 +226,21 @@ namespace Contoso.Core
                     // If the journal does not exist, it usually means that some other connection managed to get in and roll it back before 
                     // this connection obtained the exclusive lock above. Or, it may mean that the pager was in the error-state when this
                     // function was called and the journal file does not exist.
-                    if (!pPager.jfd.isOpen)
+                    if (!this.jfd.isOpen)
                     {
-                        var pVfs = pPager.pVfs;
+                        var pVfs = this.pVfs;
                         var bExists = 0;              // True if journal file exists
-                        rc = FileEx.sqlite3OsAccess(pVfs, pPager.zJournal, ACCESS.EXISTS, ref bExists);
+                        rc = FileEx.sqlite3OsAccess(pVfs, this.zJournal, ACCESS.EXISTS, ref bExists);
                         if (rc == SQLITE.OK && bExists != 0)
                         {
-                            Debug.Assert(!pPager.tempFile);
+                            Debug.Assert(!this.tempFile);
                             OPEN fout = 0;
-                            rc = FileEx.sqlite3OsOpen(pVfs, pPager.zJournal, pPager.jfd, OPEN.READWRITE | OPEN.MAIN_JOURNAL, ref fout);
-                            Debug.Assert(rc != SQLITE.OK || pPager.jfd.isOpen);
+                            rc = FileEx.sqlite3OsOpen(pVfs, this.zJournal, this.jfd, OPEN.READWRITE | OPEN.MAIN_JOURNAL, ref fout);
+                            Debug.Assert(rc != SQLITE.OK || this.jfd.isOpen);
                             if (rc == SQLITE.OK && (fout & OPEN.READONLY) != 0)
                             {
                                 rc = SysEx.SQLITE_CANTOPEN_BKPT();
-                                FileEx.sqlite3OsClose(pPager.jfd);
+                                FileEx.sqlite3OsClose(this.jfd);
                             }
                         }
                     }
@@ -249,18 +248,18 @@ namespace Contoso.Core
                     // playing back the hot-journal so that we don't end up with an inconsistent cache.  Sync the hot journal before playing
                     // it back since the process that crashed and left the hot journal probably did not sync it and we are required to always sync
                     // the journal before playing it back.
-                    if (pPager.jfd.isOpen)
+                    if (this.jfd.isOpen)
                     {
                         Debug.Assert(rc == SQLITE.OK);
-                        rc = pagerSyncHotJournal(pPager);
+                        rc = pagerSyncHotJournal();
                         if (rc == SQLITE.OK)
                         {
-                            rc = pager_playback(pPager, 1);
-                            pPager.eState = PAGER.OPEN;
+                            rc = pager_playback(1);
+                            this.eState = PAGER.OPEN;
                         }
                     }
-                    else if (!pPager.exclusiveMode)
-                        pagerUnlockDb(pPager, LOCK.SHARED);
+                    else if (!this.exclusiveMode)
+                        pagerUnlockDb(LOCK.SHARED);
                     if (rc != SQLITE.OK)
                     {
                         // This branch is taken if an error occurs while trying to open or roll back a hot-journal while holding an EXCLUSIVE lock. The
@@ -270,13 +269,13 @@ namespace Contoso.Core
                         // to ERROR state in the state diagram at the top of this file, since we know that the same call to pager_unlock() will very
                         // shortly transition the pager object to the OPEN state. Calling assert_pager_state() would fail now, as it should not be possible
                         // to be in ERROR state when there are zero outstanding page references.
-                        pager_error(pPager, rc);
+                        pager_error(rc);
                         goto failed;
                     }
-                    Debug.Assert(pPager.eState == PAGER.OPEN);
-                    Debug.Assert((pPager.eLock == LOCK.SHARED) || (pPager.exclusiveMode && pPager.eLock > LOCK.SHARED));
+                    Debug.Assert(this.eState == PAGER.OPEN);
+                    Debug.Assert((this.eLock == LOCK.SHARED) || (this.exclusiveMode && this.eLock > LOCK.SHARED));
                 }
-                if (!pPager.tempFile && (pPager.pBackup != null || pPager.pPCache.sqlite3PcachePagecount() > 0))
+                if (!this.tempFile && (this.pBackup != null || this.pPCache.sqlite3PcachePagecount() > 0))
                 {
                     // The shared-lock has just been acquired on the database file and there are already pages in the cache (from a previous
                     // read or write transaction).  Check to see if the database has been modified.  If the database has changed, flush the
@@ -287,35 +286,35 @@ namespace Contoso.Core
                     // There is a vanishingly small chance that a change will not be detected.  The chance of an undetected change is so small that
                     // it can be neglected.
                     Pgno nPage = 0;
-                    var dbFileVers = new byte[pPager.dbFileVers.Length];
-                    rc = pagerPagecount(pPager, ref nPage);
+                    var dbFileVers = new byte[this.dbFileVers.Length];
+                    rc = pagerPagecount(ref nPage);
                     if (rc != 0)
                         goto failed;
                     if (nPage > 0)
                     {
-                        SysEx.IOTRACE("CKVERS %p %d\n", pPager, dbFileVers.Length);
-                        rc = FileEx.sqlite3OsRead(pPager.fd, dbFileVers, dbFileVers.Length, 24);
+                        SysEx.IOTRACE("CKVERS %p %d\n", this, dbFileVers.Length);
+                        rc = FileEx.sqlite3OsRead(this.fd, dbFileVers, dbFileVers.Length, 24);
                         if (rc != SQLITE.OK)
                             goto failed;
                     }
                     else
                         Array.Clear(dbFileVers, 0, dbFileVers.Length);
-                    if (ArrayEx.Compare(pPager.dbFileVers, dbFileVers, dbFileVers.Length) != 0)
-                        pager_reset(pPager);
+                    if (ArrayEx.Compare(this.dbFileVers, dbFileVers, dbFileVers.Length) != 0)
+                        pager_reset();
                 }
                 // If there is a WAL file in the file-system, open this database in WAL mode. Otherwise, the following function call is a no-op.
-                rc = pagerOpenWalIfPresent(pPager);
+                rc = pagerOpenWalIfPresent();
 #if !SQLITE_OMIT_WAL
                 Debug.Assert(pPager.pWal == null || rc == SQLITE.OK);
 #endif
             }
-            if (pagerUseWal(pPager))
+            if (pagerUseWal())
             {
                 Debug.Assert(rc == SQLITE.OK);
-                rc = pagerBeginReadTransaction(pPager);
+                rc = pagerBeginReadTransaction();
             }
-            if (pPager.eState == PAGER.OPEN && rc == SQLITE.OK)
-                rc = pagerPagecount(pPager, ref pPager.dbSize);
+            if (this.eState == PAGER.OPEN && rc == SQLITE.OK)
+                rc = pagerPagecount(ref this.dbSize);
 
         failed:
             if (rc != SQLITE.OK)
@@ -324,20 +323,19 @@ namespace Contoso.Core
 #if SQLITE_OMIT_MEMORYDB
 0==MEMDB
 #else
-0 == pPager.memDb
+0 == this.memDb
 #endif
 );
-                pager_unlock(pPager);
-                Debug.Assert(pPager.eState == PAGER.OPEN);
+                pager_unlock();
+                Debug.Assert(this.eState == PAGER.OPEN);
             }
             else
-                pPager.eState = PAGER.READER;
+                this.eState = PAGER.READER;
             return rc;
         }
 
         internal static SQLITE sqlite3PagerOpen(VirtualFileSystem pVfs, out Pager ppPager, string zFilename, int nExtra, PAGEROPEN flags, OPEN vfsFlags, Action<PgHdr> xReinit)
         {
-            ushort pPtr;
             Pager pPager = null;     // Pager object to allocate and return
             byte memDb = 0;            // True if this is an in-memory file
             bool readOnly = false;   // True if this is a read-only file
@@ -428,7 +426,7 @@ namespace Contoso.Core
                 //    + The largest page size that can be written atomically.
                 if (rc == SQLITE.OK && !readOnly)
                 {
-                    setSectorSize(pPager);
+                    pPager.setSectorSize();
                     Debug.Assert(SQLITE_DEFAULT_PAGE_SIZE <= SQLITE_MAX_DEFAULT_PAGE_SIZE);
                     if (szPageDflt < pPager.sectorSize)
                         szPageDflt = (pPager.sectorSize > SQLITE_MAX_DEFAULT_PAGE_SIZE ? SQLITE_MAX_DEFAULT_PAGE_SIZE : (uint)pPager.sectorSize);
@@ -459,7 +457,7 @@ namespace Contoso.Core
             if (rc == SQLITE.OK)
             {
                 Debug.Assert(pPager.memDb == 0);
-                rc = sqlite3PagerSetPagesize(pPager, ref szPageDflt, -1);
+                rc = pPager.sqlite3PagerSetPagesize(ref szPageDflt, -1);
             }
             // If an error occurred in either of the blocks above, free the Pager structure and close the file.
             if (rc != SQLITE.OK)
@@ -494,7 +492,7 @@ namespace Contoso.Core
             pPager.nExtra = (ushort)nExtra;
             pPager.journalSizeLimit = SQLITE_DEFAULT_JOURNAL_SIZE_LIMIT;
             Debug.Assert(pPager.fd.isOpen || tempFile != 0);
-            setSectorSize(pPager);
+            pPager.setSectorSize();
             if (!useJournal)
                 pPager.journalMode = JOURNALMODE.OFF;
             else if (memDb != 0)
@@ -504,31 +502,31 @@ namespace Contoso.Core
             return SQLITE.OK;
         }
 
-        internal static SQLITE sqlite3PagerSync(Pager pPager)
+        internal SQLITE sqlite3PagerSync()
         {
             var rc = SQLITE.OK;
-            if (!pPager.noSync)
+            if (!this.noSync)
             {
                 Debug.Assert(
 #if SQLITE_OMIT_MEMORYDB
 0 == MEMDB
 #else
-0 == pPager.memDb
+0 == this.memDb
 #endif
 );
-                rc = FileEx.sqlite3OsSync(pPager.fd, pPager.syncFlags);
+                rc = FileEx.sqlite3OsSync(this.fd, this.syncFlags);
             }
-            else if (pPager.fd.isOpen)
+            else if (this.fd.isOpen)
             {
                 Debug.Assert(
 #if SQLITE_OMIT_MEMORYDB
 0 == MEMDB
 #else
-0 == pPager.memDb
+0 == this.memDb
 #endif
 );
                 var refArg = 0L;
-                FileEx.sqlite3OsFileControl(pPager.fd, VirtualFile.FCNTL.SYNC_OMITTED, ref refArg);
+                FileEx.sqlite3OsFileControl(this.fd, VirtualFile.FCNTL.SYNC_OMITTED, ref refArg);
                 rc = (SQLITE)refArg;
             }
             return rc;

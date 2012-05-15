@@ -6,22 +6,22 @@ namespace Contoso.Core
     {
 #if SQLITE_OMIT_WAL
         internal static SQLITE sqlite3WalOpen(VirtualFileSystem x, VirtualFile y, string z) { return 0; }
-        internal static void sqlite3WalLimit(Wal x, long y) { }
-        internal static SQLITE sqlite3WalClose(Wal w, int x, int y, byte z) { return 0; }
-        internal static SQLITE sqlite3WalBeginReadTransaction(Wal y, int z) { return 0; }
-        internal static void sqlite3WalEndReadTransaction(Wal z) { }
-        internal static SQLITE sqlite3WalRead(Wal v, Pgno w, ref int x, int y, byte[] z) { return 0; }
-        internal static Pgno sqlite3WalDbsize(Wal y) { return 0; }
-        internal static SQLITE sqlite3WalBeginWriteTransaction(Wal y) { return 0; }
-        internal static SQLITE sqlite3WalEndWriteTransaction(Wal x) { return 0; }
-        internal static SQLITE sqlite3WalUndo(Wal x, int y, object z) { return 0; }
-        internal static void sqlite3WalSavepoint(Wal y, object z) { }
-        internal static SQLITE sqlite3WalSavepointUndo(Wal y, object z) { return 0; }
-        internal static SQLITE sqlite3WalFrames(Wal u, int v, PgHdr w, Pgno x, int y, int z) { return 0; }
-        internal static SQLITE sqlite3WalCheckpoint(Wal r, int s, int t, byte[] u, int v, int w, byte[] x, ref int y, ref int z) { y = 0; z = 0; return 0; }
-        internal static SQLITE sqlite3WalCallback(Wal z) { return 0; }
-        internal static bool sqlite3WalExclusiveMode(Wal y, int z) { return false; }
-        internal static bool sqlite3WalHeapMemory(Wal z) { return false; }
+        internal void sqlite3WalLimit(long y) { }
+        internal SQLITE sqlite3WalClose(int x, int y, byte z) { return 0; }
+        internal SQLITE sqlite3WalBeginReadTransaction(int z) { return 0; }
+        internal void sqlite3WalEndReadTransaction() { }
+        internal SQLITE sqlite3WalRead(Pgno w, ref int x, int y, byte[] z) { return 0; }
+        internal Pgno sqlite3WalDbsize() { return 0; }
+        internal SQLITE sqlite3WalBeginWriteTransaction() { return 0; }
+        internal SQLITE sqlite3WalEndWriteTransaction() { return 0; }
+        internal SQLITE sqlite3WalUndo(int y, object z) { return 0; }
+        internal void sqlite3WalSavepoint(object z) { }
+        internal SQLITE sqlite3WalSavepointUndo(object z) { return 0; }
+        internal SQLITE sqlite3WalFrames(int v, PgHdr w, Pgno x, int y, int z) { return 0; }
+        internal SQLITE sqlite3WalCheckpoint(int s, int t, byte[] u, int v, int w, byte[] x, ref int y, ref int z) { y = 0; z = 0; return 0; }
+        internal SQLITE sqlite3WalCallback() { return 0; }
+        internal bool sqlite3WalExclusiveMode(int z) { return false; }
+        internal bool sqlite3WalHeapMemory() { return false; }
 #else
 const int WAL_SAVEPOINT_NDATA = 4;
 typedef struct Wal Wal;

@@ -43,6 +43,7 @@
     <Compile Include="Core+Btree\BtShared.cs" />
     <Compile Include="Core+Btree\CellInfo.cs" />
     <Compile Include="Core+Btree\MemPage.cs" />
+    <Compile Include="Sys\VirtualFile+Stream.cs" />
     <Compile Include="Sys\MemJournalFile.cs" />
     <Compile Include="Core+Pager\Name\PCache1+Allocation.cs">
       <SubType>Code</SubType>

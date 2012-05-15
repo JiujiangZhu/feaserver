@@ -1,72 +1,43 @@
-﻿using System;
-using Pgno = System.UInt32;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Contoso.Sys;
-using System.Text;
 using DbPage = Contoso.Core.PgHdr;
 using LOCK = Contoso.Sys.VirtualFile.LOCK;
+using Pgno = System.UInt32;
 namespace Contoso.Core
 {
     public partial class Pager
     {
-        // Read a 32-bit integer from the given file descriptor.  Store the integer that is read in pRes.  Return SQLITE.OK if everything worked, or an
-        // error code is something goes wrong.
-        // All values are stored on disk as big-endian.
-        internal static SQLITE read32bits(VirtualFile fd, int offset, ref int pRes)
+        internal SQLITE sqlite3PagerBegin(bool exFlag, int subjInMemory)
         {
-            uint u32_pRes = 0;
-            var rc = read32bits(fd, offset, ref u32_pRes);
-            pRes = (int)u32_pRes;
-            return rc;
-        }
-        internal static SQLITE read32bits(VirtualFile fd, long offset, ref uint pRes) { return read32bits(fd, (int)offset, ref pRes); }
-        internal static SQLITE read32bits(VirtualFile fd, int offset, ref uint pRes)
-        {
-            var ac = new byte[4];
-            var rc = FileEx.sqlite3OsRead(fd, ac, ac.Length, offset);
-            pRes = (rc == SQLITE.OK ? ConvertEx.sqlite3Get4byte(ac) : 0);
-            return rc;
-        }
-
-        // Write a 32-bit integer into the given file descriptor.  Return SQLITE.OK on success or an error code is something goes wrong.
-        internal static SQLITE write32bits(VirtualFile fd, long offset, uint val)
-        {
-            var ac = new byte[4];
-            ConvertEx.put32bits(ac, val);
-            return FileEx.sqlite3OsWrite(fd, ac, 4, offset);
-        }
-
-        internal static SQLITE sqlite3PagerBegin(Pager pPager, bool exFlag, int subjInMemory)
-        {
-            if (pPager.errCode != 0)
-                return pPager.errCode;
-            Debug.Assert(pPager.eState >= PAGER.READER && pPager.eState < PAGER.ERROR);
-            pPager.subjInMemory = (byte)subjInMemory;
+            if (errCode != 0)
+                return errCode;
+            Debug.Assert(eState >= PAGER.READER && eState < PAGER.ERROR);
+            subjInMemory = (byte)subjInMemory;
             var rc = SQLITE.OK;
-            if (Check.ALWAYS(pPager.eState == PAGER.READER))
+            if (Check.ALWAYS(eState == PAGER.READER))
             {
-                Debug.Assert(pPager.pInJournal == null);
-                if (pPager.pagerUseWal())
+                Debug.Assert(pInJournal == null);
+                if (pagerUseWal())
                 {
                     // If the pager is configured to use locking_mode=exclusive, and an exclusive lock on the database is not already held, obtain it now.
-                    if (pPager.exclusiveMode && Wal.sqlite3WalExclusiveMode(pPager.pWal, -1))
+                    if (exclusiveMode && pWal.sqlite3WalExclusiveMode(-1))
                     {
-                        rc = pagerLockDb(pPager, LOCK.EXCLUSIVE);
+                        rc = pagerLockDb(LOCK.EXCLUSIVE);
                         if (rc != SQLITE.OK)
                             return rc;
-                        Wal.sqlite3WalExclusiveMode(pPager.pWal, 1);
+                        pWal.sqlite3WalExclusiveMode(1);
                     }
                     // Grab the write lock on the log file. If successful, upgrade to PAGER_RESERVED state. Otherwise, return an error code to the caller.
                     // The busy-handler is not invoked if another connection already holds the write-lock. If possible, the upper layer will call it.
-                    rc = Wal.sqlite3WalBeginWriteTransaction(pPager.pWal);
+                    rc = pWal.sqlite3WalBeginWriteTransaction();
                 }
                 else
                 {
                     // Obtain a RESERVED lock on the database file. If the exFlag parameter is true, then immediately upgrade this to an EXCLUSIVE lock. The
                     // busy-handler callback can be used when upgrading to the EXCLUSIVE lock, but not when obtaining the RESERVED lock.
-                    rc = pagerLockDb(pPager, LOCK.RESERVED);
+                    rc = pagerLockDb(LOCK.RESERVED);
                     if (rc == SQLITE.OK && exFlag)
-                        rc = pager_wait_on_lock(pPager, LOCK.EXCLUSIVE);
+                        rc = pager_wait_on_lock(LOCK.EXCLUSIVE);
                 }
                 if (rc == SQLITE.OK)
                 {
@@ -74,17 +45,17 @@ namespace Contoso.Core
                     // WAL mode sets Pager.eState to PAGER_WRITER_LOCKED or CACHEMOD when it has an open transaction, but never to DBMOD or FINISHED.
                     // This is because in those states the code to roll back savepoint transactions may copy data from the sub-journal into the database 
                     // file as well as into the page cache. Which would be incorrect in WAL mode.
-                    pPager.eState = PAGER.WRITER_LOCKED;
-                    pPager.dbHintSize = pPager.dbSize;
-                    pPager.dbFileSize = pPager.dbSize;
-                    pPager.dbOrigSize = pPager.dbSize;
-                    pPager.journalOff = 0;
+                    eState = PAGER.WRITER_LOCKED;
+                    dbHintSize = dbSize;
+                    dbFileSize = dbSize;
+                    dbOrigSize = dbSize;
+                    journalOff = 0;
                 }
-                Debug.Assert(rc == SQLITE.OK || pPager.eState == PAGER.READER);
-                Debug.Assert(rc != SQLITE.OK || pPager.eState == PAGER.WRITER_LOCKED);
-                Debug.Assert(assert_pager_state(pPager));
+                Debug.Assert(rc == SQLITE.OK || eState == PAGER.READER);
+                Debug.Assert(rc != SQLITE.OK || eState == PAGER.WRITER_LOCKED);
+                Debug.Assert(assert_pager_state());
             }
-            PAGERTRACE("TRANSACTION %d\n", PAGERID(pPager));
+            PAGERTRACE("TRANSACTION %d\n", PAGERID(this));
             return rc;
         }
 
@@ -96,7 +67,7 @@ namespace Contoso.Core
             var nPagePerSector = (uint)(pPager.sectorSize / pPager.pageSize);
             Debug.Assert(pPager.eState >= PAGER.WRITER_LOCKED);
             Debug.Assert(pPager.eState != PAGER.ERROR);
-            Debug.Assert(assert_pager_state(pPager));
+            Debug.Assert(pPager.assert_pager_state());
             if (nPagePerSector > 1)
             {
                 Pgno nPageCount = 0;     // Total number of pages in database file
@@ -136,7 +107,7 @@ namespace Contoso.Core
                     {
                         if (pg != ((VirtualFile.PENDING_BYTE / (pPager.pageSize)) + 1))
                         {
-                            rc = sqlite3PagerGet(pPager, pg, ref pPage);
+                            rc = pPager.sqlite3PagerGet(pg, ref pPage);
                             if (rc == SQLITE.OK)
                             {
                                 rc = pager_write(pPage);
@@ -146,7 +117,7 @@ namespace Contoso.Core
                             }
                         }
                     }
-                    else if ((pPage = pager_lookup(pPager, pg)) != null)
+                    else if ((pPage = pPager.pager_lookup(pg)) != null)
                     {
                         if ((pPage.flags & PgHdr.PGHDR.NEED_SYNC) != 0)
                             needSync = true;
@@ -167,7 +138,7 @@ namespace Contoso.Core
 );
                     for (var ii = 0; ii < nPage; ii++)
                     {
-                        var pPage = pager_lookup(pPager, (Pgno)(pg1 + ii));
+                        var pPage = pPager.pager_lookup((Pgno)(pg1 + ii));
                         if (pPage != null)
                         {
                             pPage.flags |= PgHdr.PGHDR.NEED_SYNC;
@@ -195,12 +166,12 @@ namespace Contoso.Core
             }
         }
 
-        internal static void sqlite3PagerTruncateImage(Pager pPager, uint nPage)
+        internal void sqlite3PagerTruncateImage(uint nPage)
         {
-            Debug.Assert(pPager.dbSize >= nPage);
-            Debug.Assert(pPager.eState >= PAGER.WRITER_CACHEMOD);
-            pPager.dbSize = nPage;
-            assertTruncateConstraint(pPager);
+            Debug.Assert(dbSize >= nPage);
+            Debug.Assert(eState >= PAGER.WRITER_CACHEMOD);
+            dbSize = nPage;
+            assertTruncateConstraint();
         }
 
         internal static SQLITE pagerStress(object p, PgHdr pPg)
@@ -234,7 +205,7 @@ namespace Contoso.Core
             {
                 // Sync the journal file if required. 
                 if ((pPg.flags & PgHdr.PGHDR.NEED_SYNC) != 0 || pPager.eState == PAGER.WRITER_CACHEMOD)
-                    rc = syncJournal(pPager, 1);
+                    rc = pPager.syncJournal(1);
                 // If the page number of this page is larger than the current size of the database image, it may need to be written to the sub-journal.
                 // This is because the call to pager_write_pagelist() below will not actually write data to the file in this case.
                 // Consider the following sequence of events:
@@ -256,7 +227,7 @@ namespace Contoso.Core
                 if (rc == SQLITE.OK)
                 {
                     Debug.Assert((pPg.flags & PgHdr.PGHDR.NEED_SYNC) == 0);
-                    rc = pager_write_pagelist(pPager, pPg);
+                    rc = pPager.pager_write_pagelist(pPg);
                 }
             }
             // Mark the page as clean.
@@ -265,7 +236,7 @@ namespace Contoso.Core
                 PAGERTRACE("STRESS %d page %d\n", PAGERID(pPager), pPg.pgno);
                 PCache.sqlite3PcacheMakeClean(pPg);
             }
-            return pager_error(pPager, rc);
+            return pPager.pager_error(rc);
         }
     }
 }
