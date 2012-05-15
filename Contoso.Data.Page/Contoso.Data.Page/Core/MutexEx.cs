@@ -29,6 +29,7 @@ namespace Contoso.Core
             //            return sqlite3GlobalConfig.mutex.xMutexAlloc(id);
             return null;
         }
+
         internal static sqlite3_mutex sqlite3MutexAlloc(MUTEX id)
         {
             //if (!sqlite3GlobalConfig.bCoreMutex)
@@ -38,22 +39,9 @@ namespace Contoso.Core
             return null;
         }
 
-        internal static void sqlite3_mutex_enter(sqlite3_mutex sqlite3_mutex)
-        {
-        }
-
-        internal static void sqlite3_mutex_leave(sqlite3_mutex sqlite3_mutex)
-        {
-        }
-
-        internal static bool sqlite3_mutex_held(Sys.sqlite3_mutex sqlite3_mutex)
-        {
-            return true;
-        }
-
-        internal static bool sqlite3_mutex_notheld(Sys.sqlite3_mutex sqlite3_mutex)
-        {
-            return true;
-        }
+        internal static void sqlite3_mutex_enter(sqlite3_mutex sqlite3_mutex) { }
+        internal static void sqlite3_mutex_leave(sqlite3_mutex sqlite3_mutex) { }
+        internal static bool sqlite3_mutex_held(Sys.sqlite3_mutex sqlite3_mutex) { return true; }
+        internal static bool sqlite3_mutex_notheld(Sys.sqlite3_mutex sqlite3_mutex) { return true; }
     }
 }

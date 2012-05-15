@@ -14,7 +14,7 @@ namespace Contoso.Core
             // If a prior error occurred, report that error again.
             if (Check.NEVER(errCode != 0))
                 return errCode;
-            PAGERTRACE("DATABASE SYNC: File=%s zMaster=%s nSize=%d\n", zFilename, zMaster, dbSize);
+            PAGERTRACE("DATABASE SYNC: File={0} zMaster={1} nSize={2}", zFilename, zMaster, dbSize);
             // If no database changes have been made, return early.
             if (eState < PAGER.WRITER_CACHEMOD)
                 return SQLITE.OK;
@@ -25,9 +25,12 @@ namespace Contoso.Core
 0 != memDb
 #endif
 )
+            {
                 // If this is an in-memory db, or no pages have been written to, or this function has already been called, it is mostly a no-op.  However, any
                 // backup in progress needs to be restarted.
-                pBackup.sqlite3BackupRestart();
+                if (pBackup != null)
+                    pBackup.sqlite3BackupRestart();
+            }
             else
             {
                 if (pagerUseWal())
@@ -142,7 +145,7 @@ namespace Contoso.Core
                     // Finally, sync the database file.
                     if (!noSync)
                         rc = sqlite3PagerSync();
-                    SysEx.IOTRACE("DBSYNC %p\n", this);
+                    SysEx.IOTRACE("DBSYNC {0:x}", this.GetHashCode());
                 }
             }
         commit_phase_one_exit:
@@ -171,7 +174,7 @@ namespace Contoso.Core
                 this.eState = PAGER.READER;
                 return SQLITE.OK;
             }
-            PAGERTRACE("COMMIT %d\n", PAGERID(this));
+            PAGERTRACE("COMMIT {0}", PAGERID(this));
             rc = pager_end_transaction(this.setMaster);
             return pager_error(rc);
         }
@@ -179,7 +182,7 @@ namespace Contoso.Core
         internal SQLITE sqlite3PagerRollback()
         {
             var rc = SQLITE.OK;
-            PAGERTRACE("ROLLBACK %d\n", PAGERID(this));
+            PAGERTRACE("ROLLBACK {0}", PAGERID(this));
             // PagerRollback() is a no-op if called in READER or OPEN state. If the pager is already in the ERROR state, the rollback is not 
             // attempted here. Instead, the error code is returned to the caller.
             Debug.Assert(assert_pager_state());
@@ -258,9 +261,9 @@ this.memDb != 0
             // may return SQLITE_NOMEM.
             if ((pPg.flags & PgHdr.PGHDR.DIRTY) != 0 && subjRequiresPage(pPg) && SQLITE.OK != (rc = subjournalPage(pPg)))
                 return rc;
-            PAGERTRACE("MOVE %d page %d (needSync=%d) moves to %d\n",
+            PAGERTRACE("MOVE {0} page {1} (needSync={2}) moves to {3}",
             PAGERID(this), pPg.pgno, (pPg.flags & PgHdr.PGHDR.NEED_SYNC) != 0 ? 1 : 0, pgno);
-            SysEx.IOTRACE("MOVE %p %d %d\n", this, pPg.pgno, pgno);
+            SysEx.IOTRACE("MOVE {0} {1} {2}", this.GetHashCode(), pPg.pgno, pgno);
             // If the journal needs to be sync()ed before page pPg.pgno can be written to, store pPg.pgno in local variable needSyncPgno.
             // If the isCommit flag is set, there is no need to remember that the journal needs to be sync()ed before database page pPg.pgno
             // can be written to. The caller has already promised not to write to it.

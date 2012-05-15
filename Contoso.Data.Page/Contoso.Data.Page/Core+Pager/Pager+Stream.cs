@@ -1,8 +1,8 @@
 ﻿using System.Diagnostics;
 using Contoso.Sys;
 using DbPage = Contoso.Core.PgHdr;
-using LOCK = Contoso.Sys.VirtualFile.LOCK;
 using Pgno = System.UInt32;
+using VFSLOCK = Contoso.Sys.VirtualFile.LOCK;
 namespace Contoso.Core
 {
     public partial class Pager
@@ -22,7 +22,7 @@ namespace Contoso.Core
                     // If the pager is configured to use locking_mode=exclusive, and an exclusive lock on the database is not already held, obtain it now.
                     if (exclusiveMode && pWal.sqlite3WalExclusiveMode(-1))
                     {
-                        rc = pagerLockDb(LOCK.EXCLUSIVE);
+                        rc = pagerLockDb(VFSLOCK.EXCLUSIVE);
                         if (rc != SQLITE.OK)
                             return rc;
                         pWal.sqlite3WalExclusiveMode(1);
@@ -35,9 +35,9 @@ namespace Contoso.Core
                 {
                     // Obtain a RESERVED lock on the database file. If the exFlag parameter is true, then immediately upgrade this to an EXCLUSIVE lock. The
                     // busy-handler callback can be used when upgrading to the EXCLUSIVE lock, but not when obtaining the RESERVED lock.
-                    rc = pagerLockDb(LOCK.RESERVED);
+                    rc = pagerLockDb(VFSLOCK.RESERVED);
                     if (rc == SQLITE.OK && exFlag)
-                        rc = pager_wait_on_lock(LOCK.EXCLUSIVE);
+                        rc = pager_wait_on_lock(VFSLOCK.EXCLUSIVE);
                 }
                 if (rc == SQLITE.OK)
                 {
@@ -55,7 +55,7 @@ namespace Contoso.Core
                 Debug.Assert(rc != SQLITE.OK || eState == PAGER.WRITER_LOCKED);
                 Debug.Assert(assert_pager_state());
             }
-            PAGERTRACE("TRANSACTION %d\n", PAGERID(this));
+            PAGERTRACE("TRANSACTION {0}", PAGERID(this));
             return rc;
         }
 
@@ -159,8 +159,8 @@ namespace Contoso.Core
             var pPager = pPg.pPager;
             if ((pPg.flags & PgHdr.PGHDR.DIRTY) != 0 && pPager.nSavepoint == 0)
             {
-                PAGERTRACE("DONT_WRITE page %d of %d\n", pPg.pgno, PAGERID(pPager));
-                SysEx.IOTRACE("CLEAN %p %d\n", pPager, pPg.pgno);
+                PAGERTRACE("DONT_WRITE page {0} of {1}", pPg.pgno, PAGERID(pPager));
+                SysEx.IOTRACE("CLEAN {0:x} {1}", pPager.GetHashCode(), pPg.pgno);
                 pPg.flags |= PgHdr.PGHDR.DONT_WRITE;
                 pager_set_pagehash(pPg);
             }
@@ -233,7 +233,7 @@ namespace Contoso.Core
             // Mark the page as clean.
             if (rc == SQLITE.OK)
             {
-                PAGERTRACE("STRESS %d page %d\n", PAGERID(pPager), pPg.pgno);
+                PAGERTRACE("STRESS {0} page {1}", PAGERID(pPager), pPg.pgno);
                 PCache.sqlite3PcacheMakeClean(pPg);
             }
             return pPager.pager_error(rc);

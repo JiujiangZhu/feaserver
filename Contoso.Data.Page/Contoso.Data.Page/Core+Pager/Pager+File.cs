@@ -2,10 +2,10 @@
 using System.Diagnostics;
 using System.Text;
 using Contoso.Sys;
-using ACCESS = Contoso.Sys.VirtualFileSystem.ACCESS;
-using LOCK = Contoso.Sys.VirtualFile.LOCK;
-using OPEN = Contoso.Sys.VirtualFileSystem.OPEN;
 using Pgno = System.UInt32;
+using VFSACCESS = Contoso.Sys.VirtualFileSystem.ACCESS;
+using VFSLOCK = Contoso.Sys.VirtualFile.LOCK;
+using VFSOPEN = Contoso.Sys.VirtualFileSystem.OPEN;
 namespace Contoso.Core
 {
     public partial class Pager
@@ -41,8 +41,8 @@ namespace Contoso.Core
                 pagerUnlockAndRollback();
             }
             MallocEx.sqlite3EndBenignMalloc();
-            PAGERTRACE("CLOSE %d\n", PAGERID(this));
-            SysEx.IOTRACE("CLOSE %p\n", this);
+            PAGERTRACE("CLOSE {0}", PAGERID(this));
+            SysEx.IOTRACE("CLOSE {0:x}", this.GetHashCode());
             FileEx.sqlite3OsClose(this.jfd);
             FileEx.sqlite3OsClose(this.fd);
             this.pPCache.sqlite3PcacheClose();
@@ -101,9 +101,8 @@ namespace Contoso.Core
             }
             if (CODEC1(pPager, pPg.pData, pgno, codec_ctx.DECRYPT))
                 rc = SQLITE.NOMEM;
-            SysEx.IOTRACE("PGIN %p %d\n", pPager, pgno);
-            PAGERTRACE("FETCH %d page %d hash(%08x)\n",
-            PAGERID(pPager), pgno, pager_pagehash(pPg));
+            SysEx.IOTRACE("PGIN {0:x} {1}", pPager.GetHashCode(), pgno);
+            PAGERTRACE("FETCH {0} page {1}% hash({2,08:x})", PAGERID(pPager), pgno, pager_pagehash(pPg));
             return rc;
         }
 
@@ -113,7 +112,7 @@ namespace Contoso.Core
             // if the database size is not available. The database size is not available from the WAL sub-system if the log file is empty or
             // contains no valid committed transactions.
             Debug.Assert(this.eState == PAGER.OPEN);
-            Debug.Assert(this.eLock >= LOCK.SHARED || this.noReadlock != 0);
+            Debug.Assert(this.eLock >= VFSLOCK.SHARED || this.noReadlock != 0);
             var nPage = this.pWal.sqlite3WalDbsize();
             // If the database size was not available from the WAL sub-system, determine it based on the size of the database file. If the size
             // of the database file is not an integer multiple of the page-size, round down to the nearest page. Except, any file larger than 0
@@ -140,10 +139,10 @@ namespace Contoso.Core
             return SQLITE.OK;
         }
 
-        internal SQLITE pagerOpentemp(ref VirtualFile pFile, OPEN vfsFlags)
+        internal SQLITE pagerOpentemp(ref VirtualFile pFile, VFSOPEN vfsFlags)
         {
-            vfsFlags |= OPEN.READWRITE | OPEN.CREATE | OPEN.EXCLUSIVE | OPEN.DELETEONCLOSE;
-            OPEN dummy = 0;
+            vfsFlags |= VFSOPEN.READWRITE | VFSOPEN.CREATE | VFSOPEN.EXCLUSIVE | VFSOPEN.DELETEONCLOSE;
+            VFSOPEN dummy = 0;
             var rc = FileEx.sqlite3OsOpen(this.pVfs, null, pFile, vfsFlags, ref dummy);
             Debug.Assert(rc != SQLITE.OK || pFile.isOpen);
             return rc;
@@ -159,7 +158,7 @@ namespace Contoso.Core
             Debug.Assert(!this.pagerUseWal());
             if (this.fd.isOpen)
             {
-                SysEx.IOTRACE("DBHDR %p 0 %d\n", this, N);
+                SysEx.IOTRACE("DBHDR {0} 0 {1}", this.GetHashCode(), N);
                 rc = FileEx.sqlite3OsRead(this.fd, pDest, N, 0);
                 if (rc == SQLITE.IOERR_SHORT_READ)
                     rc = SQLITE.OK;
@@ -196,15 +195,15 @@ namespace Contoso.Core
                 Debug.Assert(this.noReadlock == 0 || this.readOnly);
                 if (this.noReadlock == 0)
                 {
-                    rc = pager_wait_on_lock(LOCK.SHARED);
+                    rc = pager_wait_on_lock(VFSLOCK.SHARED);
                     if (rc != SQLITE.OK)
                     {
-                        Debug.Assert(this.eLock == LOCK.NO || this.eLock == LOCK.UNKNOWN);
+                        Debug.Assert(this.eLock == VFSLOCK.NO || this.eLock == VFSLOCK.UNKNOWN);
                         goto failed;
                     }
                 }
                 // If a journal file exists, and there is no RESERVED lock on the database file, then it either needs to be played back or deleted.
-                if (this.eLock <= LOCK.SHARED)
+                if (this.eLock <= VFSLOCK.SHARED)
                     rc = hasHotJournal(ref bHotJournal);
                 if (rc != SQLITE.OK)
                     goto failed;
@@ -217,7 +216,7 @@ namespace Contoso.Core
                     // Because the intermediate RESERVED lock is not requested, any other process attempting to access the database file will get to 
                     // this point in the code and fail to obtain its own EXCLUSIVE lock on the database file.
                     // Unless the pager is in locking_mode=exclusive mode, the lock is downgraded to SHARED_LOCK before this function returns.
-                    rc = pagerLockDb(LOCK.EXCLUSIVE);
+                    rc = pagerLockDb(VFSLOCK.EXCLUSIVE);
                     if (rc != SQLITE.OK)
                         goto failed;
                     // If it is not already open and the file exists on disk, open the journal for read/write access. Write access is required because 
@@ -230,14 +229,14 @@ namespace Contoso.Core
                     {
                         var pVfs = this.pVfs;
                         var bExists = 0;              // True if journal file exists
-                        rc = FileEx.sqlite3OsAccess(pVfs, this.zJournal, ACCESS.EXISTS, ref bExists);
+                        rc = FileEx.sqlite3OsAccess(pVfs, this.zJournal, VFSACCESS.EXISTS, ref bExists);
                         if (rc == SQLITE.OK && bExists != 0)
                         {
                             Debug.Assert(!this.tempFile);
-                            OPEN fout = 0;
-                            rc = FileEx.sqlite3OsOpen(pVfs, this.zJournal, this.jfd, OPEN.READWRITE | OPEN.MAIN_JOURNAL, ref fout);
+                            VFSOPEN fout = 0;
+                            rc = FileEx.sqlite3OsOpen(pVfs, this.zJournal, this.jfd, VFSOPEN.READWRITE | VFSOPEN.MAIN_JOURNAL, ref fout);
                             Debug.Assert(rc != SQLITE.OK || this.jfd.isOpen);
-                            if (rc == SQLITE.OK && (fout & OPEN.READONLY) != 0)
+                            if (rc == SQLITE.OK && (fout & VFSOPEN.READONLY) != 0)
                             {
                                 rc = SysEx.SQLITE_CANTOPEN_BKPT();
                                 FileEx.sqlite3OsClose(this.jfd);
@@ -259,7 +258,7 @@ namespace Contoso.Core
                         }
                     }
                     else if (!this.exclusiveMode)
-                        pagerUnlockDb(LOCK.SHARED);
+                        pagerUnlockDb(VFSLOCK.SHARED);
                     if (rc != SQLITE.OK)
                     {
                         // This branch is taken if an error occurs while trying to open or roll back a hot-journal while holding an EXCLUSIVE lock. The
@@ -273,7 +272,7 @@ namespace Contoso.Core
                         goto failed;
                     }
                     Debug.Assert(this.eState == PAGER.OPEN);
-                    Debug.Assert((this.eLock == LOCK.SHARED) || (this.exclusiveMode && this.eLock > LOCK.SHARED));
+                    Debug.Assert((this.eLock == VFSLOCK.SHARED) || (this.exclusiveMode && this.eLock > VFSLOCK.SHARED));
                 }
                 if (!this.tempFile && (this.pBackup != null || this.pPCache.sqlite3PcachePagecount() > 0))
                 {
@@ -334,7 +333,7 @@ namespace Contoso.Core
             return rc;
         }
 
-        internal static SQLITE sqlite3PagerOpen(VirtualFileSystem pVfs, out Pager ppPager, string zFilename, int nExtra, PAGEROPEN flags, OPEN vfsFlags, Action<PgHdr> xReinit)
+        internal static SQLITE sqlite3PagerOpen(VirtualFileSystem pVfs, out Pager ppPager, string zFilename, int nExtra, PAGEROPEN flags, VFSOPEN vfsFlags, Action<PgHdr> xReinit)
         {
             Pager pPager = null;     // Pager object to allocate and return
             byte memDb = 0;            // True if this is an in-memory file
@@ -415,10 +414,10 @@ namespace Contoso.Core
             var tempFile = LOCKINGMODE.NORMAL;         // True for temp files (incl. in-memory files) 
             if (!string.IsNullOrEmpty(zFilename))
             {
-                OPEN fout = 0; // VFS flags returned by xOpen()
+                VFSOPEN fout = 0; // VFS flags returned by xOpen()
                 rc = FileEx.sqlite3OsOpen(pVfs, zFilename, pPager.fd, vfsFlags, ref fout);
                 Debug.Assert(0 == memDb);
-                readOnly = (fout & OPEN.READONLY) != 0;
+                readOnly = (fout & VFSOPEN.READONLY) != 0;
                 // If the file was successfully opened for read/write access, choose a default page size in case we have to create the
                 // database file. The default page size is the maximum of:
                 //    + SQLITE_DEFAULT_PAGE_SIZE,
@@ -449,8 +448,8 @@ namespace Contoso.Core
                 // disk and uses an in-memory rollback journal.
                 tempFile = LOCKINGMODE.EXCLUSIVE;
                 pPager.eState = PAGER.READER;
-                pPager.eLock = LOCK.EXCLUSIVE;
-                readOnly = (vfsFlags & OPEN.READONLY) != 0;
+                pPager.eLock = VFSLOCK.EXCLUSIVE;
+                readOnly = (vfsFlags & VFSOPEN.READONLY) != 0;
             }
 
             // The following call to PagerSetPagesize() serves to set the value of Pager.pageSize and to allocate the Pager.pTmpSpace buffer.
@@ -470,8 +469,8 @@ namespace Contoso.Core
             Debug.Assert(nExtra < 1000);
             nExtra = SysEx.ROUND8(nExtra);
             PCache.sqlite3PcacheOpen((int)szPageDflt, nExtra, (memDb == 0), (memDb == 0 ? (Func<object, PgHdr, SQLITE>)pagerStress : null), pPager, pPager.pPCache);
-            PAGERTRACE("OPEN %d %s\n", FILEHANDLEID(pPager.fd), pPager.zFilename);
-            SysEx.IOTRACE("OPEN %p %s\n", pPager, pPager.zFilename);
+            PAGERTRACE("OPEN {0} {1}", FILEHANDLEID(pPager.fd), pPager.zFilename);
+            SysEx.IOTRACE("OPEN {0:x} {1}", pPager.GetHashCode(), pPager.zFilename);
             pPager.useJournal = (byte)(useJournal ? 1 : 0);
             pPager.noReadlock = (byte)(noReadlock && readOnly ? 1 : 0);
             pPager.mxPgno = SQLITE_MAX_PAGE_COUNT;

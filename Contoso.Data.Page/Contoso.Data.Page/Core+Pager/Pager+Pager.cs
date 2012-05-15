@@ -2,9 +2,9 @@
 using System.Diagnostics;
 using System.Text;
 using Contoso.Sys;
-using LOCK = Contoso.Sys.VirtualFile.LOCK;
-using OPEN = Contoso.Sys.VirtualFileSystem.OPEN;
 using Pgno = System.UInt32;
+using VFSLOCK = Contoso.Sys.VirtualFile.LOCK;
+using VFSOPEN = Contoso.Sys.VirtualFileSystem.OPEN;
 namespace Contoso.Core
 {
     public partial class Pager
@@ -21,7 +21,7 @@ namespace Contoso.Core
                 return this.errCode;
             if (!this.pagerUseWal() && this.journalMode != JOURNALMODE.OFF)
             {
-                this.pInJournal = Bitvec.sqlite3BitvecCreate(this.dbSize);
+                this.pInJournal = new Bitvec(this.dbSize);
                 // Open the journal file if it is not already open.
                 if (!this.jfd.isOpen)
                 {
@@ -29,11 +29,11 @@ namespace Contoso.Core
                         this.jfd = new MemJournalFile();
                     else
                     {
-                        var flags = OPEN.READWRITE | OPEN.CREATE | (this.tempFile ? OPEN.DELETEONCLOSE | OPEN.TEMP_JOURNAL : OPEN.MAIN_JOURNAL);
+                        var flags = VFSOPEN.READWRITE | VFSOPEN.CREATE | (this.tempFile ? VFSOPEN.DELETEONCLOSE | VFSOPEN.TEMP_JOURNAL : VFSOPEN.MAIN_JOURNAL);
 #if SQLITE_ENABLE_ATOMIC_WRITE
                         rc = sqlite3JournalOpen(pVfs, pPager.zJournal, pPager.jfd, flags, jrnlBufferSize(pPager));
 #else
-                        OPEN int0 = 0;
+                        VFSOPEN int0 = 0;
                         rc = FileEx.sqlite3OsOpen(pVfs, this.zJournal, this.jfd, flags, ref int0);
 #endif
                     }
@@ -74,7 +74,8 @@ namespace Contoso.Core
 
         internal void pager_reset()
         {
-            this.pBackup.sqlite3BackupRestart();
+            if (this.pBackup != null)
+                this.pBackup.sqlite3BackupRestart();
             this.pPCache.sqlite3PcacheClear();
         }
 
@@ -107,9 +108,9 @@ namespace Contoso.Core
                     FileEx.sqlite3OsClose(this.jfd);
                 // If the pager is in the ERROR state and the call to unlock the database file fails, set the current lock to UNKNOWN_LOCK. See the comment
                 // above the #define for UNKNOWN_LOCK for an explanation of why this is necessary.
-                var rc = pagerUnlockDb(LOCK.NO);
+                var rc = pagerUnlockDb(VFSLOCK.NO);
                 if (rc != SQLITE.OK && this.eState == PAGER.ERROR)
-                    this.eLock = LOCK.UNKNOWN;
+                    this.eLock = VFSLOCK.UNKNOWN;
                 // The pager state may be changed from PAGER_ERROR to PAGER_OPEN here without clearing the error code. This is intentional - the error
                 // code is cleared and the cache reset in the block below.
                 Debug.Assert(this.errCode != 0 || this.eState != PAGER.ERROR);
@@ -165,7 +166,7 @@ namespace Contoso.Core
             //      read-transaction, this function is called with eState==PAGER_READER and eLock==EXCLUSIVE_LOCK when the read-transaction is closed.
             Debug.Assert(assert_pager_state());
             Debug.Assert(this.eState != PAGER.ERROR);
-            if (this.eState < PAGER.WRITER_LOCKED && this.eLock < LOCK.RESERVED)
+            if (this.eState < PAGER.WRITER_LOCKED && this.eLock < VFSLOCK.RESERVED)
                 return SQLITE.OK;
             releaseAllSavepoints();
             Debug.Assert(this.jfd.isOpen || this.pInJournal == null);
@@ -226,7 +227,7 @@ namespace Contoso.Core
             }
             if (!this.exclusiveMode && (!pagerUseWal() || this.pWal.sqlite3WalExclusiveMode(0)))
             {
-                rc2 = pagerUnlockDb(LOCK.SHARED);
+                rc2 = pagerUnlockDb(VFSLOCK.SHARED);
                 this.changeCountDone = false;
             }
             this.eState = PAGER.READER;
@@ -258,7 +259,7 @@ namespace Contoso.Core
             // Either the state is greater than PAGER_WRITER_CACHEMOD (a transaction or savepoint rollback done at the request of the caller) or this is
             // a hot-journal rollback. If it is a hot-journal rollback, the pager is in state OPEN and holds an EXCLUSIVE lock. Hot-journal rollback
             // only reads from the main journal, not the sub-journal.
-            Debug.Assert(this.eState >= PAGER.WRITER_CACHEMOD || (this.eState == PAGER.OPEN && this.eLock == LOCK.EXCLUSIVE));
+            Debug.Assert(this.eState >= PAGER.WRITER_CACHEMOD || (this.eState == PAGER.OPEN && this.eLock == VFSLOCK.EXCLUSIVE));
             Debug.Assert(this.eState >= PAGER.WRITER_CACHEMOD || isMainJrnl != 0);
             // Read the page number and page data from the journal or sub-journal file. Return an error code to the caller if an IO error occurs.
             var jfd = (isMainJrnl != 0 ? this.jfd : this.sjfd); // The file descriptor for the journal file
@@ -306,11 +307,7 @@ namespace Contoso.Core
 #endif
 );
             Debug.Assert(this.eState != PAGER.OPEN || pPg == null);
-            PAGERTRACE("PLAYBACK %d page %d hash(%08x) %s\n",
-                PAGERID(this),
-                pgno,
-                pager_datahash(this.pageSize, aData),
-                isMainJrnl != 0 ? "main-journal" : "sub-journal");
+            PAGERTRACE("PLAYBACK {0} page {1} hash({2,08:x}) {3}", PAGERID(this), pgno, pager_datahash(this.pageSize, aData), isMainJrnl != 0 ? "main-journal" : "sub-journal");
             bool isSynced; // True if journal page is synced
             if (isMainJrnl != 0)
                 isSynced = this.noSync || (pOffset <= this.journalHdr);
@@ -397,8 +394,8 @@ namespace Contoso.Core
             var pMaster = new VirtualFile();// Malloc'd master-journal file descriptor
             var pJournal = new VirtualFile();// Malloc'd child-journal file descriptor
             var pVfs = this.pVfs;
-            OPEN iDummy = 0;
-            var rc = FileEx.sqlite3OsOpen(pVfs, zMaster, pMaster, OPEN.READONLY | OPEN.MASTER_JOURNAL, ref iDummy);
+            VFSOPEN iDummy = 0;
+            var rc = FileEx.sqlite3OsOpen(pVfs, zMaster, pMaster, VFSOPEN.READONLY | VFSOPEN.MASTER_JOURNAL, ref iDummy);
             if (rc != SQLITE.OK)
                 goto delmaster_out;
             Debugger.Break();
@@ -466,7 +463,7 @@ namespace Contoso.Core
             if (this.fd.isOpen && (this.eState >= PAGER.WRITER_DBMOD || this.eState == PAGER.OPEN))
             {
                 var szPage = this.pageSize;
-                Debug.Assert(this.eLock == LOCK.EXCLUSIVE);
+                Debug.Assert(this.eLock == VFSLOCK.EXCLUSIVE);
                 // TODO: Is it safe to use Pager.dbFileSize here?
                 long currentSize = 0;
                 rc = FileEx.sqlite3OsFileSize(this.fd, ref currentSize);
@@ -621,11 +618,11 @@ namespace Contoso.Core
             ConvertEx.put32bits(pPg.pData, 96, SysEx.SQLITE_VERSION_NUMBER);
         }
 
-        internal SQLITE pager_wait_on_lock(LOCK locktype)
+        internal SQLITE pager_wait_on_lock(VFSLOCK locktype)
         {
             // Check that this is either a no-op (because the requested lock is already held, or one of the transistions that the busy-handler
             // may be invoked during, according to the comment above sqlite3PagerSetBusyhandler().
-            Debug.Assert((this.eLock >= locktype) || (this.eLock == LOCK.NO && locktype == LOCK.SHARED) || (this.eLock == LOCK.RESERVED && locktype == LOCK.EXCLUSIVE));
+            Debug.Assert((this.eLock >= locktype) || (this.eLock == VFSLOCK.NO && locktype == VFSLOCK.SHARED) || (this.eLock == VFSLOCK.RESERVED && locktype == VFSLOCK.EXCLUSIVE));
             SQLITE rc;
             do
                 rc = pagerLockDb(locktype);
@@ -639,7 +636,7 @@ namespace Contoso.Core
             // This function is only called for rollback pagers in WRITER_DBMOD state. 
             Debug.Assert(!pagerUseWal());
             Debug.Assert(this.eState == PAGER.WRITER_DBMOD);
-            Debug.Assert(this.eLock == LOCK.EXCLUSIVE);
+            Debug.Assert(this.eLock == VFSLOCK.EXCLUSIVE);
             // If the file is a temp-file has not yet been opened, open it now. It is not possible for rc to be other than SQLITE.OK if this branch
             // is taken, as pager_wait_on_lock() is a no-op for temp-files.
             if (!this.fd.isOpen)
@@ -680,13 +677,14 @@ namespace Contoso.Core
                     if (pgno > this.dbFileSize)
                         this.dbFileSize = pgno;
                     // Update any backup objects copying the contents of this pager.
-                    this.pBackup.sqlite3BackupUpdate(pgno, pList.pData);
+                    if (this.pBackup != null)
+                        this.pBackup.sqlite3BackupUpdate(pgno, pList.pData);
                     PAGERTRACE("STORE %d page %d hash(%08x)\n",
                     PAGERID(this), pgno, pager_pagehash(pList));
-                    SysEx.IOTRACE("PGOUT %p %d\n", this, pgno);
+                    SysEx.IOTRACE("PGOUT {0:x} {1}", this.GetHashCode(), pgno);
                 }
                 else
-                    PAGERTRACE("NOSTORE %d page %d\n", PAGERID(this), pgno);
+                    PAGERTRACE("NOSTORE {0} page {1}", PAGERID(this), pgno);
                 pager_set_pagehash(pList);
                 pList = pList.pDirty;
             }
@@ -758,10 +756,8 @@ CHECK_PAGE(pPg);
                         rc = pPager.jfd.write32bits(iOff + pPager.pageSize + 4, cksum);
                         if (rc != SQLITE.OK)
                             return rc;
-                        SysEx.IOTRACE("JOUT %p %d %lld %d\n", pPager, pPg.pgno,
-                        pPager.journalOff, pPager.pageSize);
-                        PAGERTRACE("JOURNAL %d page %d needSync=%d hash(%08x)\n",
-                        PAGERID(pPager), pPg.pgno, (pPg.flags & PgHdr.PGHDR.NEED_SYNC) != 0 ? 1 : 0, pager_pagehash(pPg));
+                        SysEx.IOTRACE("JOUT {0:x} {1} {2,ll} {3}", pPager.GetHashCode(), pPg.pgno, pPager.journalOff, pPager.pageSize);
+                        PAGERTRACE("JOURNAL {0} page {1} needSync={2} hash({3,08:x})", PAGERID(pPager), pPg.pgno, (pPg.flags & PgHdr.PGHDR.NEED_SYNC) != 0 ? 1 : 0, pager_pagehash(pPg));
                         pPager.journalOff += 8 + pPager.pageSize;
                         pPager.nRec++;
                         Debug.Assert(pPager.pInJournal != null);
@@ -778,8 +774,7 @@ CHECK_PAGE(pPg);
                     {
                         if (pPager.eState != PAGER.WRITER_DBMOD)
                             pPg.flags |= PgHdr.PGHDR.NEED_SYNC;
-                        PAGERTRACE("APPEND %d page %d needSync=%d\n",
-                        PAGERID(pPager), pPg.pgno, (pPg.flags & PgHdr.PGHDR.NEED_SYNC) != 0 ? 1 : 0);
+                        PAGERTRACE("APPEND {0} page {1} needSync={2}", PAGERID(pPager), pPg.pgno, (pPg.flags & PgHdr.PGHDR.NEED_SYNC) != 0 ? 1 : 0);
                     }
                 }
                 // If the statement journal is open and the page is not in it, then write the current page to the statement journal.  Note that

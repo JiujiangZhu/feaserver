@@ -9,21 +9,17 @@ namespace Contoso.Sys
         internal static void UNUSED_PARAMETER2<T1, T2>(T1 x, T2 y) { UNUSED_PARAMETER(x); UNUSED_PARAMETER(y); }
 
 #if DEBUG || TRACE
-        internal static bool sqlite3OsTrace = false;
-        internal static void OSTRACE(string X, params object[] ap)
-        {
-            //if (sqlite3OsTrace)
-            //    sqlite3DebugPrintf(X, ap);
-        }
+        internal static bool sqlite3OsTrace = true;
+        internal static void OSTRACE(string x, params object[] args) { if (sqlite3OsTrace) Console.WriteLine(string.Format(x, args)); }
 #else
-        internal static void OSTRACE(string X, params object[] ap) { }
+        internal static void OSTRACE(string x, params object[] args) { }
 #endif
 
-#if SQLITE_ENABLE_IOTRACE
-        internal static bool SQLite3IoTrace = false;
-        internal static void IOTRACE(string X, params object[] ap) { if (SQLite3IoTrace) { printf(X, ap); } }
+#if IOTRACE
+        internal static bool SQLite3IoTrace = true;
+        internal static void IOTRACE(string x, params object[] args) { if (SQLite3IoTrace) Console.WriteLine(string.Format(x, args)); }
 #else
-        internal static void IOTRACE(string F, params object[] ap) { }
+        internal static void IOTRACE(string x, params object[] args) { }
 #endif
 
         internal static int ROUND8(int x) { return (x + 7) & ~7; }

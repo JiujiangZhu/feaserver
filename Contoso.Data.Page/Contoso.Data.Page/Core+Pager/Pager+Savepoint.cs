@@ -20,7 +20,7 @@ namespace Contoso.Core
             // Allocate a bitvec to use to store the set of pages rolled back
             Bitvec pDone = null;     // Bitvec to ensure pages played back only once
             if (pSavepoint != null)
-                pDone = Bitvec.sqlite3BitvecCreate(pSavepoint.nOrig);
+                pDone = new Bitvec(pSavepoint.nOrig);
             // Set the database size back to the value it was before the savepoint being reverted was opened.
             this.dbSize = pSavepoint != null ? pSavepoint.nOrig : this.dbOrigSize;
             this.changeCountDone = this.tempFile;
@@ -127,7 +127,7 @@ namespace Contoso.Core
                     aNew[ii].nOrig = this.dbSize;
                     aNew[ii].iOffset = (this.jfd.isOpen && this.journalOff > 0 ? this.journalOff : (int)JOURNAL_HDR_SZ(this));
                     aNew[ii].iSubRec = this.nSubRec;
-                    aNew[ii].pInSavepoint = Bitvec.sqlite3BitvecCreate(this.dbSize);
+                    aNew[ii].pInSavepoint = new Bitvec(this.dbSize);
                     if (pagerUseWal())
                         this.pWal.sqlite3WalSavepoint(aNew[ii].aWalData);
                     this.nSavepoint = ii + 1;

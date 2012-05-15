@@ -1,4 +1,7 @@
-﻿namespace Contoso.Core
+﻿using Contoso.Sys;
+using System.Diagnostics;
+using System;
+namespace Contoso.Core
 {
     public class Bitvec
     {
@@ -26,34 +29,137 @@
         }
         public _u u = new _u();
 
-        public static implicit operator bool(Bitvec b)
+        public Bitvec(uint iSize)
         {
-            return (b != null);
+            this.iSize = iSize;
+        }
+        internal static void sqlite3BitvecDestroy(ref Bitvec p)
+        {
+            if (p == null)
+                return;
+            if (p.iDivisor != 0)
+                for (uint i = 0; i < BITVEC_NPTR; i++)
+                    sqlite3BitvecDestroy(ref p.u.apSub[i]);
         }
 
-        internal int sqlite3BitvecTest(uint pg)
+        public static implicit operator bool(Bitvec b) { return (b != null); }
+
+        internal int sqlite3BitvecTest(uint i)
         {
-            throw new System.NotImplementedException();
+            if (i == 0 || i > iSize)
+                return 0;
+            i--;
+            var p = this;
+            while (iDivisor != 0)
+            {
+                uint bin = i / p.iDivisor;
+                i %= p.iDivisor;
+                p = p.u.apSub[bin];
+                if (p == null)
+                    return 0;
+            }
+            if (p.iSize <= BITVEC_NBIT)
+                return (((p.u.aBitmap[i / BITVEC_SZELEM] & (1 << (int)(i & (BITVEC_SZELEM - 1)))) != 0) ? 1 : 0);
+            uint h = BITVEC_HASH(i++);
+            while (p.u.aHash[h] != 0)
+            {
+                if (p.u.aHash[h] == i)
+                    return 1;
+                h = (h + 1) % BITVEC_NINT;
+            }
+            return 0;
         }
 
-        internal static Bitvec sqlite3BitvecCreate(uint p)
+        internal SQLITE sqlite3BitvecSet(uint i)
         {
-            throw new System.NotImplementedException();
+            Debug.Assert(i > 0);
+            Debug.Assert(i <= iSize);
+            i--;
+            var p = this;
+            while (iSize > BITVEC_NBIT && iDivisor != 0)
+            {
+                uint bin = i / p.iDivisor;
+                i %= p.iDivisor;
+                if (p.u.apSub[bin] == null)
+                    p.u.apSub[bin] = new Bitvec(p.iDivisor);
+                p = p.u.apSub[bin];
+            }
+            if (p.iSize <= BITVEC_NBIT)
+            {
+                p.u.aBitmap[i / BITVEC_SZELEM] |= (byte)(1 << (int)(i & (BITVEC_SZELEM - 1)));
+                return SQLITE.OK;
+            }
+            var h = BITVEC_HASH(i++);
+            // if there wasn't a hash collision, and this doesn't completely fill the hash, then just add it without worring about sub-dividing and re-hashing.
+            if (p.u.aHash[h] == 0)
+                if (p.nSet < (BITVEC_NINT - 1))
+                    goto bitvec_set_end;
+                else
+                    goto bitvec_set_rehash;
+            // there was a collision, check to see if it's already in hash, if not, try to find a spot for it 
+            do
+            {
+                if (p.u.aHash[h] == i)
+                    return SQLITE.OK;
+                h++;
+                if (h >= BITVEC_NINT)
+                    h = 0;
+            } while (p.u.aHash[h] != 0);
+        // we didn't find it in the hash.  h points to the first available free spot. check to see if this is going to make our hash too "full".
+        bitvec_set_rehash:
+            if (p.nSet >= BITVEC_MXHASH)
+            {
+                var aiValues = new uint[BITVEC_NINT];
+                Buffer.BlockCopy(p.u.aHash, 0, aiValues, 0, aiValues.Length * (sizeof(uint)));
+                p.u.apSub = new Bitvec[BITVEC_NPTR];
+                p.iDivisor = (uint)((p.iSize + BITVEC_NPTR - 1) / BITVEC_NPTR);
+                var rc = p.sqlite3BitvecSet(i);
+                for (uint j = 0; j < BITVEC_NINT; j++)
+                    if (aiValues[j] != 0)
+                        rc |= p.sqlite3BitvecSet(aiValues[j]);
+                return rc;
+            }
+        bitvec_set_end:
+            p.nSet++;
+            p.u.aHash[h] = i;
+            return SQLITE.OK;
         }
 
-        internal static void sqlite3BitvecDestroy(ref Bitvec pDone)
+        internal void sqlite3BitvecClear(uint i, uint[] pBuf)
         {
-            throw new System.NotImplementedException();
-        }
-
-        internal Sys.SQLITE sqlite3BitvecSet(uint pgno)
-        {
-            throw new System.NotImplementedException();
-        }
-
-        internal void sqlite3BitvecClear(uint needSyncPgno, uint[] pTemp)
-        {
-            throw new System.NotImplementedException();
+            Debug.Assert(i > 0);
+            i--;
+            var p = this;
+            while (p.iDivisor != 0)
+            {
+                uint bin = i / p.iDivisor;
+                i %= p.iDivisor;
+                p = p.u.apSub[bin];
+                if (null == p)
+                    return;
+            }
+            if (p.iSize <= BITVEC_NBIT)
+                p.u.aBitmap[i / BITVEC_SZELEM] &= (byte)~((1 << (int)(i & (BITVEC_SZELEM - 1))));
+            else
+            {
+                var aiValues = pBuf;
+                Array.Copy(p.u.aHash, aiValues, p.u.aHash.Length);
+                p.u.aHash = new uint[aiValues.Length];
+                p.nSet = 0;
+                for (uint j = 0; j < BITVEC_NINT; j++)
+                    if (aiValues[j] != 0 && aiValues[j] != (i + 1))
+                    {
+                        var h = BITVEC_HASH(aiValues[j] - 1);
+                        p.nSet++;
+                        while (p.u.aHash[h] != 0)
+                        {
+                            h++;
+                            if (h >= BITVEC_NINT)
+                                h = 0;
+                        }
+                        p.u.aHash[h] = aiValues[j];
+                    }
+            }
         }
     }
 }

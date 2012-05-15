@@ -1,15 +1,16 @@
 ﻿using System.Diagnostics;
 using Contoso.Sys;
-using LOCK = Contoso.Sys.VirtualFile.LOCK;
+using VFSLOCK = Contoso.Sys.VirtualFile.LOCK;
+using System;
 namespace Contoso.Core
 {
     public partial class Pager
     {
-#if !TRACE
-        private static bool sqlite3PagerTrace = false;  // True to enable tracing
-        private static void PAGERTRACE(string T, params object[] ap) { if (sqlite3PagerTrace)sqlite3DebugPrintf(T, ap); }
+#if TRACE
+        private static bool sqlite3PagerTrace = true;  // True to enable tracing
+        private static void PAGERTRACE(string x, params object[] args) { if (sqlite3PagerTrace)Console.WriteLine(string.Format(x, args)); }
 #else
-        private static void PAGERTRACE(string T, params object[] ap) { }
+        private static void PAGERTRACE(string x, params object[] args) { }
 #endif
         private static int PAGERID(Pager p) { return p.GetHashCode(); }
         private static int FILEHANDLEID(VirtualFile fd) { return fd.GetHashCode(); }
@@ -19,7 +20,7 @@ namespace Contoso.Core
         {
             // Regardless of the current state, a temp-file connection always behaves as if it has an exclusive lock on the database file. It never updates
             // the change-counter field, so the changeCountDone flag is always set.
-            Debug.Assert(!tempFile || eLock == LOCK.EXCLUSIVE);
+            Debug.Assert(!tempFile || eLock == VFSLOCK.EXCLUSIVE);
             Debug.Assert(!tempFile || changeCountDone);
             // If the useJournal flag is clear, the journal-mode must be "OFF". And if the journal-mode is "OFF", the journal file must not be open.
             Debug.Assert(journalMode == JOURNALMODE.OFF || useJournal != 0);
@@ -41,8 +42,8 @@ namespace Contoso.Core
                 Debug.Assert(!pagerUseWal());
             }
             // If changeCountDone is set, a RESERVED lock or greater must be held on the file.
-            Debug.Assert(!changeCountDone || eLock >= LOCK.RESERVED);
-            Debug.Assert(eLock != LOCK.PENDING);
+            Debug.Assert(!changeCountDone || eLock >= VFSLOCK.RESERVED);
+            Debug.Assert(eLock != VFSLOCK.PENDING);
             switch (eState)
             {
                 case PAGER.OPEN:
@@ -58,42 +59,42 @@ namespace Contoso.Core
                     break;
                 case PAGER.READER:
                     Debug.Assert(errCode == SQLITE.OK);
-                    Debug.Assert(eLock != LOCK.UNKNOWN);
-                    Debug.Assert(eLock >= LOCK.SHARED || noReadlock != 0);
+                    Debug.Assert(eLock != VFSLOCK.UNKNOWN);
+                    Debug.Assert(eLock >= VFSLOCK.SHARED || noReadlock != 0);
                     break;
                 case PAGER.WRITER_LOCKED:
-                    Debug.Assert(eLock != LOCK.UNKNOWN);
+                    Debug.Assert(eLock != VFSLOCK.UNKNOWN);
                     Debug.Assert(errCode == SQLITE.OK);
                     if (!pagerUseWal())
-                        Debug.Assert(eLock >= LOCK.RESERVED);
+                        Debug.Assert(eLock >= VFSLOCK.RESERVED);
                     Debug.Assert(dbSize == dbOrigSize);
                     Debug.Assert(dbOrigSize == dbFileSize);
                     Debug.Assert(dbOrigSize == dbHintSize);
                     Debug.Assert(setMaster == 0);
                     break;
                 case PAGER.WRITER_CACHEMOD:
-                    Debug.Assert(eLock != LOCK.UNKNOWN);
+                    Debug.Assert(eLock != VFSLOCK.UNKNOWN);
                     Debug.Assert(errCode == SQLITE.OK);
                     if (!pagerUseWal())
                     {
                         // It is possible that if journal_mode=wal here that neither the journal file nor the WAL file are open. This happens during
                         // a rollback transaction that switches from journal_mode=off to journal_mode=wal.
-                        Debug.Assert(eLock >= LOCK.RESERVED);
+                        Debug.Assert(eLock >= VFSLOCK.RESERVED);
                         Debug.Assert(jfd.isOpen || journalMode == JOURNALMODE.OFF || journalMode == JOURNALMODE.WAL);
                     }
                     Debug.Assert(dbOrigSize == dbFileSize);
                     Debug.Assert(dbOrigSize == dbHintSize);
                     break;
                 case PAGER.WRITER_DBMOD:
-                    Debug.Assert(eLock == LOCK.EXCLUSIVE);
+                    Debug.Assert(eLock == VFSLOCK.EXCLUSIVE);
                     Debug.Assert(errCode == SQLITE.OK);
                     Debug.Assert(!pagerUseWal());
-                    Debug.Assert(eLock >= LOCK.EXCLUSIVE);
+                    Debug.Assert(eLock >= VFSLOCK.EXCLUSIVE);
                     Debug.Assert(jfd.isOpen || journalMode == JOURNALMODE.OFF || journalMode == JOURNALMODE.WAL);
                     Debug.Assert(dbOrigSize <= dbHintSize);
                     break;
                 case PAGER.WRITER_FINISHED:
-                    Debug.Assert(eLock == LOCK.EXCLUSIVE);
+                    Debug.Assert(eLock == VFSLOCK.EXCLUSIVE);
                     Debug.Assert(errCode == SQLITE.OK);
                     Debug.Assert(!pagerUseWal());
                     Debug.Assert(jfd.isOpen || journalMode == JOURNALMODE.OFF || journalMode == JOURNALMODE.WAL);
@@ -136,11 +137,11 @@ Size:          dbsize={11} dbOrigSize={12} dbFileSize={13}"
               eState == PAGER.WRITER_FINISHED ? "WRITER_FINISHED" :
               eState == PAGER.ERROR ? "ERROR" : "?error?"
           , (int)errCode
-          , eLock == LOCK.NO ? "NO_LOCK" :
-              eLock == LOCK.RESERVED ? "RESERVED" :
-              eLock == LOCK.EXCLUSIVE ? "EXCLUSIVE" :
-              eLock == LOCK.SHARED ? "SHARED" :
-              eLock == LOCK.UNKNOWN ? "UNKNOWN" : "?error?"
+          , eLock == VFSLOCK.NO ? "NO_LOCK" :
+              eLock == VFSLOCK.RESERVED ? "RESERVED" :
+              eLock == VFSLOCK.EXCLUSIVE ? "EXCLUSIVE" :
+              eLock == VFSLOCK.SHARED ? "SHARED" :
+              eLock == VFSLOCK.UNKNOWN ? "UNKNOWN" : "?error?"
           , exclusiveMode ? "exclusive" : "normal"
           , journalMode == JOURNALMODE.MEMORY ? "memory" :
               journalMode == JOURNALMODE.OFF ? "off" :
