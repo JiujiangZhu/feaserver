@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 using Contoso.Sys;
-using LOCK = Contoso.Sys.VirtualFile.LOCK;
+using VFSLOCK = Contoso.Sys.VirtualFile.LOCK;
 namespace Contoso.Core
 {
     public partial class Pager
@@ -31,34 +31,34 @@ namespace Contoso.Core
             pager_unlock();
         }
 
-        internal SQLITE pagerUnlockDb(LOCK eLock)
+        internal SQLITE pagerUnlockDb(VFSLOCK eLock)
         {
             var rc = SQLITE.OK;
             Debug.Assert(!this.exclusiveMode || this.eLock == eLock);
-            Debug.Assert(eLock == LOCK.NO || eLock == LOCK.SHARED);
-            Debug.Assert(eLock != LOCK.NO || !this.pagerUseWal());
+            Debug.Assert(eLock == VFSLOCK.NO || eLock == VFSLOCK.SHARED);
+            Debug.Assert(eLock != VFSLOCK.NO || !this.pagerUseWal());
             if (this.fd.isOpen)
             {
                 Debug.Assert(this.eLock >= eLock);
                 rc = FileEx.sqlite3OsUnlock(this.fd, eLock);
-                if (this.eLock != LOCK.UNKNOWN)
+                if (this.eLock != VFSLOCK.UNKNOWN)
                     this.eLock = eLock;
-                SysEx.IOTRACE("UNLOCK %p %d\n", this, eLock);
+                SysEx.IOTRACE("UNLOCK {0:x} {1}", this.GetHashCode(), eLock);
             }
             return rc;
         }
 
-        internal SQLITE pagerLockDb(LOCK eLock)
+        internal SQLITE pagerLockDb(VFSLOCK eLock)
         {
             var rc = SQLITE.OK;
-            Debug.Assert(eLock == LOCK.SHARED || eLock == LOCK.RESERVED || eLock == LOCK.EXCLUSIVE);
-            if (this.eLock < eLock || this.eLock == LOCK.UNKNOWN)
+            Debug.Assert(eLock == VFSLOCK.SHARED || eLock == VFSLOCK.RESERVED || eLock == VFSLOCK.EXCLUSIVE);
+            if (this.eLock < eLock || this.eLock == VFSLOCK.UNKNOWN)
             {
                 rc = FileEx.sqlite3OsLock(this.fd, eLock);
-                if (rc == SQLITE.OK && (this.eLock != LOCK.UNKNOWN || eLock == LOCK.EXCLUSIVE))
+                if (rc == SQLITE.OK && (this.eLock != VFSLOCK.UNKNOWN || eLock == VFSLOCK.EXCLUSIVE))
                 {
                     this.eLock = eLock;
-                    SysEx.IOTRACE("LOCK %p %d\n", this, eLock);
+                    SysEx.IOTRACE("LOCK {0:x} {1}", this.GetHashCode(), eLock);
                 }
             }
             return rc;
@@ -70,7 +70,7 @@ namespace Contoso.Core
             Debug.Assert(this.eState == PAGER.WRITER_CACHEMOD || this.eState == PAGER.WRITER_DBMOD || this.eState == PAGER.WRITER_LOCKED);
             Debug.Assert(assert_pager_state());
             if (!pagerUseWal())
-                rc = pager_wait_on_lock(LOCK.EXCLUSIVE);
+                rc = pager_wait_on_lock(VFSLOCK.EXCLUSIVE);
             return rc;
         }
     }

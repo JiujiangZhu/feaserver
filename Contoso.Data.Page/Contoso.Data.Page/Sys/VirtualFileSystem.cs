@@ -152,12 +152,12 @@ namespace Contoso.Sys
                         fs = new FileStream(zName, dwCreationDisposition, dwDesiredAccess, dwShareMode, 4096);
 #endif
 #if DEBUG
-                        SysEx.OSTRACE("OPEN %d (%s)\n", fs.GetHashCode(), fs.Name);
+                        SysEx.OSTRACE("OPEN {0} ({1})", fs.GetHashCode(), fs.Name);
 #endif
                     }
                     catch (Exception) { Thread.Sleep(100); }
             }
-            SysEx.OSTRACE("OPEN %d %s 0x%lx %s\n", pFile.GetHashCode(), zName, dwDesiredAccess, fs == null ? "failed" : "ok");
+            SysEx.OSTRACE("OPEN {0} {1} 0x{2:x} {3}", pFile.GetHashCode(), zName, dwDesiredAccess, fs == null ? "failed" : "ok");
             if (fs == null ||
 #if !(SQLITE_SILVERLIGHT || WINDOWS_MOBILE)
  fs.SafeFileHandle.IsInvalid
@@ -172,10 +172,7 @@ pFile.lastErrno = 1;
                 pFile.lastErrno = (uint)Marshal.GetLastWin32Error();
 #endif
                 VirtualFile.winLogError(SQLITE.CANTOPEN, "winOpen", zName);
-                if (isReadWrite)
-                    return xOpen(zName, pFile, ((flags | OPEN.READONLY) & ~(OPEN.CREATE | OPEN.READWRITE)), out pOutFlags);
-                else
-                    return SysEx.SQLITE_CANTOPEN_BKPT();
+                return (isReadWrite?xOpen(zName, pFile, ((flags | OPEN.READONLY) & ~(OPEN.CREATE | OPEN.READWRITE)), out pOutFlags) : SysEx.SQLITE_CANTOPEN_BKPT());
             }
             pOutFlags = (isReadWrite ? OPEN.READWRITE : OPEN.READONLY);
             pFile.Clear();
@@ -237,7 +234,7 @@ pFile.lastErrno = 1;
 #endif
             }
 #if DEBUG
-            SysEx.OSTRACE("DELETE \"%s\"\n", zName);
+            SysEx.OSTRACE("DELETE \"{0}\"", zName);
 #endif
             if (rc == SQLITE.OK)
                 return rc;

@@ -36,7 +36,7 @@ namespace Contoso.Core
                 IPCache.xDestroy(ref pCache);
                 pCache = null;
             }
-            pCache.szPage = szPage;
+            this.szPage = szPage;
         }
 
         internal SQLITE sqlite3PcacheFetch(Pgno pgno, int createFlag, ref PgHdr ppPage)

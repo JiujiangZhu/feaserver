@@ -3,8 +3,8 @@ using System.Diagnostics;
 using Contoso.Sys;
 using DbPage = Contoso.Core.PgHdr;
 using IPCache = Contoso.Core.Name.PCache1;
-using LOCK = Contoso.Sys.VirtualFile.LOCK;
 using Pgno = System.UInt32;
+using VFSLOCK = Contoso.Sys.VirtualFile.LOCK;
 namespace Contoso.Core
 {
     public partial class Pager
@@ -13,10 +13,7 @@ namespace Contoso.Core
         internal void pagerReportSize()
         {
             if (this.xCodecSizeChng != null)
-            {
-                this.xCodecSizeChng(this.pCodec, this.pageSize,
-                this.nReserve);
-            }
+                this.xCodecSizeChng(this.pCodec, this.pageSize, this.nReserve);
         }
 #else
         internal  void pagerReportSize( ) { }
@@ -240,7 +237,7 @@ namespace Contoso.Core
                     // Before deleting the journal file, obtain a RESERVED lock on the database file. This ensures that the journal file is not deleted
                     // while it is in use by some other client.
                     FileEx.sqlite3OsClose(this.jfd);
-                    if (this.eLock >= LOCK.RESERVED)
+                    if (this.eLock >= VFSLOCK.RESERVED)
                         FileEx.sqlite3OsDelete(this.pVfs, this.zJournal, 0);
                     else
                     {
@@ -252,12 +249,12 @@ namespace Contoso.Core
                         if (this.eState == PAGER.READER)
                         {
                             Debug.Assert(rc == SQLITE.OK);
-                            rc = this.pagerLockDb(LOCK.RESERVED);
+                            rc = this.pagerLockDb(VFSLOCK.RESERVED);
                         }
                         if (rc == SQLITE.OK)
                             FileEx.sqlite3OsDelete(this.pVfs, this.zJournal, 0);
                         if (rc == SQLITE.OK && state == PAGER.READER)
-                            this.pagerUnlockDb(LOCK.SHARED);
+                            this.pagerUnlockDb(VFSLOCK.SHARED);
                         else if (state == PAGER.OPEN)
                             this.pager_unlock();
                         Debug.Assert(state == this.eState);

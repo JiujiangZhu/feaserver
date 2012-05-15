@@ -2,8 +2,8 @@
 using System.Diagnostics;
 using System.Text;
 using Contoso.Sys;
-using LOCK = Contoso.Sys.VirtualFile.LOCK;
 using Pgno = System.UInt32;
+using VFSLOCK = Contoso.Sys.VirtualFile.LOCK;
 namespace Contoso.Core
 {
     public partial class Pager
@@ -91,7 +91,7 @@ namespace Contoso.Core
             if (this.journalOff != 0)
             {
                 var iLimit = this.journalSizeLimit; // Local cache of jsl
-                SysEx.IOTRACE("JZEROHDR %p\n", this);
+                SysEx.IOTRACE("JZEROHDR {0:x}", this.GetHashCode());
                 if (doTruncate != 0 || iLimit == 0)
                     rc = FileEx.sqlite3OsTruncate(this.jfd, 0);
                 else
@@ -169,7 +169,7 @@ namespace Contoso.Core
             SQLITE rc = SQLITE.OK;                 // Return code
             for (uint nWrite = 0; rc == SQLITE.OK && nWrite < JOURNAL_HDR_SZ(this); nWrite += nHeader)
             {
-                SysEx.IOTRACE("JHDR %p %lld %d\n", this, this.journalHdr, nHeader);
+                SysEx.IOTRACE("JHDR {0:x} {1,ll} {2}", this.GetHashCode(), this.journalHdr, nHeader);
                 rc = FileEx.sqlite3OsWrite(this.jfd, zHeader, (int)nHeader, this.journalOff);
                 Debug.Assert(this.journalHdr <= this.journalOff);
                 this.journalOff += (int)nHeader;
@@ -336,21 +336,21 @@ namespace Contoso.Core
                         // and never needs to be updated.
                         if (this.fullSync && 0 == (iDc & VirtualFile.IOCAP.SEQUENTIAL))
                         {
-                            PAGERTRACE("SYNC journal of %d\n", PAGERID(this));
-                            SysEx.IOTRACE("JSYNC %p\n", this);
+                            PAGERTRACE("SYNC journal of {0}", PAGERID(this));
+                            SysEx.IOTRACE("JSYNC {0:x}", this.GetHashCode());
                             rc = FileEx.sqlite3OsSync(this.jfd, this.syncFlags);
                             if (rc != SQLITE.OK)
                                 return rc;
                         }
-                        SysEx.IOTRACE("JHDR %p %lld\n", this, this.journalHdr);
+                        SysEx.IOTRACE("JHDR {0:x} {1,ll}", this.GetHashCode(), this.journalHdr);
                         rc = FileEx.sqlite3OsWrite(this.jfd, zHeader, zHeader.Length, this.journalHdr);
                         if (rc != SQLITE.OK)
                             return rc;
                     }
                     if (0 == (iDc & VirtualFile.IOCAP.SEQUENTIAL))
                     {
-                        PAGERTRACE("SYNC journal of %d\n", PAGERID(this));
-                        SysEx.IOTRACE("JSYNC %p\n", this);
+                        PAGERTRACE("SYNC journal of {0}", PAGERID(this));
+                        SysEx.IOTRACE("JSYNC {0:x}", this.GetHashCode());
                         rc = FileEx.sqlite3OsSync(this.jfd, this.syncFlags | (this.syncFlags == VirtualFile.SYNC.FULL ? VirtualFile.SYNC.DATAONLY : 0));
                         if (rc != SQLITE.OK)
                             return rc;
@@ -407,7 +407,7 @@ namespace Contoso.Core
                     byte[] pData2 = null;
                     if (CODEC2(pPager, pData, pPg.pgno, codec_ctx.ENCRYPT_READ_CTX, ref pData2))
                         return SQLITE.NOMEM;
-                    PAGERTRACE("STMT-JOURNAL %d page %d\n", PAGERID(pPager), pPg.pgno);
+                    PAGERTRACE("STMT-JOURNAL {0} page {1}", PAGERID(pPager), pPg.pgno);
                     rc = pPager.sjfd.write32bits(offset, pPg.pgno);
                     if (rc == SQLITE.OK)
                         rc = FileEx.sqlite3OsWrite(pPager.sjfd, pData2, pPager.pageSize, offset + 4);
@@ -454,11 +454,11 @@ namespace Contoso.Core
                         if (nPage == 0)
                         {
                             MallocEx.sqlite3BeginBenignMalloc();
-                            if (pagerLockDb(LOCK.RESERVED) == SQLITE.OK)
+                            if (pagerLockDb(VFSLOCK.RESERVED) == SQLITE.OK)
                             {
                                 FileEx.sqlite3OsDelete(pVfs, this.zJournal, 0);
                                 if (!this.exclusiveMode)
-                                    pagerUnlockDb(LOCK.SHARED);
+                                    pagerUnlockDb(VFSLOCK.SHARED);
                             }
                             MallocEx.sqlite3EndBenignMalloc();
                         }

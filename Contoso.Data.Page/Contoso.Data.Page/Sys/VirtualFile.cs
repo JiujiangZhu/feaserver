@@ -101,7 +101,7 @@ namespace Contoso.Sys
         {
             Debug.Assert(pShm == null);
 #if SQLITE_DEBUG
-            SysEx.OSTRACE("CLOSE %d (%s)\n", fs.GetHashCode(), fs.Name);
+            SysEx.OSTRACE("CLOSE {0} ({1})", fs.GetHashCode(), fs.Name);
 #endif
             bool rc;
             int cnt = 0;
@@ -116,7 +116,7 @@ namespace Contoso.Sys
         public virtual SQLITE xRead(byte[] buffer, int amount, long offset)
         {
 #if DEBUG
-            SysEx.OSTRACE("READ %d lock=%d\n", fs.GetHashCode(), locktype);
+            SysEx.OSTRACE("READ {0} lock={1}", fs.GetHashCode(), locktype);
 #endif
             if (!fs.CanRead)
                 return SQLITE.IOERR_READ;
@@ -138,7 +138,7 @@ namespace Contoso.Sys
         {
             Debug.Assert(amount > 0);
 #if DEBUG
-            SysEx.OSTRACE("WRITE %d lock=%d\n", fs.GetHashCode(), locktype);
+            SysEx.OSTRACE("WRITE {0} lock={1}", fs.GetHashCode(), locktype);
 #endif
             var rc = seekWinFile(offset);
             long wrote = fs.Position;
@@ -162,7 +162,7 @@ namespace Contoso.Sys
         {
             var rc = SQLITE.OK;
 #if DEBUG
-            SysEx.OSTRACE("TRUNCATE %d %lld\n", fs.Name, size);
+            SysEx.OSTRACE("TRUNCATE {0} {1,ll}", fs.Name, size);
 #endif
             // If the user has configured a chunk-size for this file, truncate the file so that it consists of an integer number of chunks (i.e. the
             // actual file size after the operation may be larger than the requested size).
@@ -170,7 +170,7 @@ namespace Contoso.Sys
                 size = ((size + szChunk - 1) / szChunk) * szChunk;
             try { fs.SetLength(size); rc = SQLITE.OK; }
             catch (IOException e) { lastErrno = (uint)Marshal.GetLastWin32Error(); rc = winLogError(SQLITE.IOERR_TRUNCATE, "winTruncate2", zPath); }
-            SysEx.OSTRACE("TRUNCATE %d %lld %s\n", fs.GetHashCode(), size, rc == SQLITE.OK ? "ok" : "failed");
+            SysEx.OSTRACE("TRUNCATE {0} {1,%ll} {2}", fs.GetHashCode(), size, rc == SQLITE.OK ? "ok" : "failed");
             return rc;
         }
 
@@ -178,7 +178,7 @@ namespace Contoso.Sys
         {
             // Check that one of SQLITE_SYNC_NORMAL or FULL was passed 
             Debug.Assert(((int)flags & 0x0F) == (int)SYNC.NORMAL || ((int)flags & 0x0F) == (int)SYNC.FULL);
-            SysEx.OSTRACE("SYNC %d lock=%d\n", fs.GetHashCode(), locktype);
+            SysEx.OSTRACE("SYNC {0} lock={1}", fs.GetHashCode(), locktype);
 #if SQLITE_NO_SYNC
 return SQLITE.OK;
 #else
@@ -196,8 +196,7 @@ return SQLITE.OK;
         public virtual SQLITE xLock(LOCK locktype)
         {
 #if DEBUG
-            SysEx.OSTRACE("LOCK %d %d was %d(%d)\n",
-            fs.GetHashCode(), locktype, this.locktype, sharedLockByte);
+            SysEx.OSTRACE("LOCK {0} {1} was {2}({3})", fs.GetHashCode(), locktype, this.locktype, sharedLockByte);
 #endif
             // If there is already a lock of this type or more restrictive on the OsFile, do nothing. Don't use the end_lock: exit path, as sqlite3OsEnterMutex() hasn't been called yet.
             if (this.locktype >= locktype)
@@ -222,7 +221,7 @@ return SQLITE.OK;
                     {
                         // Try 3 times to get the pending lock.  The pending lock might be held by another reader process who will release it momentarily.
 #if DEBUG
-                        SysEx.OSTRACE("could not get a PENDING lock. cnt=%d\n", cnt);
+                        SysEx.OSTRACE("could not get a PENDING lock. cnt={0}", cnt);
 #endif
                         Thread.Sleep(1);
                     }
@@ -263,7 +262,7 @@ return SQLITE.OK;
                 Debug.Assert(this.locktype >= LOCK.SHARED);
                 res = unlockReadLock();
 #if DEBUG
-                SysEx.OSTRACE("unreadlock = %d\n", res);
+                SysEx.OSTRACE("unreadlock = {0}", res);
 #endif
                 try { lockingStrategy.LockFile(this, SHARED_FIRST, SHARED_SIZE); newLocktype = LOCK.EXCLUSIVE; res = 1; }
                 catch (Exception) { res = 0; }
@@ -273,7 +272,7 @@ return SQLITE.OK;
                 {
                     error = (uint)Marshal.GetLastWin32Error();
 #if DEBUG
-                    SysEx.OSTRACE("error-code = %d\n", error);
+                    SysEx.OSTRACE("error-code = {0}", error);
 #endif
                     getReadLock();
                 }
@@ -288,7 +287,7 @@ return SQLITE.OK;
             else
             {
 #if DEBUG
-                SysEx.OSTRACE("LOCK FAILED %d trying for %d but got %d\n", fs.GetHashCode(), locktype, newLocktype);
+                SysEx.OSTRACE("LOCK FAILED {0} trying for {1} but got {2}", fs.GetHashCode(), locktype, newLocktype);
 #endif
                 lastErrno = error;
                 rc = SQLITE.BUSY;
@@ -301,7 +300,7 @@ return SQLITE.OK;
         {
             Debug.Assert(locktype <= LOCK.SHARED);
 #if DEBUG
-            SysEx.OSTRACE("UNLOCK %d to %d was %d(%d)\n", fs.GetHashCode(), locktype, this.locktype, sharedLockByte);
+            SysEx.OSTRACE("UNLOCK {0} to {1} was {2}({3})", fs.GetHashCode(), locktype, this.locktype, sharedLockByte);
 #endif
             var rc = SQLITE.OK;
             var type = this.locktype;
@@ -333,7 +332,7 @@ return SQLITE.OK;
             {
                 rc = 1;
 #if DEBUG
-                SysEx.OSTRACE("TEST WR-LOCK %d %d (local)\n", fs.Name, rc);
+                SysEx.OSTRACE("TEST WR-LOCK {0} {1} (local)", fs.Name, rc);
 #endif
             }
             else
@@ -347,7 +346,7 @@ return SQLITE.OK;
                 catch (IOException) { rc = 0; }
                 rc = 1 - rc;
 #if DEBUG
-                SysEx.OSTRACE("TEST WR-LOCK %d %d (remote)\n", fs.GetHashCode(), rc);
+                SysEx.OSTRACE("TEST WR-LOCK {0} {1} (remote)", fs.GetHashCode(), rc);
 #endif
             }
             pResOut = rc;

@@ -69,7 +69,7 @@ memDb != 0
                         MallocEx.sqlite3EndBenignMalloc();
                     }
                     Array.Clear(pPg.pData, 0, pageSize);
-                    SysEx.IOTRACE("ZERO %p %d\n", this, pgno);
+                    SysEx.IOTRACE("ZERO {0:x} {1}\n", this.GetHashCode(), pgno);
                 }
                 else
                 {
