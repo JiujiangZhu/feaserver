@@ -10,7 +10,6 @@ namespace Lemon
         public ActionType Type;
         public State State;
         public Rule Rule;
-        //public Action Next;
         public Action Collide;
 
         public class KeyComparer : IComparer<Action>
@@ -87,7 +86,7 @@ namespace Lemon
             return errors;
         }
 
-        internal int Compute(Context ctx)
+        internal int ComputeID(Context ctx)
         {
             switch (Type)
             {

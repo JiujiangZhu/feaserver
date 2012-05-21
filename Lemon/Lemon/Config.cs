@@ -53,7 +53,7 @@ namespace Lemon
                     {
                         var x2 = xE.Current;
                         var y2 = yE.Current;
-                        if (x2.Rule.ID == y2.Rule.ID && x2.Dot == y2.Dot)
+                        if (x2.Rule.ID != y2.Rule.ID || x2.Dot != y2.Dot)
                             return false;
                     }
                 return true;
@@ -69,8 +69,5 @@ namespace Lemon
                 return v;
             }
         }
-
-
-
     }
 }

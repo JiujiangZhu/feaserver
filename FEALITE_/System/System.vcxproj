@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{2AECBEDF-E156-4FC4-88B9-C40D422DD18E}</ProjectGuid>
+    <RootNamespace>System</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="Parse\KeywordHash.h" />
+    <ClInclude Include="Parse\Parse.h" />
+    <ClInclude Include="System\Opcodes.h" />
+    <ClInclude Include="System\System+AppContext.h" />
+    <ClInclude Include="System\System+Config.h" />
+    <ClInclude Include="System\System+Coverage.h" />
+    <ClInclude Include="System\System+Limits.h" />
+    <ClInclude Include="System\System+Memory.h" />
+    <ClInclude Include="System\System+Primitives.h" />
+    <ClInclude Include="System\System+Reset.h" />
+    <ClInclude Include="System\System+Threading.h" />
+    <ClInclude Include="System\System.h" />
+    <ClInclude Include="System\System.Hash.h" />
+    <ClInclude Include="System\System.Mutex.h" />
+    <ClInclude Include="System\System.OS+Common.h" />
+    <ClInclude Include="System\System.OS.h" />
+    <ClInclude Include="System\SystemApi+AppContext.h" />
+    <ClInclude Include="System\SystemApi+Config.h" />
+    <ClInclude Include="System\SystemApi+Coverage.h" />
+    <ClInclude Include="System\SystemApi+Extensions.h" />
+    <ClInclude Include="System\SystemApi+IO.h" />
+    <ClInclude Include="System\SystemApi+Limits.h" />
+    <ClInclude Include="System\SystemApi+Memory.h" />
+    <ClInclude Include="System\SystemApi+Primitives.h" />
+    <ClInclude Include="System\SystemApi+Reset.h" />
+    <ClInclude Include="System\SystemApi+Threading.h" />
+    <ClInclude Include="System\SystemApi.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="System\Program.c" />
+    <ClCompile Include="System\System.c" />
+    <ClCompile Include="System\System.CompileOption.c" />
+    <ClCompile Include="System\System.Hash.c" />
+    <ClCompile Include="System\System.Malloc.c" />
+    <ClCompile Include="System\System.Mem0.c" />
+    <ClCompile Include="System\System.Mem1.c" />
+    <ClCompile Include="System\System.Mem2.c" />
+    <ClCompile Include="System\System.Mem3.c" />
+    <ClCompile Include="System\System.Mem5.c" />
+    <ClCompile Include="System\System.Mutex+Noop.c" />
+    <ClCompile Include="System\System.Mutex+Unix.c" />
+    <ClCompile Include="System\System.Mutex+Win.c" />
+    <ClCompile Include="System\System.Mutex.c" />
+    <ClCompile Include="System\System.OS+Unix.c" />
+    <ClCompile Include="System\System.OS+Win.c" />
+    <ClCompile Include="System\System.OS.c" />
+    <ClCompile Include="System\System.Status.c" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

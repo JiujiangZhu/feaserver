@@ -13,7 +13,7 @@ namespace Lemon
             var compress = false;
             var quiet = false;
             var statistics = false;
-            var mhflag = false;
+            var makeHeaders = false;
             //var nolinenosflag = false;
             var noResort = false;
             //static struct s_options options[] = {
@@ -50,9 +50,7 @@ namespace Lemon
                 Environment.Exit(1);
             }
 
-            ///* Count and index the symbols of the grammar */
-            //lem.nsymbol = Symbol_count();
-            Symbol.New("{default}");
+            /* Count and index the symbols of the grammar */
             ctx.Symbols = Symbol.ToSymbolArray(out ctx.Terminals);
 
             ///* Generate a reprint of the grammar, if requested on the command line */
@@ -60,34 +58,32 @@ namespace Lemon
                 ctx.Reprint();
             else
             {
-                  ///* Initialize the size for all follow and first sets */
-                  ////SetSize(lemon.nterminal+1);
-                  /* Find the precedence for every production rule (that has one) */
-                  ctx.BuildRulesPrecedences();
-                  /* Compute the lambda-nonterminals and the first-sets for every nonterminal */
-                  ctx.BuildFirstSets();
-                  /* Compute all LR(0) states.  Also record follow-set propagation links so that the follow-set can be computed later */
-                  ctx.BuildStates();
-                  ////lemon.sorted = State_arrayof();
-                  ///* Tie up loose ends on the propagation links */
-                  //ctx.BuildLinks();
-                  ///* Compute the follow set of every reducible configuration */
-                  //ctx.BuildFollowSets();
-                  ///* Compute the action tables */
-                  //ctx.BuildActions();
-                  ///* Compress the action tables */
-                  //if (!compress)
-                  //    ctx.CompressTables();
-                  ///* Reorder and renumber the states so that states with fewer choices occur at the end.  This is an optimization that helps make the generated parser tables smaller. */
-                  //if (!noResort)
-                  //    ctx.ResortStates();
-                  ///* Generate a report of the parser generated.  (the "y.output" file) */
-                  //if (!quiet)
-                  //    Reporter.ReportOutput(ctx);
-                  ///* Generate the source code for the parser */
-                  //ctx.ReportTable(mhflag);
-                  ///* Produce a header file for use by the scanner.  (This step is omitted if the "-m" option is used because makeheaders will generate the file for us.) */
-                  //if (!mhflag) Reporter.ReportHeader(ctx);
+                /* Find the precedence for every production rule (that has one) */
+                ctx.BuildRulesPrecedences();
+                /* Compute the lambda-nonterminals and the first-sets for every nonterminal */
+                ctx.BuildFirstSets();
+                /* Compute all LR(0) states.  Also record follow-set propagation links so that the follow-set can be computed later */
+                ctx.BuildStates();
+                /* Tie up loose ends on the propagation links */
+                ctx.BuildLinks();
+                /* Compute the follow set of every reducible configuration */
+                ctx.BuildFollowSets();
+                /* Compute the action tables */
+                ctx.BuildActions();
+                /* Compress the action tables */
+                if (!compress)
+                    ctx.CompressTables();
+                /* Reorder and renumber the states so that states with fewer choices occur at the end.  This is an optimization that helps make the generated parser tables smaller. */
+                if (!noResort)
+                    ctx.ResortStates();
+                /* Generate a report of the parser generated.  (the "y.output" file) */
+                if (!quiet)
+                    Reporter.ReportOutput(ctx);
+                /* Generate the source code for the parser */
+                Emitter.ReportTable(ctx, makeHeaders);
+                /* Produce a header file for use by the scanner.  (This step is omitted if the "-m" option is used because makeheaders will generate the file for us.) */
+                if (!makeHeaders)
+                    Emitter.ReportHeader(ctx);
             }
             if (statistics)
             {
@@ -97,7 +93,7 @@ namespace Lemon
             if (ctx.Conflicts > 0)
                 Console.WriteLine("{0} parsing conflicts.", ctx.Conflicts);
             /* return 0 on success, 1 on failure. */
-            var exitcode = ((ctx.Errors > 0) || (ctx.Conflicts > 0) ? 1 : 0);
+            var exitcode = (ctx.Errors > 0 || ctx.Conflicts > 0 ? 1 : 0);
             Environment.Exit(exitcode);
         }
     }
