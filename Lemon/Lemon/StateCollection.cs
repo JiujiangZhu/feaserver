@@ -10,7 +10,7 @@ namespace Lemon
 
         public State GetState(Context ctx)
         {
-            var basises = Context.Configs.SliceAllBasises();
+            var basises = Context.AllConfigs.SliceAllBasises();
             State state;
             if (base.TryGetValue(basises, out state))
             {
@@ -25,25 +25,32 @@ namespace Lemon
                         x.Forwards.Clear();
                         x.Basises.Clear();
                     }
-                var config = Context.Configs.SliceAllItems();
-                Context.Configs.Eat(config);
+                var configs = Context.AllConfigs.SliceAllItems(false);
+                Context.AllConfigs.Eat(configs);
             }
             else
             {
                 /* This really is a new state.  Construct all the details */
-                Context.Configs.Closure(ctx);
-                var configs = Context.Configs.SliceAllItems();
+                Context.AllConfigs.Closure(ctx);
+                var configs = Context.AllConfigs.SliceAllItems(true);
                 state = new State
                 {
                     Basises = basises,
                     Configs = configs,
                     ID = ctx.States++,
                 };
-                Context.States_.Add(state.Basises, state);
+                Context.AllStates.Add(state.Basises, state);
                 /* Recursively compute successor states */
                 ctx.BuildShifts(state);
             }
             return state;
+        }
+
+        public State[] ToStateArray()
+        {
+            var array = new State[Values.Count];
+            Values.CopyTo(array, 0);
+            return array;
         }
     }
 }

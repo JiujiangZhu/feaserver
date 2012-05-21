@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Lemon
 {
@@ -45,9 +46,10 @@ namespace Lemon
             return config;
         }
 
-        public List<Config> SliceAllItems()
+        public List<Config> SliceAllItems(bool sortFirst)
         {
-            _items.Sort(_keyComparer);
+            if (sortFirst)
+                _items.Sort(_keyComparer);
             var lastItems = (_items.Count > 0 ? _items : null);
             _items = new List<Config>();
             return lastItems;
@@ -105,7 +107,7 @@ namespace Lemon
                             }
                             else
                             {
-                                newConfig.FwSet.Union(symbol2.FirstSet);
+                                newConfig.FwSet.AddRange(symbol2.FirstSet);
                                 if (!symbol2.Lambda)
                                     break;
                             }
@@ -119,6 +121,13 @@ namespace Lemon
 
         internal void Eat(List<Config> configs)
         {
+            foreach (var config in configs)
+            {
+                Debug.Assert(config.Forwards.Count == 0);
+                Debug.Assert(config.Basises.Count == 0);
+                if (config.FwSet != null)
+                    config.FwSet.Clear();
+            }
         }
     }
 }
