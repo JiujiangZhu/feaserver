@@ -18,7 +18,7 @@ namespace Contoso.Core
         public bool autoVacuum;         // True if auto-vacuum is enabled
         public bool incrVacuum;         // True if incr-vacuum is enabled
 #endif
-        public byte inTransaction;      // Transaction state
+        public Btree.TRANS inTransaction;      // Transaction state
         public bool doNotUseWAL;        // If true, do not open write-ahead-log file
         public ushort maxLocal;         // Maximum local payload in non-LEAFDATA tables
         public ushort minLocal;         // Minimum local payload in non-LEAFDATA tables

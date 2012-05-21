@@ -477,5 +477,18 @@ namespace Contoso.Sys
         internal static void put32bits(byte[] ac, int offset, int val) { sqlite3Put4byte(ac, offset, (uint)val); }
         internal static void put32bits(byte[] ac, uint val) { sqlite3Put4byte(ac, 0U, val); }
         internal static void put32bits(byte[] ac, int offset, uint val) { sqlite3Put4byte(ac, offset, val); }
+
+        internal static int get2byte(byte[] p, int offset) { return p[offset + 0] << 8 | p[offset + 1]; }
+        internal static int get2byteNotZero(byte[] X, int offset) { return (((((int)get2byte(X, offset)) - 1) & 0xffff) + 1); }
+        internal static void put2byte(byte[] pData, int Offset, uint v)
+        {
+            pData[Offset + 0] = (byte)(v >> 8);
+            pData[Offset + 1] = (byte)v;
+        }
+        internal static void put2byte(byte[] pData, int Offset, int v)
+        {
+            pData[Offset + 0] = (byte)(v >> 8);
+            pData[Offset + 1] = (byte)v;
+        }
     }
 }

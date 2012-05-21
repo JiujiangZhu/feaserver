@@ -9,7 +9,7 @@ namespace Contoso.Core
         const int SQLITE_DEFAULT_JOURNAL_SIZE_LIMIT = -1;
         const int SQLITE_DEFAULT_PAGE_SIZE = 1024;
         const int SQLITE_MAX_DEFAULT_PAGE_SIZE = 8192;
-        const int SQLITE_MAX_PAGE_SIZE = 65535;
+        internal const int SQLITE_MAX_PAGE_SIZE = 65535;
         const int SQLITE_MAX_PAGE_COUNT = 1073741823;
         const int MAX_SECTOR_SIZE = 0x10000;
         const int PAGER_MAX_PGNO = 2147483647;

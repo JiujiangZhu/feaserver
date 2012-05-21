@@ -17,33 +17,33 @@ namespace Contoso.Core
             // SQLITE_OPEN_FULLMUTEX or SQLITE_OPEN_SHAREDCACHE) are blocked before reaching the VFS.
             var rc = pVfs.xOpen(zPath, pFile, (VirtualFileSystem.OPEN)((int)flags & 0x87f3f), out pFlagsOut); Debug.Assert(rc == SQLITE.OK || !pFile.isOpen); return rc;
         }
-        internal static SQLITE sqlite3OsDelete(VirtualFileSystem pVfs, string zPath, int dirSync) { return pVfs.xDelete(zPath, dirSync); }
-        internal static SQLITE sqlite3OsAccess(VirtualFileSystem pVfs, string zPath, VirtualFileSystem.ACCESS flags, ref int pResOut) { return pVfs.xAccess(zPath, flags, out pResOut); }
-        internal static SQLITE sqlite3OsFullPathname(VirtualFileSystem pVfs, string zPath, int nPathOut, StringBuilder zPathOut) { zPathOut.Length = 0; return pVfs.xFullPathname(zPath, nPathOut, zPathOut); }
+        //internal static SQLITE sqlite3OsDelete(VirtualFileSystem pVfs, string zPath, int dirSync) { return pVfs.xDelete(zPath, dirSync); }
+        //internal static SQLITE sqlite3OsAccess(VirtualFileSystem pVfs, string zPath, VirtualFileSystem.ACCESS flags, ref int pResOut) { return pVfs.xAccess(zPath, flags, out pResOut); }
+        //internal static SQLITE sqlite3OsFullPathname(VirtualFileSystem pVfs, string zPath, int nPathOut, StringBuilder zPathOut) { zPathOut.Length = 0; return pVfs.xFullPathname(zPath, nPathOut, zPathOut); }
 #if !SQLITE_OMIT_LOAD_EXTENSION
-        internal static IntPtr sqlite3OsDlOpen(VirtualFileSystem pVfs, string zPath) { return pVfs.xDlOpen(zPath); }
-        internal static void sqlite3OsDlError(VirtualFileSystem pVfs, int nByte, string zBufOut) { pVfs.xDlError(nByte, zBufOut); }
-        internal static object sqlite3OsDlSym(VirtualFileSystem pVfs, IntPtr pHdle, ref string zSym) { return pVfs.xDlSym(pHdle, zSym); }
-        internal static void sqlite3OsDlClose(VirtualFileSystem pVfs, IntPtr pHandle) { pVfs.xDlClose(pHandle); }
+        //internal static IntPtr sqlite3OsDlOpen(VirtualFileSystem pVfs, string zPath) { return pVfs.xDlOpen(zPath); }
+        //internal static void sqlite3OsDlError(VirtualFileSystem pVfs, int nByte, string zBufOut) { pVfs.xDlError(nByte, zBufOut); }
+        //internal static object sqlite3OsDlSym(VirtualFileSystem pVfs, IntPtr pHdle, ref string zSym) { return pVfs.xDlSym(pHdle, zSym); }
+        //internal static void sqlite3OsDlClose(VirtualFileSystem pVfs, IntPtr pHandle) { pVfs.xDlClose(pHandle); }
 #endif
-        internal static int sqlite3OsRandomness(VirtualFileSystem pVfs, int nByte, byte[] zBufOut) { return pVfs.xRandomness(nByte, zBufOut); }
-        internal static int sqlite3OsSleep(VirtualFileSystem pVfs, int nMicro) { return pVfs.xSleep(nMicro); }
+        //internal static int sqlite3OsRandomness(VirtualFileSystem pVfs, int nByte, byte[] zBufOut) { return pVfs.xRandomness(nByte, zBufOut); }
+        //internal static int sqlite3OsSleep(VirtualFileSystem pVfs, int nMicro) { return pVfs.xSleep(nMicro); }
 
-        internal static SQLITE sqlite3OsCurrentTimeInt64(VirtualFileSystem pVfs, ref long pTimeOut)
-        {
-            // IMPLEMENTATION-OF: R-49045-42493 SQLite will use the xCurrentTimeInt64() method to get the current date and time if that method is available
-            // (if iVersion is 2 or greater and the function pointer is not NULL) and will fall back to xCurrentTime() if xCurrentTimeInt64() is unavailable.
-            SQLITE rc;
-            if (pVfs.iVersion >= 2)
-                rc = pVfs.xCurrentTimeInt64(ref pTimeOut);
-            else
-            {
-                double r = 0;
-                rc = pVfs.xCurrentTime(ref r);
-                pTimeOut = (long)(r * 86400000.0);
-            }
-            return rc;
-        }
+        //internal static SQLITE sqlite3OsCurrentTimeInt64(VirtualFileSystem pVfs, ref long pTimeOut)
+        //{
+        //    // IMPLEMENTATION-OF: R-49045-42493 SQLite will use the xCurrentTimeInt64() method to get the current date and time if that method is available
+        //    // (if iVersion is 2 or greater and the function pointer is not NULL) and will fall back to xCurrentTime() if xCurrentTimeInt64() is unavailable.
+        //    SQLITE rc;
+        //    if (pVfs.iVersion >= 2)
+        //        rc = pVfs.xCurrentTimeInt64(ref pTimeOut);
+        //    else
+        //    {
+        //        double r = 0;
+        //        rc = pVfs.xCurrentTime(ref r);
+        //        pTimeOut = (long)(r * 86400000.0);
+        //    }
+        //    return rc;
+        //}
 
         internal static SQLITE sqlite3OsOpenMalloc(ref VirtualFileSystem pVfs, string zFile, ref VirtualFile ppFile, VirtualFileSystem.OPEN flags, ref VirtualFileSystem.OPEN pOutFlags)
         {

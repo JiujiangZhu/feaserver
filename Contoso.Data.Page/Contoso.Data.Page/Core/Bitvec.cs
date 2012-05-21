@@ -33,6 +33,7 @@ namespace Contoso.Core
         {
             this.iSize = iSize;
         }
+
         internal static void sqlite3BitvecDestroy(ref Bitvec p)
         {
             if (p == null)
@@ -42,6 +43,7 @@ namespace Contoso.Core
                     sqlite3BitvecDestroy(ref p.u.apSub[i]);
         }
 
+        internal uint sqlite3BitvecSize() { return iSize; }
         public static implicit operator bool(Bitvec b) { return (b != null); }
 
         internal int sqlite3BitvecTest(uint i)

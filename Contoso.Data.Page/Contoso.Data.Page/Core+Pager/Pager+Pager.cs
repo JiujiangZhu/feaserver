@@ -95,7 +95,7 @@ namespace Contoso.Core
             }
             else if (!this.exclusiveMode)
             {
-                var iDc = (this.fd.isOpen ? FileEx.sqlite3OsDeviceCharacteristics(this.fd) : 0);
+                var iDc = (this.fd.isOpen ? this.fd.xDeviceCharacteristics() : 0);
                 // If the operating system support deletion of open files, then close the journal file when dropping the database lock.  Otherwise
                 // another connection with journal_mode=delete might delete the file out from under us.
                 Debug.Assert(((int)JOURNALMODE.MEMORY & 5) != 1);
@@ -182,7 +182,7 @@ namespace Contoso.Core
                 }
                 else if (this.journalMode == JOURNALMODE.TRUNCATE)
                 {
-                    rc = (this.journalOff == 0 ? SQLITE.OK : FileEx.sqlite3OsTruncate(this.jfd, 0));
+                    rc = (this.journalOff == 0 ? SQLITE.OK : this.jfd.xTruncate(0));
                     this.journalOff = 0;
                 }
                 else if (this.journalMode == JOURNALMODE.PERSIST || (this.exclusiveMode && this.journalMode != JOURNALMODE.WAL))
@@ -197,7 +197,7 @@ namespace Contoso.Core
                     Debug.Assert(this.journalMode == JOURNALMODE.DELETE || this.journalMode == JOURNALMODE.MEMORY || this.journalMode == JOURNALMODE.WAL);
                     FileEx.sqlite3OsClose(this.jfd);
                     if (!this.tempFile)
-                        rc = FileEx.sqlite3OsDelete(this.pVfs, this.zJournal, 0);
+                        rc = this.pVfs.xDelete(this.zJournal, 0);
                 }
             }
 #if SQLITE_CHECK_PAGES
@@ -267,7 +267,7 @@ namespace Contoso.Core
             var rc = jfd.read32bits(pOffset, ref pgno);
             if (rc != SQLITE.OK)
                 return rc;
-            rc = FileEx.sqlite3OsRead(jfd, aData, this.pageSize, pOffset + 4);
+            rc = jfd.xRead(aData, this.pageSize, pOffset + 4);
             if (rc != SQLITE.OK)
                 return rc;
             pOffset += this.pageSize + 4 + isMainJrnl * 4;
@@ -317,7 +317,7 @@ namespace Contoso.Core
             {
                 long ofst = (pgno - 1) * this.pageSize;
                 Debug.Assert(!pagerUseWal());
-                rc = FileEx.sqlite3OsWrite(this.fd, aData, this.pageSize, ofst);
+                rc = this.fd.xWrite(aData, this.pageSize, ofst);
                 if (pgno > this.dbFileSize)
                     this.dbFileSize = pgno;
                 if (this.pBackup != null)
@@ -466,17 +466,17 @@ namespace Contoso.Core
                 Debug.Assert(this.eLock == VFSLOCK.EXCLUSIVE);
                 // TODO: Is it safe to use Pager.dbFileSize here?
                 long currentSize = 0;
-                rc = FileEx.sqlite3OsFileSize(this.fd, ref currentSize);
+                rc = this.fd.xFileSize(ref currentSize);
                 var newSize = szPage * nPage;
                 if (rc == SQLITE.OK && currentSize != newSize)
                 {
                     if (currentSize > newSize)
-                        rc = FileEx.sqlite3OsTruncate(this.fd, newSize);
+                        rc = this.fd.xTruncate(newSize);
                     else
                     {
                         var pTmp = this.pTmpSpace;
                         Array.Clear(pTmp, 0, szPage);
-                        rc = FileEx.sqlite3OsWrite(this.fd, pTmp, szPage, newSize - szPage);
+                        rc = this.fd.xWrite(pTmp, szPage, newSize - szPage);
                     }
                     if (rc == SQLITE.OK)
                         this.dbSize = nPage;
@@ -493,7 +493,7 @@ namespace Contoso.Core
             long szJ = 0;            // Size of the journal file in bytes
             var res = 1;             // Value returned by sqlite3OsAccess()
             var zMaster = new byte[this.pVfs.mxPathname + 1]; // Name of master journal file if any
-            var rc = FileEx.sqlite3OsFileSize(this.jfd, ref szJ);
+            var rc = this.jfd.xFileSize(ref szJ);
             if (rc != SQLITE.OK)
                 goto end_playback;
             // Read the master journal name from the journal, if it is present. If a master journal file name is specified, but the file is not
@@ -503,7 +503,7 @@ namespace Contoso.Core
             // for pageSize.
             rc = readMasterJournal(this.jfd, zMaster, (uint)this.pVfs.mxPathname + 1);
             if (rc == SQLITE.OK && zMaster[0] != 0)
-                rc = FileEx.sqlite3OsAccess(pVfs, Encoding.UTF8.GetString(zMaster, 0, zMaster.Length), VirtualFileSystem.ACCESS.EXISTS, ref res);
+                rc = pVfs.xAccess(Encoding.UTF8.GetString(zMaster, 0, zMaster.Length), VirtualFileSystem.ACCESS.EXISTS, out res);
             zMaster = null;
             if (rc != SQLITE.OK || res == 0)
                 goto end_playback;
@@ -583,7 +583,7 @@ namespace Contoso.Core
             // Following a rollback, the database file should be back in its original state prior to the start of the transaction, so invoke the
             // SQLITE_FCNTL_DB_UNCHANGED file-control method to disable the assertion that the transaction counter was modified.
             long iDummy = 0;
-            Debug.Assert(!this.fd.isOpen || FileEx.sqlite3OsFileControl(this.fd, VirtualFile.FCNTL.DB_UNCHANGED, ref iDummy) >= SQLITE.OK);
+            Debug.Assert(!this.fd.isOpen || this.fd.xFileControl(VirtualFile.FCNTL.DB_UNCHANGED, ref iDummy) >= SQLITE.OK);
             // If this playback is happening automatically as a result of an IO or malloc error that occurred after the change-counter was updated but
             // before the transaction was committed, then the change-counter modification may just have been reverted. If this happens in exclusive
             // mode, then subsequent transactions performed by the connection will not update the change-counter at all. This may lead to cache inconsistency
@@ -649,7 +649,7 @@ namespace Contoso.Core
             if (rc == SQLITE.OK && this.dbSize > this.dbHintSize)
             {
                 long szFile = this.pageSize * (long)this.dbSize;
-                FileEx.sqlite3OsFileControl(this.fd, VirtualFile.FCNTL.SIZE_HINT, ref szFile);
+                this.fd.xFileControl(VirtualFile.FCNTL.SIZE_HINT, ref szFile);
                 this.dbHintSize = this.dbSize;
             }
             while (rc == SQLITE.OK && pList)
@@ -669,7 +669,7 @@ namespace Contoso.Core
                         return SQLITE.NOMEM;
                     // Write out the page data.
                     long offset = (pList.pgno - 1) * (long)this.pageSize;   // Offset to write
-                    rc = FileEx.sqlite3OsWrite(this.fd, pData, this.pageSize, offset);
+                    rc = this.fd.xWrite(pData, this.pageSize, offset);
                     // If page 1 was just written, update Pager.dbFileVers to match the value now stored in the database file. If writing this
                     // page caused the database file to grow, update dbFileSize.
                     if (pgno == 1)
@@ -679,8 +679,7 @@ namespace Contoso.Core
                     // Update any backup objects copying the contents of this pager.
                     if (this.pBackup != null)
                         this.pBackup.sqlite3BackupUpdate(pgno, pList.pData);
-                    PAGERTRACE("STORE %d page %d hash(%08x)\n",
-                    PAGERID(this), pgno, pager_pagehash(pList));
+                    PAGERTRACE("STORE {0} page {1} hash({2,08:x})", PAGERID(this), pgno, pager_pagehash(pList));
                     SysEx.IOTRACE("PGOUT {0:x} {1}", this.GetHashCode(), pgno);
                 }
                 else
@@ -750,7 +749,7 @@ CHECK_PAGE(pPg);
                         rc = pPager.jfd.write32bits(iOff, pPg.pgno);
                         if (rc != SQLITE.OK)
                             return rc;
-                        rc = FileEx.sqlite3OsWrite(pPager.jfd, pData2, pPager.pageSize, iOff + 4);
+                        rc = pPager.jfd.xWrite(pData2, pPager.pageSize, iOff + 4);
                         if (rc != SQLITE.OK)
                             return rc;
                         rc = pPager.jfd.write32bits(iOff + pPager.pageSize + 4, cksum);
@@ -827,7 +826,7 @@ CHECK_PAGE(pPg);
                         if (CODEC2(this, pPgHdr.pData, 1, codec_ctx.ENCRYPT_WRITE_CTX, ref zBuf))
                             return rc = SQLITE.NOMEM;
                         if (rc == SQLITE.OK)
-                            rc = FileEx.sqlite3OsWrite(this.fd, zBuf, this.pageSize, 0);
+                            rc = this.fd.xWrite(zBuf, this.pageSize, 0);
                         if (rc == SQLITE.OK)
                             this.changeCountDone = true;
                     }
