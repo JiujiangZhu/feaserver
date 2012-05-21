@@ -158,7 +158,7 @@ namespace Contoso.Core
                         // Only truncate if it is an in-memory sub-journal.
                         if (this.sjfd is MemJournalFile)
                         {
-                            rc = FileEx.sqlite3OsTruncate(this.sjfd, 0);
+                            rc = this.sjfd.xTruncate(0);
                             Debug.Assert(rc == SQLITE.OK);
                         }
                         this.nSubRec = 0;

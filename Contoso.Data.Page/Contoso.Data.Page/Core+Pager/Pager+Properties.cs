@@ -26,7 +26,7 @@ namespace Contoso.Core
             {
                 // Sector size doesn't matter for temporary files. Also, the file may not have been opened yet, in which case the OsSectorSize()
                 // call will segfault.
-                this.sectorSize = (Pgno)FileEx.sqlite3OsSectorSize(this.fd);
+                this.sectorSize = (Pgno)this.fd.xSectorSize();
             }
             if (this.sectorSize < 32)
             {
@@ -87,7 +87,7 @@ namespace Contoso.Core
             {
                 long nByte = 0;
                 if (this.eState > PAGER.OPEN && this.fd.isOpen)
-                    rc = FileEx.sqlite3OsFileSize(this.fd, ref nByte);
+                    rc = this.fd.xFileSize(ref nByte);
                 if (rc == SQLITE.OK)
                 {
                     pager_reset();
@@ -238,7 +238,7 @@ namespace Contoso.Core
                     // while it is in use by some other client.
                     FileEx.sqlite3OsClose(this.jfd);
                     if (this.eLock >= VFSLOCK.RESERVED)
-                        FileEx.sqlite3OsDelete(this.pVfs, this.zJournal, 0);
+                        this.pVfs.xDelete(this.zJournal, 0);
                     else
                     {
                         var rc = SQLITE.OK;
@@ -252,7 +252,7 @@ namespace Contoso.Core
                             rc = this.pagerLockDb(VFSLOCK.RESERVED);
                         }
                         if (rc == SQLITE.OK)
-                            FileEx.sqlite3OsDelete(this.pVfs, this.zJournal, 0);
+                            this.pVfs.xDelete(this.zJournal, 0);
                         if (rc == SQLITE.OK && state == PAGER.READER)
                             this.pagerUnlockDb(VFSLOCK.SHARED);
                         else if (state == PAGER.OPEN)

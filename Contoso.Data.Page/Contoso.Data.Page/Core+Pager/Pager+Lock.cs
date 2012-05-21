@@ -40,7 +40,7 @@ namespace Contoso.Core
             if (this.fd.isOpen)
             {
                 Debug.Assert(this.eLock >= eLock);
-                rc = FileEx.sqlite3OsUnlock(this.fd, eLock);
+                rc = this.fd.xUnlock(eLock);
                 if (this.eLock != VFSLOCK.UNKNOWN)
                     this.eLock = eLock;
                 SysEx.IOTRACE("UNLOCK {0:x} {1}", this.GetHashCode(), eLock);
@@ -54,7 +54,7 @@ namespace Contoso.Core
             Debug.Assert(eLock == VFSLOCK.SHARED || eLock == VFSLOCK.RESERVED || eLock == VFSLOCK.EXCLUSIVE);
             if (this.eLock < eLock || this.eLock == VFSLOCK.UNKNOWN)
             {
-                rc = FileEx.sqlite3OsLock(this.fd, eLock);
+                rc = this.fd.xLock(eLock);
                 if (rc == SQLITE.OK && (this.eLock != VFSLOCK.UNKNOWN || eLock == VFSLOCK.EXCLUSIVE))
                 {
                     this.eLock = eLock;

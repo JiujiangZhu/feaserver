@@ -42,7 +42,7 @@ namespace Contoso.Sys
             READ = 2, // Unused
         }
 
-        public int iVersion = -3;            // Structure version number (currently 3)
+        public int iVersion = 3;            // Structure version number (currently 3)
         public int szOsFile = -1;            // Size of subclassed VirtualFile
         public int mxPathname = MAX_PATH;          // Maximum file pathname length
         public VirtualFileSystem pNext;       // Next registered VFS
@@ -172,7 +172,7 @@ pFile.lastErrno = 1;
                 pFile.lastErrno = (uint)Marshal.GetLastWin32Error();
 #endif
                 VirtualFile.winLogError(SQLITE.CANTOPEN, "winOpen", zName);
-                return (isReadWrite?xOpen(zName, pFile, ((flags | OPEN.READONLY) & ~(OPEN.CREATE | OPEN.READWRITE)), out pOutFlags) : SysEx.SQLITE_CANTOPEN_BKPT());
+                return (isReadWrite ? xOpen(zName, pFile, ((flags | OPEN.READONLY) & ~(OPEN.CREATE | OPEN.READWRITE)), out pOutFlags) : SysEx.SQLITE_CANTOPEN_BKPT());
             }
             pOutFlags = (isReadWrite ? OPEN.READWRITE : OPEN.READONLY);
             pFile.Clear();
@@ -294,21 +294,13 @@ pFile.lastErrno = 1;
             return SQLITE.OK;
         }
 
-        public SQLITE xFullPathname(string zName, int nOut, StringBuilder zOut)
+        public SQLITE xFullPathname(string zName, out string zOut)
         {
             if (zName[0] == '/' && Char.IsLetter(zName[1]) && zName[2] == ':')
                 zName = zName.Substring(1);
-            string path;
-            try { path = Path.GetFullPath(zName); }
-            catch (Exception) { path = zName; }
-            if (path != null)
-            {
-                if (zOut.Length > mxPathname)
-                    zOut.Length = mxPathname;
-                zOut.Append(path);
-                return SQLITE.OK;
-            }
-            return SQLITE.NOMEM;
+            try { zOut = Path.GetFullPath(zName); }
+            catch (Exception) { zOut = zName; }
+            return SQLITE.OK;
         }
 
         // TODO -- Fix This
@@ -388,28 +380,5 @@ processId = 28376023;
         public SQLITE xSetSystemCall(string zName, long sqlite3_syscall_ptr) { return SQLITE.OK; }
         public SQLITE xGetSystemCall(string zName, long sqlite3_syscall_ptr) { return SQLITE.OK; }
         public SQLITE xNextSystemCall(string zName, long sqlite3_syscall_ptr) { return SQLITE.OK; }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     }
 }

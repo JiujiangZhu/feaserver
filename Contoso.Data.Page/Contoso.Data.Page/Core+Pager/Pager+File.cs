@@ -6,6 +6,7 @@ using Pgno = System.UInt32;
 using VFSACCESS = Contoso.Sys.VirtualFileSystem.ACCESS;
 using VFSLOCK = Contoso.Sys.VirtualFile.LOCK;
 using VFSOPEN = Contoso.Sys.VirtualFileSystem.OPEN;
+using System.IO;
 namespace Contoso.Core
 {
     public partial class Pager
@@ -82,7 +83,7 @@ namespace Contoso.Core
             if (rc == SQLITE.OK && 0 == isInWal)
             {
                 long iOffset = (pgno - 1) * (long)pPager.pageSize;
-                rc = FileEx.sqlite3OsRead(pPager.fd, pPg.pData, pgsz, iOffset);
+                rc = pPager.fd.xRead(pPg.pData, pgsz, iOffset);
                 if (rc == SQLITE.IOERR_SHORT_READ)
                     rc = SQLITE.OK;
             }
@@ -123,7 +124,7 @@ namespace Contoso.Core
                 Debug.Assert(this.fd.isOpen || this.tempFile);
                 if (this.fd.isOpen)
                 {
-                    var rc = FileEx.sqlite3OsFileSize(this.fd, ref n);
+                    var rc = this.fd.xFileSize(ref n);
                     if (rc != SQLITE.OK)
                         return rc;
                 }
@@ -159,7 +160,7 @@ namespace Contoso.Core
             if (this.fd.isOpen)
             {
                 SysEx.IOTRACE("DBHDR {0} 0 {1}", this.GetHashCode(), N);
-                rc = FileEx.sqlite3OsRead(this.fd, pDest, N, 0);
+                rc = this.fd.xRead(pDest, N, 0);
                 if (rc == SQLITE.IOERR_SHORT_READ)
                     rc = SQLITE.OK;
             }
@@ -228,8 +229,8 @@ namespace Contoso.Core
                     if (!this.jfd.isOpen)
                     {
                         var pVfs = this.pVfs;
-                        var bExists = 0;              // True if journal file exists
-                        rc = FileEx.sqlite3OsAccess(pVfs, this.zJournal, VFSACCESS.EXISTS, ref bExists);
+                        int bExists;              // True if journal file exists
+                        rc = pVfs.xAccess(this.zJournal, VFSACCESS.EXISTS, out bExists);
                         if (rc == SQLITE.OK && bExists != 0)
                         {
                             Debug.Assert(!this.tempFile);
@@ -292,7 +293,7 @@ namespace Contoso.Core
                     if (nPage > 0)
                     {
                         SysEx.IOTRACE("CKVERS %p %d\n", this, dbFileVers.Length);
-                        rc = FileEx.sqlite3OsRead(this.fd, dbFileVers, dbFileVers.Length, 24);
+                        rc = this.fd.xRead(dbFileVers, dbFileVers.Length, 24);
                         if (rc != SQLITE.OK)
                             goto failed;
                     }
@@ -338,8 +339,8 @@ namespace Contoso.Core
             Pager pPager = null;     // Pager object to allocate and return
             byte memDb = 0;            // True if this is an in-memory file
             bool readOnly = false;   // True if this is a read-only file
-            StringBuilder zPathname = null; // Full path to database file
-            int nPathname = 0;       // Number of bytes in zPathname
+            string zPathname = null; // Full path to database file
+            //int nPathname = 0;       // Number of bytes in zPathname
             bool useJournal = (flags & PAGEROPEN.OMIT_JOURNAL) == 0; // False to omit journal
             bool noReadlock = (flags & PAGEROPEN.NO_READLOCK) != 0;  // True to omit read-lock
             int pcacheSize = PCache.sqlite3PcacheSize();       // Bytes to allocate for PCache
@@ -365,13 +366,10 @@ namespace Contoso.Core
             var rc = SQLITE.OK;
             if (!string.IsNullOrEmpty(zFilename))
             {
-                nPathname = pVfs.mxPathname + 1;
-                zPathname = new StringBuilder(nPathname * 2);
-                rc = FileEx.sqlite3OsFullPathname(pVfs, zFilename, nPathname, zPathname);
-                nPathname = StringEx.sqlite3Strlen30(zPathname);
+                rc = pVfs.xFullPathname(zFilename, out zPathname);
                 var z = zUri = zFilename;
                 nUri = zUri.Length;
-                if (rc == SQLITE.OK && nPathname + 8 > pVfs.mxPathname)
+                if (rc == SQLITE.OK && zPathname.Length + 8 > pVfs.mxPathname)
                     // This branch is taken when the journal path required by the database being opened will be more than pVfs.mxPathname
                     // bytes in length. This means the database cannot be opened, as it will not be possible to open the journal file or even
                     // check for a hot-journal before reading.
@@ -396,7 +394,7 @@ namespace Contoso.Core
             // Fill in the Pager.zFilename and Pager.zJournal buffers, if required.
             if (zPathname != null)
             {
-                Debug.Assert(nPathname > 0);
+                Debug.Assert(zPathname.Length > 0);
                 pPager.zFilename = zPathname.ToString();
                 zUri = pPager.zFilename;
                 pPager.zJournal = pPager.zFilename + "-journal";
@@ -407,7 +405,7 @@ namespace Contoso.Core
 #endif
             }
             else
-                pPager.zFilename = "";
+                pPager.zFilename = string.Empty;
             pPager.pVfs = pVfs;
             pPager.vfsFlags = vfsFlags;
             // Open the pager file.
@@ -513,7 +511,7 @@ namespace Contoso.Core
 0 == this.memDb
 #endif
 );
-                rc = FileEx.sqlite3OsSync(this.fd, this.syncFlags);
+                rc = this.fd.xSync(this.syncFlags);
             }
             else if (this.fd.isOpen)
             {
@@ -525,7 +523,7 @@ namespace Contoso.Core
 #endif
 );
                 var refArg = 0L;
-                FileEx.sqlite3OsFileControl(this.fd, VirtualFile.FCNTL.SYNC_OMITTED, ref refArg);
+                this.fd.xFileControl(VirtualFile.FCNTL.SYNC_OMITTED, ref refArg);
                 rc = (SQLITE)refArg;
             }
             return rc;

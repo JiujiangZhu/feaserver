@@ -17,7 +17,7 @@ namespace Contoso.Sys
         internal SQLITE read32bits(int offset, ref uint pRes)
         {
             var ac = new byte[4];
-            var rc = FileEx.sqlite3OsRead(this, ac, ac.Length, offset);
+            var rc = this.xRead(ac, ac.Length, offset);
             pRes = (rc == SQLITE.OK ? ConvertEx.sqlite3Get4byte(ac) : 0);
             return rc;
         }
@@ -27,7 +27,7 @@ namespace Contoso.Sys
         {
             var ac = new byte[4];
             ConvertEx.put32bits(ac, val);
-            return FileEx.sqlite3OsWrite(this, ac, 4, offset);
+            return this.xWrite(ac, 4, offset);
         }
     }
 }

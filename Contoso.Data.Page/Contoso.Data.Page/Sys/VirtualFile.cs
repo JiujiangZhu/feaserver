@@ -115,6 +115,7 @@ namespace Contoso.Sys
 
         public virtual SQLITE xRead(byte[] buffer, int amount, long offset)
         {
+            if (buffer == null) buffer = new byte[amount]; 
 #if DEBUG
             SysEx.OSTRACE("READ {0} lock={1}", fs.GetHashCode(), locktype);
 #endif

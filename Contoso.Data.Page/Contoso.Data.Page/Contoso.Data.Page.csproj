@@ -37,12 +37,34 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Core+Btree\BtCursor.cs" />
-    <Compile Include="Core+Btree\BtLock.cs" />
-    <Compile Include="Core+Btree\Btree.cs" />
-    <Compile Include="Core+Btree\BtShared.cs" />
-    <Compile Include="Core+Btree\CellInfo.cs" />
-    <Compile Include="Core+Btree\MemPage.cs" />
+    <Compile Include="Core+Btree\BtCursor.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core+Btree\BtLock.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core+Btree\Btree.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core+Btree\BtShared.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core+Btree\CellInfo.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core+Btree\Btree+x.cs" />
+    <Compile Include="Core+Btree\Copy %282%29 of Btree+x.cs" />
+    <Compile Include="Core+Btree\Btree+Commit.cs" />
+    <Compile Include="Core+Btree\Copy %284%29 of Btree+x.cs" />
+    <Compile Include="Core+Btree\Copy %285%29 of Btree+x.cs" />
+    <Compile Include="Core+Btree\Copy %286%29 of Btree+x.cs" />
+    <Compile Include="Core+Btree\Copy %287%29 of Btree+x.cs" />
+    <Compile Include="Core+Btree\Copy %288%29 of Btree+x.cs" />
+    <Compile Include="Core+Btree\Copy %289%29 of Btree+x.cs" />
+    <Compile Include="Core+Btree\Copy of Btree+x.cs" />
+    <Compile Include="Core+Btree\MemPage.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Sys\VirtualFile+Stream.cs" />
     <Compile Include="Sys\MemJournalFile.cs" />
     <Compile Include="Core+Pager\Name\PCache1+Allocation.cs">

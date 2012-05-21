@@ -46,14 +46,14 @@ namespace Contoso.Core
             zMaster[0] = 0;
             var aMagic = new byte[8];   // A buffer to hold the magic header
             SQLITE rc;
-            if (SQLITE.OK != (rc = FileEx.sqlite3OsFileSize(pJrnl, ref szJ))
+            if (SQLITE.OK != (rc = pJrnl.xFileSize(ref szJ))
                 || szJ < 16
                 || SQLITE.OK != (rc = pJrnl.read32bits((int)(szJ - 16), ref len))
                 || len >= nMaster
                 || SQLITE.OK != (rc = pJrnl.read32bits(szJ - 12, ref cksum))
-                || SQLITE.OK != (rc = FileEx.sqlite3OsRead(pJrnl, aMagic, 8, szJ - 8))
+                || SQLITE.OK != (rc = pJrnl.xRead(aMagic, 8, szJ - 8))
                 || ArrayEx.Compare(aMagic, aJournalMagic, 8) != 0
-                || SQLITE.OK != (rc = FileEx.sqlite3OsRead(pJrnl, zMaster, len, (long)(szJ - 16 - len))))
+                || SQLITE.OK != (rc = pJrnl.xRead(zMaster, len, (long)(szJ - 16 - len))))
                 return rc;
             // See if the checksum matches the master journal name
             for (var u = 0; u < len; u++)
@@ -93,23 +93,23 @@ namespace Contoso.Core
                 var iLimit = this.journalSizeLimit; // Local cache of jsl
                 SysEx.IOTRACE("JZEROHDR {0:x}", this.GetHashCode());
                 if (doTruncate != 0 || iLimit == 0)
-                    rc = FileEx.sqlite3OsTruncate(this.jfd, 0);
+                    rc = this.jfd.xTruncate(0);
                 else
                 {
                     var zeroHdr = new byte[28];
-                    rc = FileEx.sqlite3OsWrite(this.jfd, zeroHdr, zeroHdr.Length, 0);
+                    rc = this.jfd.xWrite(zeroHdr, zeroHdr.Length, 0);
                 }
                 if (rc == SQLITE.OK && !this.noSync)
-                    rc = FileEx.sqlite3OsSync(this.jfd, VirtualFile.SYNC.DATAONLY | this.syncFlags);
+                    rc = this.jfd.xSync(VirtualFile.SYNC.DATAONLY | this.syncFlags);
                 // At this point the transaction is committed but the write lock is still held on the file. If there is a size limit configured for
                 // the persistent journal and the journal file currently consumes more space than that limit allows for, truncate it now. There is no need
                 // to sync the file following this operation.
                 if (rc == SQLITE.OK && iLimit > 0)
                 {
                     long sz = 0;
-                    rc = FileEx.sqlite3OsFileSize(this.jfd, ref sz);
+                    rc = this.jfd.xFileSize(ref sz);
                     if (rc == SQLITE.OK && sz > iLimit)
-                        rc = FileEx.sqlite3OsTruncate(this.jfd, iLimit);
+                        rc = this.jfd.xTruncate(iLimit);
                 }
             }
             return rc;
@@ -137,7 +137,7 @@ namespace Contoso.Core
             //   * When the SQLITE_IOCAP_SAFE_APPEND flag is set. This guarantees that garbage data is never appended to the journal file.
             Debug.Assert(this.fd.isOpen || this.noSync);
             var zHeader = this.pTmpSpace;  // Temporary space used to build header
-            if (this.noSync || (this.journalMode == JOURNALMODE.MEMORY) || (FileEx.sqlite3OsDeviceCharacteristics(this.fd) & VirtualFile.IOCAP.SAFE_APPEND) != 0)
+            if (this.noSync || (this.journalMode == JOURNALMODE.MEMORY) || (this.fd.xDeviceCharacteristics() & VirtualFile.IOCAP.SAFE_APPEND) != 0)
             {
                 aJournalMagic.CopyTo(zHeader, 0);
                 ConvertEx.put32bits(zHeader, aJournalMagic.Length, 0xffffffff);
@@ -170,7 +170,7 @@ namespace Contoso.Core
             for (uint nWrite = 0; rc == SQLITE.OK && nWrite < JOURNAL_HDR_SZ(this); nWrite += nHeader)
             {
                 SysEx.IOTRACE("JHDR {0:x} {1,ll} {2}", this.GetHashCode(), this.journalHdr, nHeader);
-                rc = FileEx.sqlite3OsWrite(this.jfd, zHeader, (int)nHeader, this.journalOff);
+                rc = this.jfd.xWrite(zHeader, (int)nHeader, this.journalOff);
                 Debug.Assert(this.journalHdr <= this.journalOff);
                 this.journalOff += (int)nHeader;
             }
@@ -194,7 +194,7 @@ namespace Contoso.Core
             SQLITE rc;
             if (isHot != 0 || iHdrOff != this.journalHdr)
             {
-                rc = FileEx.sqlite3OsRead(this.jfd, aMagic, aMagic.Length, iHdrOff);
+                rc = this.jfd.xRead(aMagic, aMagic.Length, iHdrOff);
                 if (rc != SQLITE.OK)
                     return rc;
                 if (ArrayEx.Compare(aMagic, aJournalMagic, aMagic.Length) != 0)
@@ -262,10 +262,10 @@ namespace Contoso.Core
             // Write the master journal data to the end of the journal file. If an error occurs, return the error code to the caller.
             SQLITE rc;
             if (SQLITE.OK != (rc = this.jfd.write32bits(iHdrOff, (uint)PAGER_MJ_PGNO(this)))
-                || SQLITE.OK != (rc = FileEx.sqlite3OsWrite(this.jfd, Encoding.UTF8.GetBytes(zMaster), nMaster, iHdrOff + 4))
+                || SQLITE.OK != (rc = this.jfd.xWrite(Encoding.UTF8.GetBytes(zMaster), nMaster, iHdrOff + 4))
                 || SQLITE.OK != (rc = this.jfd.write32bits(iHdrOff + 4 + nMaster, (uint)nMaster))
                 || SQLITE.OK != (rc = this.jfd.write32bits(iHdrOff + 4 + nMaster + 4, cksum))
-                || SQLITE.OK != (rc = FileEx.sqlite3OsWrite(this.jfd, aJournalMagic, 8, iHdrOff + 4 + nMaster + 8)))
+                || SQLITE.OK != (rc = this.jfd.xWrite(aJournalMagic, 8, iHdrOff + 4 + nMaster + 8)))
                 return rc;
             this.journalOff += nMaster + 20;
             // If the pager is in peristent-journal mode, then the physical journal-file may extend past the end of the master-journal name
@@ -273,8 +273,8 @@ namespace Contoso.Core
             // will not be able to find the master-journal name to determine whether or not the journal is hot.
             // Easiest thing to do in this scenario is to truncate the journal file to the required size.
             long jrnlSize = 0;  // Size of journal file on disk
-            if (SQLITE.OK == (rc = FileEx.sqlite3OsFileSize(this.jfd, ref jrnlSize)) && jrnlSize > this.journalOff)
-                rc = FileEx.sqlite3OsTruncate(this.jfd, this.journalOff);
+            if (SQLITE.OK == (rc = this.jfd.xFileSize(ref jrnlSize)) && jrnlSize > this.journalOff)
+                rc = this.jfd.xTruncate(this.journalOff);
             return rc;
         }
 
@@ -282,9 +282,9 @@ namespace Contoso.Core
         {
             var rc = SQLITE.OK;
             if (!this.noSync)
-                rc = FileEx.sqlite3OsSync(this.jfd, VirtualFile.SYNC.NORMAL);
+                rc = this.jfd.xSync(VirtualFile.SYNC.NORMAL);
             if (rc == SQLITE.OK)
-                rc = FileEx.sqlite3OsFileSize(this.jfd, ref this.journalHdr);
+                rc = this.jfd.xFileSize(ref this.journalHdr);
             return rc;
         }
 
@@ -302,7 +302,7 @@ namespace Contoso.Core
                 Debug.Assert(!this.tempFile);
                 if (this.jfd.isOpen && this.journalMode != JOURNALMODE.MEMORY)
                 {
-                    var iDc = FileEx.sqlite3OsDeviceCharacteristics(this.fd);
+                    var iDc = this.fd.xDeviceCharacteristics();
                     Debug.Assert(this.jfd.isOpen);
                     if (0 == (iDc & VirtualFile.IOCAP.SAFE_APPEND))
                     {
@@ -321,11 +321,11 @@ namespace Contoso.Core
                         ConvertEx.put32bits(zHeader, aJournalMagic.Length, this.nRec);
                         var iNextHdrOffset = journalHdrOffset();
                         var aMagic = new byte[8];
-                        rc = FileEx.sqlite3OsRead(this.jfd, aMagic, 8, iNextHdrOffset);
+                        rc = this.jfd.xRead(aMagic, 8, iNextHdrOffset);
                         if (rc == SQLITE.OK && 0 == ArrayEx.Compare(aMagic, aJournalMagic, 8))
                         {
                             var zerobyte = new byte[1];
-                            rc = FileEx.sqlite3OsWrite(this.jfd, zerobyte, 1, iNextHdrOffset);
+                            rc = this.jfd.xWrite(zerobyte, 1, iNextHdrOffset);
                         }
                         if (rc != SQLITE.OK && rc != SQLITE.IOERR_SHORT_READ)
                             return rc;
@@ -338,12 +338,12 @@ namespace Contoso.Core
                         {
                             PAGERTRACE("SYNC journal of {0}", PAGERID(this));
                             SysEx.IOTRACE("JSYNC {0:x}", this.GetHashCode());
-                            rc = FileEx.sqlite3OsSync(this.jfd, this.syncFlags);
+                            rc = this.jfd.xSync(this.syncFlags);
                             if (rc != SQLITE.OK)
                                 return rc;
                         }
                         SysEx.IOTRACE("JHDR {0:x} {1,ll}", this.GetHashCode(), this.journalHdr);
-                        rc = FileEx.sqlite3OsWrite(this.jfd, zHeader, zHeader.Length, this.journalHdr);
+                        rc = this.jfd.xWrite(zHeader, zHeader.Length, this.journalHdr);
                         if (rc != SQLITE.OK)
                             return rc;
                     }
@@ -351,7 +351,7 @@ namespace Contoso.Core
                     {
                         PAGERTRACE("SYNC journal of {0}", PAGERID(this));
                         SysEx.IOTRACE("JSYNC {0:x}", this.GetHashCode());
-                        rc = FileEx.sqlite3OsSync(this.jfd, this.syncFlags | (this.syncFlags == VirtualFile.SYNC.FULL ? VirtualFile.SYNC.DATAONLY : 0));
+                        rc = this.jfd.xSync(this.syncFlags | (this.syncFlags == VirtualFile.SYNC.FULL ? VirtualFile.SYNC.DATAONLY : 0));
                         if (rc != SQLITE.OK)
                             return rc;
                     }
@@ -410,7 +410,7 @@ namespace Contoso.Core
                     PAGERTRACE("STMT-JOURNAL {0} page {1}", PAGERID(pPager), pPg.pgno);
                     rc = pPager.sjfd.write32bits(offset, pPg.pgno);
                     if (rc == SQLITE.OK)
-                        rc = FileEx.sqlite3OsWrite(pPager.sjfd, pData2, pPager.pageSize, offset + 4);
+                        rc = pPager.sjfd.xWrite(pData2, pPager.pageSize, offset + 4);
                 }
             }
             if (rc == SQLITE.OK)
@@ -425,16 +425,17 @@ namespace Contoso.Core
         internal SQLITE hasHotJournal(ref int pExists)
         {
             var pVfs = this.pVfs;
-            var exists = 1;               // True if a journal file is present
+
             var jrnlOpen = (this.jfd.isOpen ? 1 : 0);
             Debug.Assert(this.useJournal != 0);
             Debug.Assert(this.fd.isOpen);
             Debug.Assert(this.eState == PAGER.OPEN);
-            Debug.Assert(jrnlOpen == 0 || (FileEx.sqlite3OsDeviceCharacteristics(this.jfd) & VirtualFile.IOCAP.UNDELETABLE_WHEN_OPEN) != 0);
+            Debug.Assert(jrnlOpen == 0 || (this.jfd.xDeviceCharacteristics() & VirtualFile.IOCAP.UNDELETABLE_WHEN_OPEN) != 0);
             pExists = 0;
             var rc = SQLITE.OK;
+            var exists = 1;               // True if a journal file is present
             if (0 == jrnlOpen)
-                rc = FileEx.sqlite3OsAccess(pVfs, this.zJournal, VirtualFileSystem.ACCESS.EXISTS, ref exists);
+                rc = pVfs.xAccess(this.zJournal, VirtualFileSystem.ACCESS.EXISTS, out exists);
             if (rc == SQLITE.OK && exists != 0)
             {
                 int locked = 0;                 // True if some process holds a RESERVED lock
@@ -442,7 +443,7 @@ namespace Contoso.Core
                 // call above, but then delete the journal and drop the lock before we get to the following sqlite3OsCheckReservedLock() call.  If that
                 // is the case, this routine might think there is a hot journal when in fact there is none.  This results in a false-positive which will
                 // be dealt with by the playback routine.
-                rc = FileEx.sqlite3OsCheckReservedLock(this.fd, ref locked);
+                rc = this.fd.xCheckReservedLock(ref locked);
                 if (rc == SQLITE.OK && locked == 0)
                 {
                     Pgno nPage = 0; // Number of pages in database file
@@ -450,13 +451,12 @@ namespace Contoso.Core
                     // the reasoning here.  Delete the obsolete journal file under a RESERVED lock to avoid race conditions and to avoid violating [H33020].
                     rc = pagerPagecount(ref nPage);
                     if (rc == SQLITE.OK)
-                    {
                         if (nPage == 0)
                         {
                             MallocEx.sqlite3BeginBenignMalloc();
                             if (pagerLockDb(VFSLOCK.RESERVED) == SQLITE.OK)
                             {
-                                FileEx.sqlite3OsDelete(pVfs, this.zJournal, 0);
+                                pVfs.xDelete(this.zJournal, 0);
                                 if (!this.exclusiveMode)
                                     pagerUnlockDb(VFSLOCK.SHARED);
                             }
@@ -475,7 +475,7 @@ namespace Contoso.Core
                             if (rc == SQLITE.OK)
                             {
                                 var first = new byte[1];
-                                rc = FileEx.sqlite3OsRead(this.jfd, first, 1, 0);
+                                rc = this.jfd.xRead(first, 1, 0);
                                 if (rc == SQLITE.IOERR_SHORT_READ)
                                     rc = SQLITE.OK;
                                 if (0 == jrnlOpen)
@@ -492,7 +492,6 @@ namespace Contoso.Core
                                 rc = SQLITE.OK;
                             }
                         }
-                    }
                 }
             }
             return rc;
