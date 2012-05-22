@@ -1,4 +1,5 @@
 ﻿using Pgno = System.UInt32;
+using System;
 namespace Contoso.Core
 {
     public partial class Btree
@@ -33,9 +34,9 @@ namespace Contoso.Core
         BtLock lock;              // Object used to lock page 1 
 #endif
 
-        static Pgno PENDING_BYTE_PAGE(BtShared pBt) { return Pager.PAGER_MJ_PGNO(pBt.pPager); }
-        static Pgno PTRMAP_PAGENO(BtShared pBt, Pgno pgno) { return ptrmapPageno(pBt, pgno); }
-        static Pgno PTRMAP_PTROFFSET(Pgno pgptrmap, Pgno pgno) { return (5 * (pgno - pgptrmap - 1)); }
-        static bool PTRMAP_ISPAGE(BtShared pBt, Pgno pgno) { return (PTRMAP_PAGENO((pBt), (pgno)) == (pgno)); }
+        //static Pgno PENDING_BYTE_PAGE(BtShared pBt) { return Pager.PAGER_MJ_PGNO(pBt.pPager); }
+        //static Pgno PTRMAP_PAGENO(BtShared pBt, Pgno pgno) { return ptrmapPageno(pBt, pgno); }
+        //static Pgno PTRMAP_PTROFFSET(Pgno pgptrmap, Pgno pgno) { return (5 * (pgno - pgptrmap - 1)); }
+        //static bool PTRMAP_ISPAGE(BtShared pBt, Pgno pgno) { return (PTRMAP_PAGENO((pBt), (pgno)) == (pgno)); }
     }
 }

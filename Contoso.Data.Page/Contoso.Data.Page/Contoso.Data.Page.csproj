@@ -53,15 +53,6 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Core+Btree\Btree+x.cs" />
-    <Compile Include="Core+Btree\Copy %282%29 of Btree+x.cs" />
-    <Compile Include="Core+Btree\Btree+Commit.cs" />
-    <Compile Include="Core+Btree\Copy %284%29 of Btree+x.cs" />
-    <Compile Include="Core+Btree\Copy %285%29 of Btree+x.cs" />
-    <Compile Include="Core+Btree\Copy %286%29 of Btree+x.cs" />
-    <Compile Include="Core+Btree\Copy %287%29 of Btree+x.cs" />
-    <Compile Include="Core+Btree\Copy %288%29 of Btree+x.cs" />
-    <Compile Include="Core+Btree\Copy %289%29 of Btree+x.cs" />
-    <Compile Include="Core+Btree\Copy of Btree+x.cs" />
     <Compile Include="Core+Btree\MemPage.cs">
       <SubType>Code</SubType>
     </Compile>
