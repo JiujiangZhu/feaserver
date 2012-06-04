@@ -2,9 +2,10 @@
 using Contoso.Sys;
 using Pgno = System.UInt32;
 using DbPage = Contoso.Core.PgHdr;
+
 namespace Contoso.Core
 {
-    public class MemPage
+    public partial class MemPage
     {
         public struct _OvflCell
         {   // Cells that will not fit on aData[]

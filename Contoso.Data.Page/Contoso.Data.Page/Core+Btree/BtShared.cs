@@ -3,7 +3,7 @@ using System;
 using Pgno = System.UInt32;
 namespace Contoso.Core
 {
-    public class BtShared
+    public partial class BtShared
     {
         public Pager pPager;            // The page cache
         public sqlite3 db;              // Database connection currently using this Btree

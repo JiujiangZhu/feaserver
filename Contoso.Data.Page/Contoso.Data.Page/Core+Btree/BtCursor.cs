@@ -1,7 +1,7 @@
 ﻿using Pgno = System.UInt32;
 namespace Contoso.Core
 {
-    public class BtCursor
+    public partial class BtCursor
     {
         const int BTCURSOR_MAX_DEPTH = 20;
 

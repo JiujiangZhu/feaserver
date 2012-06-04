@@ -6,6 +6,7 @@ using Contoso.Sys;
 using System.Diagnostics;
 using CURSOR = Contoso.Core.BtCursor.CURSOR;
 using VFSOPEN = Contoso.Sys.VirtualFileSystem.OPEN;
+
 namespace Contoso.Core
 {
     public partial class Btree
@@ -33,13 +34,13 @@ namespace Contoso.Core
         internal static void btreeParseCellPtr(MemPage pPage, byte[] pCell, ref CellInfo pInfo) { btreeParseCellPtr(pPage, pCell, 0, ref pInfo); }
         internal static void btreeParseCellPtr(MemPage pPage, byte[] pCell, int iCell, ref CellInfo pInfo)
         {
-            uint nPayload = 0;    // Number of bytes of cell payload
+            var nPayload = (uint)0;    // Number of bytes of cell payload
             Debug.Assert(MutexEx.sqlite3_mutex_held(pPage.pBt.mutex));
             if (pInfo.pCell != pCell)
                 pInfo.pCell = pCell;
             pInfo.iCell = iCell;
             Debug.Assert(pPage.leaf == 0 || pPage.leaf == 1);
-            ushort n = pPage.childPtrSize; // Number bytes in cell content header
+            var n = (ushort)pPage.childPtrSize; // Number bytes in cell content header
             Debug.Assert(n == 4 - 4 * pPage.leaf);
             if (pPage.intKey != 0)
             {
@@ -72,10 +73,9 @@ namespace Contoso.Core
                 // overflow pages.  The strategy is to minimize the amount of unused space on overflow pages while keeping the amount of local storage
                 // in between minLocal and maxLocal.
                 // Warning:  changing the way overflow payload is distributed in any way will result in an incompatible file format.
-
-                int minLocal = pPage.minLocal; // Minimum amount of payload held locally
-                int maxLocal = pPage.maxLocal;// Maximum amount of payload held locally
-                int surplus = (int)(minLocal + (nPayload - minLocal) % (pPage.pBt.usableSize - 4));// Overflow payload available for local storage
+                var minLocal = (int)pPage.minLocal; // Minimum amount of payload held locally
+                var maxLocal = (int)pPage.maxLocal;// Maximum amount of payload held locally
+                var surplus = (int)(minLocal + (nPayload - minLocal) % (pPage.pBt.usableSize - 4));// Overflow payload available for local storage
                 pInfo.nLocal = (surplus <= maxLocal ? (ushort)surplus : (ushort)minLocal);
                 pInfo.iOverflow = (ushort)(pInfo.nLocal + n);
                 pInfo.nSize = (ushort)(pInfo.iOverflow + 4);
@@ -135,7 +135,7 @@ namespace Contoso.Core
                 _pIter += ConvertEx.getVarint32(pCell, _pIter, out nSize);
             if (nSize > pPage.maxLocal)
             {
-                int minLocal = pPage.minLocal;
+                var minLocal = (int)pPage.minLocal;
                 nSize = (ushort)(minLocal + (nSize - minLocal) % (pPage.pBt.usableSize - 4));
                 if (nSize > pPage.maxLocal)
                     nSize = (ushort)minLocal;
@@ -200,7 +200,7 @@ namespace Contoso.Core
             var nCell = pPage.nCell;// Number of cells on the page
             Debug.Assert(nCell == ConvertEx.get2byte(data, hdr + 3));
             var usableSize = (int)pPage.pBt.usableSize;// Number of usable bytes on a page
-            int cbrk = ConvertEx.get2byte(data, hdr + 5);// Offset to the cell content area
+            var cbrk = (int)ConvertEx.get2byte(data, hdr + 5);// Offset to the cell content area
             Buffer.BlockCopy(data, cbrk, temp, cbrk, usableSize - cbrk);
             cbrk = usableSize;
             var iCellFirst = cellOffset + 2 * nCell; // First allowable cell index
@@ -221,10 +221,10 @@ namespace Contoso.Core
                     return SysEx.SQLITE_CORRUPT_BKPT();
                 Debug.Assert(cbrk + size <= usableSize && cbrk >= iCellFirst);
                 Buffer.BlockCopy(temp, pc, data, cbrk, size);
-                put2byte(data, pAddr, cbrk);
+                ConvertEx.put2byte(data, pAddr, cbrk);
             }
             Debug.Assert(cbrk >= iCellFirst);
-            put2byte(data, hdr + 5, cbrk);
+            ConvertEx.put2byte(data, hdr + 5, cbrk);
             data[hdr + 1] = 0;
             data[hdr + 2] = 0;
             data[hdr + 7] = 0;
@@ -501,7 +501,7 @@ namespace Contoso.Core
             pPage.cellOffset = first;
             pPage.nOverflow = 0;
             Debug.Assert(pBt.pageSize >= 512 && pBt.pageSize <= 65536);
-            pPage.maskPage = (u16)(pBt.pageSize - 1);
+            pPage.maskPage = (ushort)(pBt.pageSize - 1);
             pPage.nCell = 0;
             pPage.isInit = 1;
         }
@@ -576,6 +576,304 @@ namespace Contoso.Core
                 Debug.Assert(MutexEx.sqlite3_mutex_held(pPage.pBt.mutex));
                 Pager.sqlite3PagerUnref(pPage.pDbPage);
             }
+        }
+
+#if DEBUG
+        internal static void assertParentIndex(MemPage pParent, int iIdx, Pgno iChild)
+        {
+            Debug.Assert(iIdx <= pParent.nCell);
+            if (iIdx == pParent.nCell)
+                Debug.Assert(ConvertEx.sqlite3Get4byte(pParent.aData, pParent.hdrOffset + 8) == iChild);
+            else
+                Debug.Assert(ConvertEx.sqlite3Get4byte(pParent.aData, findCell(pParent, iIdx)) == iChild);
+        }
+#else
+        internal static void assertParentIndex(MemPage pParent, int iIdx, Pgno iChild) { }
+#endif
+
+        internal static SQLITE fillInCell(MemPage pPage, byte[] pCell, byte[] pKey, long nKey, byte[] pData, int nData, int nZero, ref int pnSize)
+        {
+            Debug.Assert(MutexEx.sqlite3_mutex_held(pPage.pBt.mutex));
+            // pPage is not necessarily writeable since pCell might be auxiliary buffer space that is separate from the pPage buffer area
+            // TODO -- Determine if the following Assert is needed under c#
+            //Debug.Assert( pCell < pPage.aData || pCell >= &pPage.aData[pBt.pageSize] || sqlite3PagerIswriteable(pPage.pDbPage) );
+            // Fill in the header.
+            var nHeader = 0;
+            if (pPage.leaf == 0)
+                nHeader += 4;
+            if (pPage.hasData != 0)
+                nHeader += (int)ConvertEx.putVarint(pCell, nHeader, (int)(nData + nZero));
+            else
+                nData = nZero = 0;
+            nHeader += ConvertEx.putVarint(pCell, nHeader, (ulong)nKey);
+            var info = new CellInfo();
+            btreeParseCellPtr(pPage, pCell, ref info);
+            Debug.Assert(info.nHeader == nHeader);
+            Debug.Assert(info.nKey == nKey);
+            Debug.Assert(info.nData == (uint)(nData + nZero));
+            // Fill in the payload
+            var nPayload = nData + nZero;
+            byte[] pSrc;
+            int nSrc;
+            if (pPage.intKey != 0)
+            {
+                pSrc = pData;
+                nSrc = nData;
+                nData = 0;
+            }
+            else
+            {
+                if (Check.NEVER(nKey > 0x7fffffff || pKey == null))
+                    return SysEx.SQLITE_CORRUPT_BKPT();
+                nPayload += (int)nKey;
+                pSrc = pKey;
+                nSrc = (int)nKey;
+            }
+            pnSize = info.nSize;
+            var spaceLeft = (int)info.nLocal;
+            var pPayload = pCell;
+            var pPayloadIndex = nHeader;
+            var pPrior = pCell;
+            var pPriorIndex = (int)info.iOverflow;
+            var pBt = pPage.pBt;
+            Pgno pgnoOvfl = 0;
+            MemPage pToRelease = null;
+            while (nPayload > 0)
+            {
+                if (spaceLeft == 0)
+                {
+#if !SQLITE_OMIT_AUTOVACUUM
+                    var pgnoPtrmap = pgnoOvfl; // Overflow page pointer-map entry page
+                    if (pBt.autoVacuum)
+                    {
+                        do
+                            pgnoOvfl++;
+                        while (PTRMAP_ISPAGE(pBt, pgnoOvfl) || pgnoOvfl == PENDING_BYTE_PAGE(pBt));
+                    }
+#endif
+                    MemPage pOvfl = null;
+                    var rc = allocateBtreePage(pBt, ref pOvfl, ref pgnoOvfl, pgnoOvfl, 0);
+#if !SQLITE_OMIT_AUTOVACUUM
+                    // If the database supports auto-vacuum, and the second or subsequent overflow page is being allocated, add an entry to the pointer-map for that page now.
+                    // If this is the first overflow page, then write a partial entry to the pointer-map. If we write nothing to this pointer-map slot,
+                    // then the optimistic overflow chain processing in clearCell() may misinterpret the uninitialised values and delete the
+                    // wrong pages from the database.
+                    if (pBt.autoVacuum && rc == SQLITE.OK)
+                    {
+                        var eType = (byte)(pgnoPtrmap != 0 ? PTRMAP_OVERFLOW2 : PTRMAP_OVERFLOW1);
+                        ptrmapPut(pBt, pgnoOvfl, eType, pgnoPtrmap, ref rc);
+                        if (rc != SQLITE.OK)
+                            releasePage(pOvfl);
+                    }
+#endif
+                    if (rc != SQLITE.OK)
+                    {
+                        releasePage(pToRelease);
+                        return rc;
+                    }
+                    // If pToRelease is not zero than pPrior points into the data area of pToRelease.  Make sure pToRelease is still writeable.
+                    Debug.Assert(pToRelease == null || Pager.sqlite3PagerIswriteable(pToRelease.pDbPage));
+                    // If pPrior is part of the data area of pPage, then make sure pPage is still writeable
+                    // TODO -- Determine if the following Assert is needed under c#
+                    //Debug.Assert( pPrior < pPage.aData || pPrior >= &pPage.aData[pBt.pageSize] || sqlite3PagerIswriteable(pPage.pDbPage) );
+                    ConvertEx.sqlite3Put4byte(pPrior, pPriorIndex, pgnoOvfl);
+                    releasePage(pToRelease);
+                    pToRelease = pOvfl;
+                    pPrior = pOvfl.aData;
+                    pPriorIndex = 0;
+                    ConvertEx.sqlite3Put4byte(pPrior, 0);
+                    pPayload = pOvfl.aData;
+                    pPayloadIndex = 4;
+                    spaceLeft = (int)pBt.usableSize - 4;
+                }
+                var n = nPayload;
+                if (n > spaceLeft)
+                    n = spaceLeft;
+                // If pToRelease is not zero than pPayload points into the data area of pToRelease.  Make sure pToRelease is still writeable.
+                Debug.Assert(pToRelease == null || Pager.sqlite3PagerIswriteable(pToRelease.pDbPage));
+                // If pPayload is part of the data area of pPage, then make sure pPage is still writeable
+                // TODO -- Determine if the following Assert is needed under c#
+                //Debug.Assert( pPayload < pPage.aData || pPayload >= &pPage.aData[pBt.pageSize] || sqlite3PagerIswriteable(pPage.pDbPage) );
+                var pSrcIndex = 0;
+                if (nSrc > 0)
+                {
+                    if (n > nSrc)
+                        n = nSrc;
+                    Debug.Assert(pSrc != null);
+                    Buffer.BlockCopy(pSrc, pSrcIndex, pPayload, pPayloadIndex, n);
+                }
+                else
+                {
+                    var pZeroBlob = MallocEx.sqlite3Malloc(n);
+                    Buffer.BlockCopy(pZeroBlob, 0, pPayload, pPayloadIndex, n);
+                }
+                nPayload -= n;
+                pPayloadIndex += n;
+                pSrcIndex += n;
+                nSrc -= n;
+                spaceLeft -= n;
+                if (nSrc == 0)
+                {
+                    nSrc = nData;
+                    pSrc = pData;
+                }
+            }
+            releasePage(pToRelease);
+            return SQLITE.OK;
+        }
+
+        internal static void dropCell(MemPage pPage, int idx, int sz, ref SQLITE pRC)
+        {
+            if (pRC != SQLITE.OK)
+                return;
+            Debug.Assert(idx >= 0 && idx < pPage.nCell);
+#if DEBUG
+            Debug.Assert(sz == cellSize(pPage, idx));
+#endif
+            Debug.Assert(Pager.sqlite3PagerIswriteable(pPage.pDbPage));
+            Debug.Assert(MutexEx.sqlite3_mutex_held(pPage.pBt.mutex));
+            var data = pPage.aData;
+            var ptr = pPage.cellOffset + 2 * idx; // Used to move bytes around within data[]
+            var pc = (uint)ConvertEx.get2byte(data, ptr); // Offset to cell content of cell being deleted
+            var hdr = pPage.hdrOffset; // Beginning of the header.  0 most pages.  100 page 1
+            if (pc < (uint)ConvertEx.get2byte(data, hdr + 5) || pc + sz > pPage.pBt.usableSize)
+            {
+                pRC = SysEx.SQLITE_CORRUPT_BKPT();
+                return;
+            }
+            var rc = freeSpace(pPage, pc, sz);
+            if (rc != SQLITE.OK)
+            {
+                pRC = rc;
+                return;
+            }
+            Buffer.BlockCopy(data, ptr + 2, data, ptr, (pPage.nCell - 1 - idx) * 2);
+            pPage.nCell--;
+            data[pPage.hdrOffset + 3] = (byte)(pPage.nCell >> 8);
+            data[pPage.hdrOffset + 4] = (byte)(pPage.nCell);
+            pPage.nFree += 2;
+        }
+
+        internal static void insertCell(MemPage pPage, int i, byte[] pCell, int sz, byte[] pTemp, Pgno iChild, ref SQLITE pRC)
+        {
+            var nSkip = (iChild != 0 ? 4 : 0);
+            if (pRC != SQLITE.OK)
+                return;
+            Debug.Assert(i >= 0 && i <= pPage.nCell + pPage.nOverflow);
+            Debug.Assert(pPage.nCell <= MX_CELL(pPage.pBt) && MX_CELL(pPage.pBt) <= 10921);
+            Debug.Assert(pPage.nOverflow <= pPage.aOvfl.Length);
+            Debug.Assert(MutexEx.sqlite3_mutex_held(pPage.pBt.mutex));
+            // The cell should normally be sized correctly.  However, when moving a malformed cell from a leaf page to an interior page, if the cell size
+            // wanted to be less than 4 but got rounded up to 4 on the leaf, then size might be less than 8 (leaf-size + pointer) on the interior node.  Hence
+            // the term after the || in the following assert().
+            Debug.Assert(sz == cellSizePtr(pPage, pCell) || (sz == 8 && iChild > 0));
+            if (pPage.nOverflow != 0 || sz + 2 > pPage.nFree)
+            {
+                if (pTemp != null)
+                {
+                    Buffer.BlockCopy(pCell, nSkip, pTemp, nSkip, sz - nSkip);
+                    pCell = pTemp;
+                }
+                if (iChild != 0)
+                    ConvertEx.sqlite3Put4byte(pCell, iChild);
+                var j = pPage.nOverflow++;
+                Debug.Assert(j < pPage.aOvfl.Length);
+                pPage.aOvfl[j].pCell = pCell;
+                pPage.aOvfl[j].idx = (ushort)i;
+            }
+            else
+            {
+                var rc = Pager.sqlite3PagerWrite(pPage.pDbPage);
+                if (rc != SQLITE.OK)
+                {
+                    pRC = rc;
+                    return;
+                }
+                Debug.Assert(Pager.sqlite3PagerIswriteable(pPage.pDbPage));
+                var data = pPage.aData; // The content of the whole page
+                var cellOffset = (int)pPage.cellOffset; // Address of first cell pointer in data[]
+                var end = cellOffset + 2 * pPage.nCell; // First byte past the last cell pointer in data[]
+                var ins = cellOffset + 2 * i; // Index in data[] where new cell pointer is inserted
+                int idx = 0; // Where to write new cell content in data[]
+                rc = allocateSpace(pPage, sz, ref idx);
+                if (rc != SQLITE.OK)
+                {
+                    pRC = rc;
+                    return;
+                }
+                // The allocateSpace() routine guarantees the following two properties if it returns success
+                Debug.Assert(idx >= end + 2);
+                Debug.Assert(idx + sz <= (int)pPage.pBt.usableSize);
+                pPage.nCell++;
+                pPage.nFree -= (ushort)(2 + sz);
+                Buffer.BlockCopy(pCell, nSkip, data, idx + nSkip, sz - nSkip);
+                if (iChild != 0)
+                    ConvertEx.sqlite3Put4byte(data, idx, iChild);
+                for (var j = end; j > ins; j -= 2)
+                {
+                    data[j + 0] = data[j - 2];
+                    data[j + 1] = data[j - 1];
+                }
+                ConvertEx.put2byte(data, ins, idx);
+                ConvertEx.put2byte(data, pPage.hdrOffset + 3, pPage.nCell);
+#if !SQLITE_OMIT_AUTOVACUUM
+                if (pPage.pBt.autoVacuum)
+                    // The cell may contain a pointer to an overflow page. If so, write the entry for the overflow page into the pointer map.
+                    ptrmapPutOvflPtr(pPage, pCell, ref pRC);
+#endif
+            }
+        }
+
+
+        internal static void freePage(MemPage pPage, ref SQLITE pRC)
+        {
+            if (pRC == SQLITE.OK)
+                pRC = BtShared.freePage2(pPage.pBt, pPage, pPage.pgno);
+        }
+
+        internal static SQLITE clearCell(MemPage pPage, int pCell)
+        {
+            Debug.Assert(MutexEx.sqlite3_mutex_held(pPage.pBt.mutex));
+            var info = new CellInfo();
+            btreeParseCellPtr(pPage, pCell, ref info);
+            if (info.iOverflow == 0)
+                return SQLITE.OK;  // No overflow pages. Return without doing anything
+            var pBt = pPage.pBt;
+            var ovflPgno = (Pgno)ConvertEx.sqlite3Get4byte(pPage.aData, pCell, info.iOverflow);
+            Debug.Assert(pBt.usableSize > 4);
+            var ovflPageSize = (uint)(pBt.usableSize - 4);
+            var nOvfl = (int)((info.nPayload - info.nLocal + ovflPageSize - 1) / ovflPageSize);
+            Debug.Assert(ovflPgno == 0 || nOvfl > 0);
+            SQLITE rc;
+            while (nOvfl-- != 0)
+            {
+                Pgno iNext = 0;
+                MemPage pOvfl = null;
+                if (ovflPgno < 2 || ovflPgno > btreePagecount(pBt))
+                    // 0 is not a legal page number and page 1 cannot be an overflow page. Therefore if ovflPgno<2 or past the end of the file the database must be corrupt.
+                    return SysEx.SQLITE_CORRUPT_BKPT();
+                if (nOvfl != 0)
+                {
+                    rc = BtShared.getOverflowPage(pBt, ovflPgno, out pOvfl, out iNext);
+                    if (rc != SQLITE.OK)
+                        return rc;
+                }
+                if ((pOvfl != null || ((pOvfl = btreePageLookup(pBt, ovflPgno)) != null)) && Pager.sqlite3PagerPageRefcount(pOvfl.pDbPage) != 1)
+                    // There is no reason any cursor should have an outstanding reference to an overflow page belonging to a cell that is being deleted/updated.
+                    // So if there exists more than one reference to this page, then it must not really be an overflow page and the database must be corrupt. 
+                    // It is helpful to detect this before calling freePage2(), as freePage2() may zero the page contents if secure-delete mode is
+                    // enabled. If this 'overflow' page happens to be a page that the caller is iterating through or using in some other way, this
+                    // can be problematic.
+                    rc = SysEx.SQLITE_CORRUPT_BKPT();
+                else
+                    rc = BtShared.freePage2(pBt, pOvfl, ovflPgno);
+                if (pOvfl != null)
+                    Pager.sqlite3PagerUnref(pOvfl.pDbPage);
+                if (rc != SQLITE.OK)
+                    return rc;
+                ovflPgno = iNext;
+            }
+            return SQLITE.OK;
         }
     }
 }

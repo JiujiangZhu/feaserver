@@ -9,5 +9,14 @@ namespace Contoso.Core
         internal static byte[] sqlite3Malloc(int p) { return new byte[p]; }
         internal static bool sqlite3HeapNearlyFull() { return false; }
         internal static int sqlite3MallocSize(byte[] p) { return p.Length; }
+
+        internal static byte[][] sqlite3ScratchMalloc(byte[][] apCell, int nMaxCells)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal static void sqlite3ScratchFree(byte[][] apCell)
+        {
+        }
     }
 }
