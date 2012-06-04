@@ -1,5 +1,7 @@
-﻿using Pgno = System.UInt32;
+﻿using Mem = System.Object;
+using Pgno = System.UInt32;
 using System;
+
 namespace Contoso.Core
 {
     public partial class Btree
@@ -21,6 +23,26 @@ namespace Contoso.Core
             UNORDERED = 16,   // Use of a hash implementation is OK 
         }
 
+        public class UnpackedRecord
+        {
+            [Flags]
+            public enum UNPACKED : ushort
+            {
+                NEED_FREE = 0x0001,     // Memory is from sqlite3Malloc()
+                NEED_DESTROY = 0x0002,  // apMem[]s should all be destroyed
+                IGNORE_ROWID = 0x0004,  // Ignore trailing rowid on key1
+                INCRKEY = 0x0008,       // Make this key an epsilon larger
+                PREFIX_MATCH = 0x0010,  // A prefix match is considered OK
+                PREFIX_SEARCH = 0x0020, // A prefix match is considered OK
+            }
+
+            public KeyInfo pKeyInfo;    // Collation and sort-order information
+            public ushort nField;       // Number of entries in apMem[]
+            public UNPACKED flags;      // Boolean settings.  UNPACKED_... below
+            public long rowid;          // Used by UNPACKED_PREFIX_SEARCH
+            public Mem[] aMem;          // Values
+        }
+
         public sqlite3 db;        // The database connection holding this Btree 
         public BtShared pBt;      // Sharable content of this Btree 
         public TRANS inTrans;     // TRANS_NONE, TRANS_READ or TRANS_WRITE 
@@ -33,6 +55,15 @@ namespace Contoso.Core
 #if !SQLITE_OMIT_SHARED_CACHE
         BtLock lock;              // Object used to lock page 1 
 #endif
+
+        internal static int MX_CELL_SIZE(BtShared pBt) { return (int)(pBt.pageSize - 8); }
+        internal static int MX_CELL(BtShared pBt) { return ((int)(pBt.pageSize - 8) / 6); }
+
+        internal const byte PTF_INTKEY = 0x01;
+        internal const byte PTF_ZERODATA = 0x02;
+        internal const byte PTF_LEAFDATA = 0x04;
+        internal const byte PTF_LEAF = 0x08;
+
 
         //static Pgno PENDING_BYTE_PAGE(BtShared pBt) { return Pager.PAGER_MJ_PGNO(pBt.pPager); }
         //static Pgno PTRMAP_PAGENO(BtShared pBt, Pgno pgno) { return ptrmapPageno(pBt, pgno); }
