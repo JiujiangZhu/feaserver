@@ -13,10 +13,10 @@ namespace Contoso.Core
     {
         static byte[] aBalanceQuickSpace = new byte[13];
 
-        internal static SQLITE balance(BtCursor pCur)
+        internal SQLITE balance()
         {
             var rc = SQLITE.OK;
-            var nMin = (int)pCur.pBt.usableSize * 2 / 3;
+            var nMin = (int)this.pBt.usableSize * 2 / 3;
 #if DEBUG
             var balance_quick_called = 0;
             var balance_deeper_called = 0;
@@ -26,8 +26,8 @@ namespace Contoso.Core
 #endif
             do
             {
-                var iPage = pCur.iPage;
-                var pPage = pCur.apPage[iPage];
+                var iPage = this.iPage;
+                var pPage = this.apPage[iPage];
                 if (iPage == 0)
                 {
                     if (pPage.nOverflow != 0)
@@ -35,13 +35,13 @@ namespace Contoso.Core
                         // The root page of the b-tree is overfull. In this case call the balance_deeper() function to create a new child for the root-page
                         // and copy the current contents of the root-page to it. The next iteration of the do-loop will balance the child page.
                         Debug.Assert((balance_deeper_called++) == 0);
-                        rc = MemPage.balance_deeper(pPage, ref pCur.apPage[1]);
+                        rc = MemPage.balance_deeper(pPage, ref this.apPage[1]);
                         if (rc == SQLITE.OK)
                         {
-                            pCur.iPage = 1;
-                            pCur.aiIdx[0] = 0;
-                            pCur.aiIdx[1] = 0;
-                            Debug.Assert(pCur.apPage[1].nOverflow != 0);
+                            this.iPage = 1;
+                            this.aiIdx[0] = 0;
+                            this.aiIdx[1] = 0;
+                            Debug.Assert(this.apPage[1].nOverflow != 0);
                         }
                     }
                     else
@@ -51,8 +51,8 @@ namespace Contoso.Core
                     break;
                 else
                 {
-                    var pParent = pCur.apPage[iPage - 1];
-                    var iIdx = pCur.aiIdx[iPage - 1];
+                    var pParent = this.apPage[iPage - 1];
+                    var iIdx = this.aiIdx[iPage - 1];
                     rc = Pager.sqlite3PagerWrite(pParent.pDbPage);
                     if (rc == SQLITE.OK)
                     {
@@ -79,15 +79,15 @@ namespace Contoso.Core
                             // but it doesn't deal with overflow cells - just moves them to a different page). Once this subsequent call to balance_nonroot()
                             // has completed, it is safe to release the pSpace buffer used by the previous call, as the overflow cell data will have been
                             // copied either into the body of a database page or into the new pSpace buffer passed to the latter call to balance_nonroot().
-                            var pSpace = new byte[pCur.pBt.pageSize];// u8 pSpace = sqlite3PageMalloc( pCur.pBt.pageSize );
+                            var pSpace = new byte[this.pBt.pageSize];// u8 pSpace = sqlite3PageMalloc( pCur.pBt.pageSize );
                             rc = MemPage.balance_nonroot(pParent, iIdx, null, iPage == 1 ? 1 : 0);
                             // The pSpace buffer will be freed after the next call to balance_nonroot(), or just before this function returns, whichever comes first.
                         }
                     }
                     pPage.nOverflow = 0;
                     // The next iteration of the do-loop balances the parent page.
-                    MemPage.releasePage(pPage);
-                    pCur.iPage--;
+                    pPage.releasePage();
+                    this.iPage--;
                 }
             } while (rc == SQLITE.OK);
             return rc;

@@ -60,7 +60,7 @@
     <Compile Include="Core+Btree\BtShared+Alloc.cs" />
     <Compile Include="Core+Btree\BtCursor+Balance.cs" />
     <Compile Include="Core+Btree\BtCursor+Dml.cs" />
-    <Compile Include="Core+Btree\Btree+Integraty.cs" />
+    <Compile Include="Core+Btree\Btree+Integrity.cs" />
     <Compile Include="Core+Btree\MemPage+Balance.cs" />
     <Compile Include="Core+Btree\MemPage+AutoVacuum.cs" />
     <Compile Include="Core+Btree\BtCursor+x.cs" />

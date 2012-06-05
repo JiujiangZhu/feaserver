@@ -6,18 +6,19 @@ using Contoso.Sys;
 using System.Diagnostics;
 using CURSOR = Contoso.Core.BtCursor.CURSOR;
 using VFSOPEN = Contoso.Sys.VirtualFileSystem.OPEN;
+using PTRMAP = Contoso.Core.MemPage.PTRMAP;
 
 namespace Contoso.Core
 {
     public partial class BtShared
     {
-        internal static SQLITE allocateBtreePage(BtShared pBt, ref MemPage ppPage, ref Pgno pPgno, Pgno nearby, byte exact)
+        internal SQLITE allocateBtreePage(ref MemPage ppPage, ref Pgno pPgno, Pgno nearby, byte exact)
         {
             MemPage pTrunk = null;
             MemPage pPrevTrunk = null;
-            Debug.Assert(MutexEx.sqlite3_mutex_held(pBt.mutex));
-            var pPage1 = pBt.pPage1;
-            var mxPage = btreePagecount(pBt); // Total size of the database file
+            Debug.Assert(MutexEx.sqlite3_mutex_held(this.mutex));
+            var pPage1 = this.pPage1;
+            var mxPage = btreePagecount(); // Total size of the database file
             var n = ConvertEx.sqlite3Get4byte(pPage1.aData, 36); // Number of pages on the freelist
             if (n >= mxPage)
                 return SysEx.SQLITE_CORRUPT_BKPT();
@@ -32,13 +33,13 @@ namespace Contoso.Core
                 if (exact != 0 && nearby <= mxPage)
                 {
                     Debug.Assert(nearby > 0);
-                    Debug.Assert(pBt.autoVacuum);
-                    byte eType = 0;
+                    Debug.Assert(this.autoVacuum);
+                    PTRMAP eType = 0;
                     uint dummy0 = 0;
-                    rc = ptrmapGet(pBt, nearby, ref eType, ref dummy0);
+                    rc = ptrmapGet(nearby, ref eType, ref dummy0);
                     if (rc != SQLITE.OK)
                         return rc;
-                    if (eType == PTRMAP_FREEPAGE)
+                    if (eType == PTRMAP.FREEPAGE)
                         searchList = 1;
                     pPgno = nearby;
                 }
@@ -54,7 +55,7 @@ namespace Contoso.Core
                 {
                     pPrevTrunk = pTrunk;
                     iTrunk = (pPrevTrunk != null ? ConvertEx.sqlite3Get4byte(pPrevTrunk.aData, 0) : ConvertEx.sqlite3Get4byte(pPage1.aData, 32));
-                    rc = (iTrunk > mxPage ? SysEx.SQLITE_CORRUPT_BKPT() : btreeGetPage(pBt, iTrunk, ref pTrunk, 0));
+                    rc = (iTrunk > mxPage ? SysEx.SQLITE_CORRUPT_BKPT() : btreeGetPage(iTrunk, ref pTrunk, 0));
                     if (rc != SQLITE.OK)
                     {
                         pTrunk = null;
@@ -74,7 +75,7 @@ namespace Contoso.Core
                         pTrunk = null;
                         Btree.TRACE("ALLOCATE: %d trunk - %d free pages left\n", pPgno, n - 1);
                     }
-                    else if (k > (uint)(pBt.usableSize / 4 - 2))
+                    else if (k > (uint)(this.usableSize / 4 - 2))
                     {
                         // Value of k is out of range. Database corruption
                         rc = SysEx.SQLITE_CORRUPT_BKPT();
@@ -120,13 +121,13 @@ namespace Contoso.Core
                                 rc = SysEx.SQLITE_CORRUPT_BKPT();
                                 goto end_allocate_page;
                             }
-                            rc = btreeGetPage(pBt, iNewTrunk, ref pNewTrunk, 0);
+                            rc = btreeGetPage(iNewTrunk, ref pNewTrunk, 0);
                             if (rc != SQLITE.OK)
                                 goto end_allocate_page;
                             rc = Pager.sqlite3PagerWrite(pNewTrunk.pDbPage);
                             if (rc != SQLITE.OK)
                             {
-                                releasePage(pNewTrunk);
+                                pNewTrunk.releasePage();
                                 goto end_allocate_page;
                             }
                             pNewTrunk.aData[0 + 0] = pTrunk.aData[0 + 0];
@@ -135,7 +136,7 @@ namespace Contoso.Core
                             pNewTrunk.aData[0 + 3] = pTrunk.aData[0 + 3];
                             ConvertEx.sqlite3Put4byte(pNewTrunk.aData, (uint)4, (uint)(k - 1));
                             Buffer.BlockCopy(pTrunk.aData, 12, pNewTrunk.aData, 8, (int)(k - 1) * 4);
-                            releasePage(pNewTrunk);
+                            pNewTrunk.releasePage();
                             if (pPrevTrunk == null)
                             {
                                 Debug.Assert(Pager.sqlite3PagerIswriteable(pPage1.pDbPage));
@@ -150,7 +151,7 @@ namespace Contoso.Core
                             }
                         }
                         pTrunk = null;
-                        TRACE("ALLOCATE: %d trunk - %d free pages left\n", pPgno, n - 1);
+                        Btree.TRACE("ALLOCATE: %d trunk - %d free pages left\n", pPgno, n - 1);
 #endif
                     }
                     else if (k > 0)
@@ -184,79 +185,79 @@ namespace Contoso.Core
                         if (searchList == 0 || iPage == nearby)
                         {
                             pPgno = iPage;
-                            TRACE("ALLOCATE: %d was leaf %d of %d on trunk %d" + ": %d more free pages\n", pPgno, closest + 1, k, pTrunk.pgno, n - 1);
+                            Btree.TRACE("ALLOCATE: %d was leaf %d of %d on trunk %d" + ": %d more free pages\n", pPgno, closest + 1, k, pTrunk.pgno, n - 1);
                             rc = Pager.sqlite3PagerWrite(pTrunk.pDbPage);
                             if (rc != SQLITE.OK)
                                 goto end_allocate_page;
                             if (closest < k - 1)
                                 Buffer.BlockCopy(aData, (int)(4 + k * 4), aData, 8 + (int)closest * 4, 4);
                             ConvertEx.sqlite3Put4byte(aData, (uint)4, (k - 1));
-                            var noContent = (!btreeGetHasContent(pBt, pPgno) ? 1 : 0);
-                            rc = btreeGetPage(pBt, pPgno, ref ppPage, noContent);
+                            var noContent = (!btreeGetHasContent(pPgno) ? 1 : 0);
+                            rc = btreeGetPage(pPgno, ref ppPage, noContent);
                             if (rc == SQLITE.OK)
                             {
                                 rc = Pager.sqlite3PagerWrite((ppPage).pDbPage);
                                 if (rc != SQLITE.OK)
-                                    releasePage(ppPage);
+                                    ppPage.releasePage();
                             }
                             searchList = 0;
                         }
                     }
-                    releasePage(pPrevTrunk);
+                    pPrevTrunk.releasePage();
                     pPrevTrunk = null;
                 } while (searchList != 0);
             }
             else
             {
                 // There are no pages on the freelist, so create a new page at the end of the file
-                rc = Pager.sqlite3PagerWrite(pBt.pPage1.pDbPage);
+                rc = Pager.sqlite3PagerWrite(this.pPage1.pDbPage);
                 if (rc != SQLITE.OK)
                     return rc;
-                pBt.nPage++;
-                if (pBt.nPage == PENDING_BYTE_PAGE(pBt))
-                    pBt.nPage++;
+                this.nPage++;
+                if (this.nPage == MemPage.PENDING_BYTE_PAGE(this))
+                    this.nPage++;
 #if !SQLITE_OMIT_AUTOVACUUM
-                if (pBt.autoVacuum && PTRMAP_ISPAGE(pBt, pBt.nPage))
+                if (this.autoVacuum && MemPage.PTRMAP_ISPAGE(this, this.nPage))
                 {
                     // If pPgno refers to a pointer-map page, allocate two new pages at the end of the file instead of one. The first allocated page
                     // becomes a new pointer-map page, the second is used by the caller.
                     MemPage pPg = null;
                     Btree.TRACE("ALLOCATE: %d from end of file (pointer-map page)\n", pPgno);
-                    Debug.Assert(pBt.nPage != PENDING_BYTE_PAGE(pBt));
-                    rc = btreeGetPage(pBt, pBt.nPage, ref pPg, 1);
+                    Debug.Assert(this.nPage != MemPage.PENDING_BYTE_PAGE(this));
+                    rc = btreeGetPage(this.nPage, ref pPg, 1);
                     if (rc == SQLITE.OK)
                     {
                         rc = Pager.sqlite3PagerWrite(pPg.pDbPage);
-                        releasePage(pPg);
+                        pPg.releasePage();
                     }
                     if (rc != SQLITE.OK)
                         return rc;
-                    pBt.nPage++;
-                    if (pBt.nPage == PENDING_BYTE_PAGE(pBt))
-                        pBt.nPage++;
+                    this.nPage++;
+                    if (this.nPage == MemPage.PENDING_BYTE_PAGE(this))
+                        this.nPage++;
                 }
 #endif
-                ConvertEx.sqlite3Put4byte(pBt.pPage1.aData, (uint)28, pBt.nPage);
-                pPgno = pBt.nPage;
-                Debug.Assert(pPgno != PENDING_BYTE_PAGE(pBt));
-                rc = btreeGetPage(pBt, pPgno, ref ppPage, 1);
+                ConvertEx.sqlite3Put4byte(this.pPage1.aData, (uint)28, this.nPage);
+                pPgno = this.nPage;
+                Debug.Assert(pPgno != MemPage.PENDING_BYTE_PAGE(this));
+                rc = btreeGetPage(pPgno, ref ppPage, 1);
                 if (rc != SQLITE.OK)
                     return rc;
                 rc = Pager.sqlite3PagerWrite((ppPage).pDbPage);
                 if (rc != SQLITE.OK)
-                    releasePage(ppPage);
+                    ppPage.releasePage();
                 Btree.TRACE("ALLOCATE: %d from end of file\n", pPgno);
             }
-            Debug.Assert(pPgno != PENDING_BYTE_PAGE(pBt));
+            Debug.Assert(pPgno != MemPage.PENDING_BYTE_PAGE(this));
 
         end_allocate_page:
-            releasePage(pTrunk);
-            releasePage(pPrevTrunk);
+            pTrunk.releasePage();
+            pPrevTrunk.releasePage();
             if (rc == SQLITE.OK)
             {
                 if (Pager.sqlite3PagerPageRefcount((ppPage).pDbPage) > 1)
                 {
-                    releasePage(ppPage);
+                    ppPage.releasePage();
                     return SysEx.SQLITE_CORRUPT_BKPT();
                 }
                 (ppPage).isInit = 0;
@@ -267,10 +268,11 @@ namespace Contoso.Core
             return rc;
         }
 
-        internal static SQLITE freePage2(BtShared pBt, MemPage pMemPage, Pgno iPage)
+        internal SQLITE freePage2(MemPage pMemPage, Pgno iPage)
         {
-            var pPage1 = pBt.pPage1; // Local reference to page 1
-            Debug.Assert(MutexEx.sqlite3_mutex_held(pBt.mutex));
+            MemPage pTrunk = null; // Free-list trunk page
+            var pPage1 = this.pPage1; // Local reference to page 1
+            Debug.Assert(MutexEx.sqlite3_mutex_held(this.mutex));
             Debug.Assert(iPage > 1);
             Debug.Assert(pMemPage == null || pMemPage.pgno == iPage);
             MemPage pPage; // Page being freed. May be NULL.
@@ -280,28 +282,28 @@ namespace Contoso.Core
                 Pager.sqlite3PagerRef(pPage.pDbPage);
             }
             else
-                pPage = btreePageLookup(pBt, iPage);
+                pPage = btreePageLookup(iPage);
             // Increment the free page count on pPage1
             var rc = Pager.sqlite3PagerWrite(pPage1.pDbPage);
             if (rc != SQLITE.OK)
                 goto freepage_out;
             var nFree = (int)ConvertEx.sqlite3Get4byte(pPage1.aData, 36); // Initial number of pages on free-list
             ConvertEx.sqlite3Put4byte(pPage1.aData, 36, nFree + 1);
-            if (pBt.secureDelete)
+            if (this.secureDelete)
             {
                 // If the secure_delete option is enabled, then always fully overwrite deleted information with zeros.
-                if ((pPage == null && ((rc = btreeGetPage(pBt, iPage, ref pPage, 0)) != SQLITE.OK)) || ((rc = Pager.sqlite3PagerWrite(pPage.pDbPage)) != SQLITE.OK))
+                if ((pPage == null && ((rc = btreeGetPage(iPage, ref pPage, 0)) != SQLITE.OK)) || ((rc = Pager.sqlite3PagerWrite(pPage.pDbPage)) != SQLITE.OK))
                     goto freepage_out;
                 Array.Clear(pPage.aData, 0, (int)pPage.pBt.pageSize);
             }
             // If the database supports auto-vacuum, write an entry in the pointer-map to indicate that the page is free.
 #if !SQLITE_OMIT_AUTOVACUUM
-            if (pBt.autoVacuum)
+            if (this.autoVacuum)
 #else
 if (false)
 #endif
             {
-                ptrmapPut(pBt, iPage, PTRMAP_FREEPAGE, 0, ref rc);
+                ptrmapPut(iPage, PTRMAP.FREEPAGE, 0, ref rc);
                 if (rc != SQLITE.OK)
                     goto freepage_out;
             }
@@ -309,22 +311,21 @@ if (false)
             // trunk page in the free-list is full, then this page will become a new free-list trunk page. Otherwise, it will become a leaf of the
             // first trunk page in the current free-list. This block tests if it is possible to add the page as a new free-list leaf.
             Pgno iTrunk = 0; // Page number of free-list trunk page
-            MemPage pTrunk = null; // Free-list trunk page
             if (nFree != 0)
             {
                 uint nLeaf; // Initial number of leaf cells on trunk page
                 iTrunk = (Pgno)ConvertEx.sqlite3Get4byte(pPage1.aData, 32); // Page number of free-list trunk page 
-                rc = btreeGetPage(pBt, iTrunk, ref pTrunk, 0);
+                rc = btreeGetPage(iTrunk, ref pTrunk, 0);
                 if (rc != SQLITE.OK)
                     goto freepage_out;
                 nLeaf = ConvertEx.sqlite3Get4byte(pTrunk.aData, 4);
-                Debug.Assert(pBt.usableSize > 32);
-                if (nLeaf > (uint)pBt.usableSize / 4 - 2)
+                Debug.Assert(this.usableSize > 32);
+                if (nLeaf > (uint)this.usableSize / 4 - 2)
                 {
                     rc = SysEx.SQLITE_CORRUPT_BKPT();
                     goto freepage_out;
                 }
-                if (nLeaf < (uint)pBt.usableSize / 4 - 8)
+                if (nLeaf < (uint)this.usableSize / 4 - 8)
                 {
                     // In this case there is room on the trunk page to insert the page being freed as a new leaf.
                     // Note: that the trunk page is not really full until it contains usableSize/4 - 2 entries, not usableSize/4 - 8 entries as we have
@@ -337,34 +338,32 @@ if (false)
                     {
                         ConvertEx.sqlite3Put4byte(pTrunk.aData, (uint)4, nLeaf + 1);
                         ConvertEx.sqlite3Put4byte(pTrunk.aData, (uint)8 + nLeaf * 4, iPage);
-                        if (pPage != null && !pBt.secureDelete)
+                        if (pPage != null && !this.secureDelete)
                             Pager.sqlite3PagerDontWrite(pPage.pDbPage);
-                        rc = btreeSetHasContent(pBt, iPage);
+                        rc = btreeSetHasContent(iPage);
                     }
-                    TRACE("FREE-PAGE: %d leaf on trunk page %d\n", iPage, pTrunk.pgno);
+                    Btree.TRACE("FREE-PAGE: %d leaf on trunk page %d\n", iPage, pTrunk.pgno);
                     goto freepage_out;
                 }
             }
             // If control flows to this point, then it was not possible to add the the page being freed as a leaf page of the first trunk in the free-list.
             // Possibly because the free-list is empty, or possibly because the first trunk in the free-list is full. Either way, the page being freed
             // will become the new first trunk page in the free-list.
-            if (pPage == null && (rc = btreeGetPage(pBt, iPage, ref pPage, 0)) != SQLITE.OK)
+            if (pPage == null && (rc = btreeGetPage(iPage, ref pPage, 0)) != SQLITE.OK)
                 goto freepage_out;
             rc = Pager.sqlite3PagerWrite(pPage.pDbPage);
             if (rc != SQLITE.OK)
                 goto freepage_out;
             ConvertEx.sqlite3Put4byte(pPage.aData, iTrunk);
             ConvertEx.sqlite3Put4byte(pPage.aData, 4, 0);
-            ConvertEx.sqlite3Put4byte(pPage1.aData, (u32)32, iPage);
-            TRACE("FREE-PAGE: %d new trunk page replacing %d\n", pPage.pgno, iTrunk);
+            ConvertEx.sqlite3Put4byte(pPage1.aData, (uint)32, iPage);
+            Btree.TRACE("FREE-PAGE: %d new trunk page replacing %d\n", pPage.pgno, iTrunk);
         freepage_out:
             if (pPage != null)
                 pPage.isInit = 0;
-            releasePage(pPage);
-            releasePage(pTrunk);
+            pPage.releasePage();
+            pTrunk.releasePage();
             return rc;
         }
-
-
     }
 }
