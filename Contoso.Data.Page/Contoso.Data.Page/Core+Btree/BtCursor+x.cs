@@ -12,159 +12,159 @@ namespace Contoso.Core
     public partial class BtCursor
     {
 #if DEBUG
-        internal static bool cursorHoldsMutex(BtCursor p) { return MutexEx.sqlite3_mutex_held(p.pBt.mutex); }
+        internal bool cursorHoldsMutex() { return MutexEx.sqlite3_mutex_held(this.pBt.mutex); }
 #else
-        internal static bool cursorHoldsMutex(BtCursor p) { return true; }
+        internal bool cursorHoldsMutex() { return true; }
 #endif
 
         #region Properties
 
-        internal static int sqlite3BtreeCursorSize() { return -1; }
-        internal static void sqlite3BtreeCursorZero(BtCursor p) { p.Clear(); }
+        internal int sqlite3BtreeCursorSize() { return -1; }
+        internal void sqlite3BtreeCursorZero() { this.Clear(); }
 
-        internal static void sqlite3BtreeSetCachedRowid(BtCursor pCur, long iRowid)
+        internal void sqlite3BtreeSetCachedRowid(long iRowid)
         {
-            for (var p = pCur.pBt.pCursor; p != null; p = p.pNext)
-                if (p.pgnoRoot == pCur.pgnoRoot)
+            for (var p = this.pBt.pCursor; p != null; p = p.pNext)
+                if (p.pgnoRoot == this.pgnoRoot)
                     p.cachedRowid = iRowid;
-            Debug.Assert(pCur.cachedRowid == iRowid);
+            Debug.Assert(this.cachedRowid == iRowid);
         }
 
-        internal static long sqlite3BtreeGetCachedRowid(BtCursor pCur) { return pCur.cachedRowid; }
+        internal long sqlite3BtreeGetCachedRowid() { return this.cachedRowid; }
 
         #endregion
 
-        internal SQLITE saveCursorPosition(BtCursor pCur)
+        internal SQLITE saveCursorPosition()
         {
-            Debug.Assert(pCur.eState == CURSOR.VALID);
-            Debug.Assert(pCur.pKey == null);
-            Debug.Assert(cursorHoldsMutex(pCur));
-            var rc = sqlite3BtreeKeySize(pCur, ref pCur.nKey);
+            Debug.Assert(this.eState == CURSOR.VALID);
+            Debug.Assert(this.pKey == null);
+            Debug.Assert(cursorHoldsMutex());
+            var rc = sqlite3BtreeKeySize(ref this.nKey);
             Debug.Assert(rc == SQLITE.OK);  // KeySize() cannot fail
             // If this is an intKey table, then the above call to BtreeKeySize() stores the integer key in pCur.nKey. In this case this value is
             // all that is required. Otherwise, if pCur is not open on an intKey table, then malloc space for and store the pCur.nKey bytes of key data.
-            if (pCur.apPage[0].intKey == 0)
+            if (this.apPage[0].intKey == 0)
             {
-                var pKey = MallocEx.sqlite3Malloc((int)pCur.nKey);
-                rc = sqlite3BtreeKey(pCur, 0, (uint)pCur.nKey, pKey);
+                var pKey = MallocEx.sqlite3Malloc((int)this.nKey);
+                rc = sqlite3BtreeKey(0, (uint)this.nKey, pKey);
                 if (rc == SQLITE.OK)
-                    pCur.pKey = pKey;
+                    this.pKey = pKey;
             }
-            Debug.Assert(pCur.apPage[0].intKey == 0 || pCur.pKey == null);
+            Debug.Assert(this.apPage[0].intKey == 0 || this.pKey == null);
             if (rc == SQLITE.OK)
             {
-                for (var i = 0; i <= pCur.iPage; i++)
+                for (var i = 0; i <= this.iPage; i++)
                 {
-                    releasePage(pCur.apPage[i]);
-                    pCur.apPage[i] = null;
+                    this.apPage[i].releasePage();
+                    this.apPage[i] = null;
                 }
-                pCur.iPage = -1;
-                pCur.eState = CURSOR.REQUIRESEEK;
+                this.iPage = -1;
+                this.eState = CURSOR.REQUIRESEEK;
             }
-            invalidateOverflowCache(pCur);
+            invalidateOverflowCache();
             return rc;
         }
 
-        internal static void sqlite3BtreeClearCursor(BtCursor pCur)
+        internal void sqlite3BtreeClearCursor()
         {
-            Debug.Assert(cursorHoldsMutex(pCur));
-            MallocEx.sqlite3_free(ref pCur.pKey);
-            pCur.eState = CURSOR.INVALID;
+            Debug.Assert(cursorHoldsMutex());
+            MallocEx.sqlite3_free(ref this.pKey);
+            this.eState = CURSOR.INVALID;
         }
 
-        internal static SQLITE btreeMoveto(BtCursor pCur, byte[] pKey, long nKey, int bias, ref int pRes)
+        internal SQLITE btreeMoveto(byte[] pKey, long nKey, int bias, ref int pRes)
         {
-            UnpackedRecord pIdxKey;   // Unpacked index key
-            var aSpace = new UnpackedRecord();
+            Btree.UnpackedRecord pIdxKey; // Unpacked index key
+            var aSpace = new Btree.UnpackedRecord();
             if (pKey != null)
             {
                 Debug.Assert(nKey == (long)(int)nKey);
-                pIdxKey = sqlite3VdbeRecordUnpack(pCur.pKeyInfo, (int)nKey, pKey, aSpace, 16);
+                pIdxKey = sqlite3VdbeRecordUnpack(this.pKeyInfo, (int)nKey, pKey, aSpace, 16);
             }
             else
                 pIdxKey = null;
-            var rc = sqlite3BtreeMovetoUnpacked(pCur, pIdxKey, nKey, bias != 0 ? 1 : 0, ref pRes);
+            var rc = sqlite3BtreeMovetoUnpacked(pIdxKey, nKey, bias != 0 ? 1 : 0, ref pRes);
             if (pKey != null)
                 sqlite3VdbeDeleteUnpackedRecord(pIdxKey);
             return rc;
         }
 
-        internal static SQLITE btreeRestoreCursorPosition(BtCursor pCur)
+        internal SQLITE btreeRestoreCursorPosition()
         {
-            Debug.Assert(cursorHoldsMutex(pCur));
-            Debug.Assert(pCur.eState >= CURSOR.REQUIRESEEK);
-            if (pCur.eState == CURSOR.FAULT)
-                return pCur.skipNext;
-            pCur.eState = CURSOR.INVALID;
-            var rc = btreeMoveto(pCur, pCur.pKey, pCur.nKey, 0, ref pCur.skipNext);
+            Debug.Assert(cursorHoldsMutex());
+            Debug.Assert(this.eState >= CURSOR.REQUIRESEEK);
+            if (this.eState == CURSOR.FAULT)
+                return (SQLITE)this.skipNext;
+            this.eState = CURSOR.INVALID;
+            var rc = btreeMoveto(this.pKey, this.nKey, 0, ref this.skipNext);
             if (rc == SQLITE.OK)
             {
-                pCur.pKey = null;
-                Debug.Assert(pCur.eState == CURSOR.VALID || pCur.eState == CURSOR.INVALID);
+                this.pKey = null;
+                Debug.Assert(this.eState == CURSOR.VALID || this.eState == CURSOR.INVALID);
             }
             return rc;
         }
 
-        internal static SQLITE restoreCursorPosition(BtCursor pCur) { return (pCur.eState >= CURSOR.REQUIRESEEK ? btreeRestoreCursorPosition(pCur) : SQLITE.OK); }
+        internal SQLITE restoreCursorPosition() { return (this.eState >= CURSOR.REQUIRESEEK ? btreeRestoreCursorPosition() : SQLITE.OK); }
 
-        internal static SQLITE sqlite3BtreeCursorHasMoved(BtCursor pCur, ref int pHasMoved)
+        internal SQLITE sqlite3BtreeCursorHasMoved(ref int pHasMoved)
         {
-            var rc = restoreCursorPosition(pCur);
+            var rc = restoreCursorPosition();
             if (rc != SQLITE.OK)
             {
                 pHasMoved = 1;
                 return rc;
             }
-            pHasMoved = (pCur.eState != CURSOR.VALID || pCur.skipNext != 0 ? 1 : 0);
+            pHasMoved = (this.eState != CURSOR.VALID || this.skipNext != 0 ? 1 : 0);
             return SQLITE.OK;
         }
 
-        internal static SQLITE sqlite3BtreeCloseCursor(BtCursor pCur)
+        internal SQLITE sqlite3BtreeCloseCursor()
         {
-            var pBtree = pCur.pBtree;
+            var pBtree = this.pBtree;
             if (pBtree != null)
             {
-                var pBt = pCur.pBt;
-                sqlite3BtreeEnter(pBtree);
-                sqlite3BtreeClearCursor(pCur);
-                if (pCur.pPrev != null)
-                    pCur.pPrev.pNext = pCur.pNext;
+                var pBt = this.pBt;
+                pBtree.sqlite3BtreeEnter();
+                sqlite3BtreeClearCursor();
+                if (this.pPrev != null)
+                    this.pPrev.pNext = this.pNext;
                 else
-                    pBt.pCursor = pCur.pNext;
-                if (pCur.pNext != null)
-                    pCur.pNext.pPrev = pCur.pPrev;
-                for (var i = 0; i <= pCur.iPage; i++)
-                    releasePage(pCur.apPage[i]);
-                unlockBtreeIfUnused(pBt);
-                invalidateOverflowCache(pCur);
-                sqlite3BtreeLeave(pBtree);
+                    pBt.pCursor = this.pNext;
+                if (this.pNext != null)
+                    this.pNext.pPrev = this.pPrev;
+                for (var i = 0; i <= this.iPage; i++)
+                    this.apPage[i].releasePage();
+                pBt.unlockBtreeIfUnused();
+                Btree.invalidateOverflowCache(this);
+                pBtree.sqlite3BtreeLeave();
             }
             return SQLITE.OK;
         }
 
 #if !NDEBUG
-        internal static void assertCellInfo(BtCursor pCur)
+        internal void assertCellInfo()
         {
-            var iPage = pCur.iPage;
+            var iPage = this.iPage;
             var info = new CellInfo();
-            btreeParseCell(pCur.apPage[iPage], pCur.aiIdx[iPage], ref info);
-            Debug.Assert(info.GetHashCode() == pCur.info.GetHashCode() || info.Equals(pCur.info));
+            this.apPage[iPage].btreeParseCell(this.aiIdx[iPage], ref info);
+            Debug.Assert(info.GetHashCode() == this.info.GetHashCode() || info.Equals(this.info));
         }
 #else
-        internal static void assertCellInfo(BtCursor pCur) { }
+        internal void assertCellInfo() { }
 #endif
 
 #if true //!_MSC_VER
-        internal static void getCellInfo(BtCursor pCur)
+        internal void getCellInfo()
         {
-            if (pCur.info.nSize == 0)
+            if (this.info.nSize == 0)
             {
-                var iPage = pCur.iPage;
-                btreeParseCell(pCur.apPage[iPage], pCur.aiIdx[iPage], ref pCur.info);
-                pCur.validNKey = true;
+                var iPage = this.iPage;
+                this.apPage[iPage].btreeParseCell(this.aiIdx[iPage], ref this.info);
+                this.validNKey = true;
             }
             else
-                assertCellInfo(pCur);
+                assertCellInfo();
         }
 #else
         /* Use a macro in all other compilers so that the function is inlined */
@@ -179,31 +179,31 @@ namespace Contoso.Core
 #endif
 
 #if DEBUG
-        internal static bool sqlite3BtreeCursorIsValid(BtCursor pCur) { return pCur != null && pCur.eState == CURSOR.VALID; }
+        internal bool sqlite3BtreeCursorIsValid() { return this != null && this.eState == CURSOR.VALID; }
 #else
-        internal static bool sqlite3BtreeCursorIsValid(BtCursor pCur) { return true; }
+        internal bool sqlite3BtreeCursorIsValid() { return true; }
 #endif
 
-        internal static SQLITE sqlite3BtreeKeySize(BtCursor pCur, ref long pSize)
+        internal SQLITE sqlite3BtreeKeySize(ref long pSize)
         {
-            Debug.Assert(cursorHoldsMutex(pCur));
-            Debug.Assert(pCur.eState == CURSOR.INVALID || pCur.eState == CURSOR.VALID);
-            if (pCur.eState != CURSOR.VALID)
+            Debug.Assert(cursorHoldsMutex());
+            Debug.Assert(this.eState == CURSOR.INVALID || this.eState == CURSOR.VALID);
+            if (this.eState != CURSOR.VALID)
                 pSize = 0;
             else
             {
-                getCellInfo(pCur);
-                pSize = pCur.info.nKey;
+                getCellInfo();
+                pSize = this.info.nKey;
             }
             return SQLITE.OK;
         }
 
-        internal static SQLITE sqlite3BtreeDataSize(BtCursor pCur, ref uint pSize)
+        internal SQLITE sqlite3BtreeDataSize(ref uint pSize)
         {
-            Debug.Assert(cursorHoldsMutex(pCur));
-            Debug.Assert(pCur.eState == CURSOR.VALID);
-            getCellInfo(pCur);
-            pSize = pCur.info.nData;
+            Debug.Assert(cursorHoldsMutex());
+            Debug.Assert(this.eState == CURSOR.VALID);
+            getCellInfo();
+            pSize = this.info.nData;
             return SQLITE.OK;
         }
 
@@ -223,41 +223,41 @@ namespace Contoso.Core
             return SQLITE.OK;
         }
 
-        internal static SQLITE accessPayload(BtCursor pCur, uint offset, uint amt, byte[] pBuf, int eOp)
+        internal SQLITE accessPayload(uint offset, uint amt, byte[] pBuf, int eOp)
         {
             uint pBufOffset = 0;
             byte[] aPayload;
             var rc = SQLITE.OK;
             int iIdx = 0;
-            var pPage = pCur.apPage[pCur.iPage]; // Btree page of current entry
-            var pBt = pCur.pBt;                  // Btree this cursor belongs to
+            var pPage = this.apPage[this.iPage]; // Btree page of current entry
+            var pBt = this.pBt;                  // Btree this cursor belongs to
             Debug.Assert(pPage != null);
-            Debug.Assert(pCur.eState == CURSOR.VALID);
-            Debug.Assert(pCur.aiIdx[pCur.iPage] < pPage.nCell);
-            Debug.Assert(cursorHoldsMutex(pCur));
-            getCellInfo(pCur);
-            aPayload = pCur.info.pCell; //pCur.info.pCell + pCur.info.nHeader;
-            var nKey = (uint)(pPage.intKey != 0 ? 0 : (int)pCur.info.nKey);
-            if (Check.NEVER(offset + amt > nKey + pCur.info.nData) || pCur.info.nLocal > pBt.usableSize)
+            Debug.Assert(this.eState == CURSOR.VALID);
+            Debug.Assert(this.aiIdx[this.iPage] < pPage.nCell);
+            Debug.Assert(cursorHoldsMutex());
+            getCellInfo();
+            aPayload = this.info.pCell; //pCur.info.pCell + pCur.info.nHeader;
+            var nKey = (uint)(pPage.intKey != 0 ? 0 : (int)this.info.nKey);
+            if (Check.NEVER(offset + amt > nKey + this.info.nData) || this.info.nLocal > pBt.usableSize)
                 // Trying to read or write past the end of the data is an error
                 return SysEx.SQLITE_CORRUPT_BKPT();
             // Check if data must be read/written to/from the btree page itself.
-            if (offset < pCur.info.nLocal)
+            if (offset < this.info.nLocal)
             {
                 var a = (int)amt;
-                if (a + offset > pCur.info.nLocal)
-                    a = (int)(pCur.info.nLocal - offset);
-                rc = copyPayload(aPayload, (uint)(offset + pCur.info.iCell + pCur.info.nHeader), pBuf, pBufOffset, (uint)a, eOp, pPage.pDbPage);
+                if (a + offset > this.info.nLocal)
+                    a = (int)(this.info.nLocal - offset);
+                rc = copyPayload(aPayload, (uint)(offset + this.info.iCell + this.info.nHeader), pBuf, pBufOffset, (uint)a, eOp, pPage.pDbPage);
                 offset = 0;
                 pBufOffset += (uint)a;
                 amt -= (uint)a;
             }
             else
-                offset -= pCur.info.nLocal;
+                offset -= this.info.nLocal;
             if (rc == SQLITE.OK && amt > 0)
             {
                 var ovflSize = (uint)(pBt.usableSize - 4);  // Bytes content per ovfl page
-                Pgno nextPage = ConvertEx.sqlite3Get4byte(aPayload, pCur.info.nLocal + pCur.info.iCell + pCur.info.nHeader);
+                Pgno nextPage = ConvertEx.sqlite3Get4byte(aPayload, this.info.nLocal + this.info.iCell + this.info.nHeader);
 #if !SQLITE_OMIT_INCRBLOB
 /* If the isIncrblobHandle flag is set and the BtCursor.aOverflow[]
 ** has not been allocated, allocate it now. The array is sized at
@@ -305,7 +305,7 @@ if( pCur.aOverflow && pCur.aOverflow[iIdx+1] ){
 nextPage = pCur.aOverflow[iIdx+1];
 } else
 #endif
-                        rc = getOverflowPage(pBt, nextPage, out MemPageDummy, out nextPage);
+                        rc = pBt.getOverflowPage(nextPage, out MemPageDummy, out nextPage);
                         offset -= ovflSize;
                     }
                     else
@@ -334,307 +334,307 @@ nextPage = pCur.aOverflow[iIdx+1];
             return rc;
         }
 
-        internal static SQLITE sqlite3BtreeKey(BtCursor pCur, uint offset, uint amt, byte[] pBuf)
+        internal SQLITE sqlite3BtreeKey(uint offset, uint amt, byte[] pBuf)
         {
-            Debug.Assert(cursorHoldsMutex(pCur));
-            Debug.Assert(pCur.eState == CURSOR.VALID);
-            Debug.Assert(pCur.iPage >= 0 && pCur.apPage[pCur.iPage] != null);
-            Debug.Assert(pCur.aiIdx[pCur.iPage] < pCur.apPage[pCur.iPage].nCell);
-            return accessPayload(pCur, offset, amt, pBuf, 0);
+            Debug.Assert(cursorHoldsMutex());
+            Debug.Assert(this.eState == CURSOR.VALID);
+            Debug.Assert(this.iPage >= 0 && this.apPage[this.iPage] != null);
+            Debug.Assert(this.aiIdx[this.iPage] < this.apPage[this.iPage].nCell);
+            return accessPayload(offset, amt, pBuf, 0);
         }
 
-        internal static SQLITE sqlite3BtreeData(BtCursor pCur, uint offset, uint amt, byte[] pBuf)
+        internal SQLITE sqlite3BtreeData(uint offset, uint amt, byte[] pBuf)
         {
 #if !SQLITE_OMIT_INCRBLOB
             if (pCur.eState == CURSOR.INVALID)
                 return SQLITE.ABORT;
 #endif
-            Debug.Assert(cursorHoldsMutex(pCur));
-            var rc = restoreCursorPosition(pCur);
+            Debug.Assert(cursorHoldsMutex());
+            var rc = restoreCursorPosition();
             if (rc == SQLITE.OK)
             {
-                Debug.Assert(pCur.eState == CURSOR.VALID);
-                Debug.Assert(pCur.iPage >= 0 && pCur.apPage[pCur.iPage] != null);
-                Debug.Assert(pCur.aiIdx[pCur.iPage] < pCur.apPage[pCur.iPage].nCell);
-                rc = accessPayload(pCur, offset, amt, pBuf, 0);
+                Debug.Assert(this.eState == CURSOR.VALID);
+                Debug.Assert(this.iPage >= 0 && this.apPage[this.iPage] != null);
+                Debug.Assert(this.aiIdx[this.iPage] < this.apPage[this.iPage].nCell);
+                rc = accessPayload(offset, amt, pBuf, 0);
             }
             return rc;
         }
 
-        internal static byte[] fetchPayload(BtCursor pCur, ref int pAmt, ref int outOffset, bool skipKey)
+        internal byte[] fetchPayload(ref int pAmt, ref int outOffset, bool skipKey)
         {
-            Debug.Assert(pCur != null && pCur.iPage >= 0 && pCur.apPage[pCur.iPage] != null);
-            Debug.Assert(pCur.eState == CURSOR.VALID);
-            Debug.Assert(cursorHoldsMutex(pCur));
+            Debug.Assert(this != null && this.iPage >= 0 && this.apPage[this.iPage] != null);
+            Debug.Assert(this.eState == CURSOR.VALID);
+            Debug.Assert(cursorHoldsMutex());
             outOffset = -1;
-            var pPage = pCur.apPage[pCur.iPage];
-            Debug.Assert(pCur.aiIdx[pCur.iPage] < pPage.nCell);
-            if (Check.NEVER(pCur.info.nSize == 0))
-                btreeParseCell(pCur.apPage[pCur.iPage], pCur.aiIdx[pCur.iPage], ref pCur.info);
-            var aPayload = MallocEx.sqlite3Malloc(pCur.info.nSize - pCur.info.nHeader);
-            var nKey = (pPage.intKey != 0 ? 0 : (uint)pCur.info.nKey);
+            var pPage = this.apPage[this.iPage];
+            Debug.Assert(this.aiIdx[this.iPage] < pPage.nCell);
+            if (Check.NEVER(this.info.nSize == 0))
+                this.apPage[this.iPage].btreeParseCell(this.aiIdx[this.iPage], ref this.info);
+            var aPayload = MallocEx.sqlite3Malloc(this.info.nSize - this.info.nHeader);
+            var nKey = (pPage.intKey != 0 ? 0 : (uint)this.info.nKey);
             uint nLocal;
             if (skipKey)
             {
-                outOffset = (int)(pCur.info.iCell + pCur.info.nHeader + nKey);
-                Buffer.BlockCopy(pCur.info.pCell, outOffset, aPayload, 0, (int)(pCur.info.nSize - pCur.info.nHeader - nKey));
-                nLocal = pCur.info.nLocal - nKey;
+                outOffset = (int)(this.info.iCell + this.info.nHeader + nKey);
+                Buffer.BlockCopy(this.info.pCell, outOffset, aPayload, 0, (int)(this.info.nSize - this.info.nHeader - nKey));
+                nLocal = this.info.nLocal - nKey;
             }
             else
             {
-                outOffset = (int)(pCur.info.iCell + pCur.info.nHeader);
-                Buffer.BlockCopy(pCur.info.pCell, outOffset, aPayload, 0, pCur.info.nSize - pCur.info.nHeader);
-                nLocal = pCur.info.nLocal;
+                outOffset = (int)(this.info.iCell + this.info.nHeader);
+                Buffer.BlockCopy(this.info.pCell, outOffset, aPayload, 0, this.info.nSize - this.info.nHeader);
+                nLocal = this.info.nLocal;
                 Debug.Assert(nLocal <= nKey);
             }
             pAmt = (int)nLocal;
             return aPayload;
         }
 
-        internal static byte[] sqlite3BtreeKeyFetch(BtCursor pCur, ref int pAmt, ref int outOffset)
+        internal byte[] sqlite3BtreeKeyFetch(ref int pAmt, ref int outOffset)
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(pCur.pBtree.db.mutex));
-            Debug.Assert(cursorHoldsMutex(pCur));
+            Debug.Assert(MutexEx.sqlite3_mutex_held(this.pBtree.db.mutex));
+            Debug.Assert(cursorHoldsMutex());
             byte[] p = null;
-            if (Check.ALWAYS(pCur.eState == CURSOR.VALID))
-                p = fetchPayload(pCur, ref pAmt, ref outOffset, false);
+            if (Check.ALWAYS(this.eState == CURSOR.VALID))
+                p = fetchPayload(ref pAmt, ref outOffset, false);
             return p;
         }
 
         //TODO remove sqlite3BtreeKeyFetch or sqlite3BtreeDataFetch
-        internal static byte[] sqlite3BtreeDataFetch(BtCursor pCur, ref int pAmt, ref int outOffset)
+        internal byte[] sqlite3BtreeDataFetch(ref int pAmt, ref int outOffset)
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(pCur.pBtree.db.mutex));
-            Debug.Assert(cursorHoldsMutex(pCur));
+            Debug.Assert(MutexEx.sqlite3_mutex_held(this.pBtree.db.mutex));
+            Debug.Assert(cursorHoldsMutex());
             byte[] p = null;
-            if (Check.ALWAYS(pCur.eState == CURSOR.VALID))
-                p = fetchPayload(pCur, ref pAmt, ref outOffset, true);
+            if (Check.ALWAYS(this.eState == CURSOR.VALID))
+                p = fetchPayload(ref pAmt, ref outOffset, true);
             return p;
         }
 
-        internal static SQLITE moveToChild(BtCursor pCur, Pgno newPgno)
+        internal SQLITE moveToChild(Pgno newPgno)
         {
-            var i = pCur.iPage;
+            var i = this.iPage;
             var pNewPage = new MemPage();
-            var pBt = pCur.pBt;
-            Debug.Assert(cursorHoldsMutex(pCur));
-            Debug.Assert(pCur.eState == CURSOR.VALID);
-            Debug.Assert(pCur.iPage < BTCURSOR_MAX_DEPTH);
-            if (pCur.iPage >= (BTCURSOR_MAX_DEPTH - 1))
+            var pBt = this.pBt;
+            Debug.Assert(cursorHoldsMutex());
+            Debug.Assert(this.eState == CURSOR.VALID);
+            Debug.Assert(this.iPage < BTCURSOR_MAX_DEPTH);
+            if (this.iPage >= (BTCURSOR_MAX_DEPTH - 1))
                 return SysEx.SQLITE_CORRUPT_BKPT();
-            var rc = getAndInitPage(pBt, newPgno, ref pNewPage);
+            var rc = pBt.getAndInitPage(newPgno, ref pNewPage);
             if (rc != SQLITE.OK)
                 return rc;
-            pCur.apPage[i + 1] = pNewPage;
-            pCur.aiIdx[i + 1] = 0;
-            pCur.iPage++;
-            pCur.info.nSize = 0;
-            pCur.validNKey = false;
-            if (pNewPage.nCell < 1 || pNewPage.intKey != pCur.apPage[i].intKey)
+            this.apPage[i + 1] = pNewPage;
+            this.aiIdx[i + 1] = 0;
+            this.iPage++;
+            this.info.nSize = 0;
+            this.validNKey = false;
+            if (pNewPage.nCell < 1 || pNewPage.intKey != this.apPage[i].intKey)
                 return SysEx.SQLITE_CORRUPT_BKPT();
             return SQLITE.OK;
         }
 
-        internal static void moveToParent(BtCursor pCur)
+        internal void moveToParent()
         {
-            Debug.Assert(cursorHoldsMutex(pCur));
-            Debug.Assert(pCur.eState == CURSOR.VALID);
-            Debug.Assert(pCur.iPage > 0);
-            Debug.Assert(pCur.apPage[pCur.iPage] != null);
-            assertParentIndex(pCur.apPage[pCur.iPage - 1], pCur.aiIdx[pCur.iPage - 1], pCur.apPage[pCur.iPage].pgno);
-            releasePage(pCur.apPage[pCur.iPage]);
-            pCur.iPage--;
-            pCur.info.nSize = 0;
-            pCur.validNKey = false;
+            Debug.Assert(cursorHoldsMutex());
+            Debug.Assert(this.eState == CURSOR.VALID);
+            Debug.Assert(this.iPage > 0);
+            Debug.Assert(this.apPage[this.iPage] != null);
+            MemPage.assertParentIndex(this.apPage[this.iPage - 1], this.aiIdx[this.iPage - 1], this.apPage[this.iPage].pgno);
+            this.apPage[this.iPage].releasePage();
+            this.iPage--;
+            this.info.nSize = 0;
+            this.validNKey = false;
         }
 
-        internal static SQLITE moveToRoot(BtCursor pCur)
+        internal SQLITE moveToRoot()
         {
-            Debug.Assert(cursorHoldsMutex(pCur));
+            Debug.Assert(cursorHoldsMutex());
             Debug.Assert(CURSOR.INVALID < CURSOR.REQUIRESEEK);
             Debug.Assert(CURSOR.VALID < CURSOR.REQUIRESEEK);
             Debug.Assert(CURSOR.FAULT > CURSOR.REQUIRESEEK);
-            if (pCur.eState >= CURSOR.REQUIRESEEK)
+            if (this.eState >= CURSOR.REQUIRESEEK)
             {
-                if (pCur.eState == CURSOR.FAULT)
+                if (this.eState == CURSOR.FAULT)
                 {
-                    Debug.Assert(pCur.skipNext != SQLITE.OK);
-                    return pCur.skipNext;
+                    Debug.Assert(this.skipNext != 0);
+                    return (SQLITE)this.skipNext;
                 }
-                sqlite3BtreeClearCursor(pCur);
+                sqlite3BtreeClearCursor();
             }
             var rc = SQLITE.OK;
-            var p = pCur.pBtree;
+            var p = this.pBtree;
             var pBt = p.pBt;
-            if (pCur.iPage >= 0)
+            if (this.iPage >= 0)
             {
-                for (var i = 1; i <= pCur.iPage; i++)
-                    releasePage(pCur.apPage[i]);
-                pCur.iPage = 0;
+                for (var i = 1; i <= this.iPage; i++)
+                    this.apPage[i].releasePage();
+                this.iPage = 0;
             }
             else
             {
-                rc = getAndInitPage(pBt, pCur.pgnoRoot, ref pCur.apPage[0]);
+                rc = pBt.getAndInitPage(this.pgnoRoot, ref this.apPage[0]);
                 if (rc != SQLITE.OK)
                 {
-                    pCur.eState = CURSOR.INVALID;
+                    this.eState = CURSOR.INVALID;
                     return rc;
                 }
-                pCur.iPage = 0;
+                this.iPage = 0;
                 // If pCur.pKeyInfo is not NULL, then the caller that opened this cursor expected to open it on an index b-tree. Otherwise, if pKeyInfo is
                 // NULL, the caller expects a table b-tree. If this is not the case, return an SQLITE_CORRUPT error.
-                Debug.Assert(pCur.apPage[0].intKey == 1 || pCur.apPage[0].intKey == 0);
-                if ((pCur.pKeyInfo == null) != (pCur.apPage[0].intKey != 0))
+                Debug.Assert(this.apPage[0].intKey == 1 || this.apPage[0].intKey == 0);
+                if ((this.pKeyInfo == null) != (this.apPage[0].intKey != 0))
                     return SysEx.SQLITE_CORRUPT_BKPT();
             }
             // Assert that the root page is of the correct type. This must be the case as the call to this function that loaded the root-page (either
             // this call or a previous invocation) would have detected corruption if the assumption were not true, and it is not possible for the flags
             // byte to have been modified while this cursor is holding a reference to the page.
-            var pRoot = pCur.apPage[0];
-            Debug.Assert(pRoot.pgno == pCur.pgnoRoot);
-            Debug.Assert(pRoot.isInit != 0 && (pCur.pKeyInfo == null) == (pRoot.intKey != 0));
-            pCur.aiIdx[0] = 0;
-            pCur.info.nSize = 0;
-            pCur.atLast = 0;
-            pCur.validNKey = false;
+            var pRoot = this.apPage[0];
+            Debug.Assert(pRoot.pgno == this.pgnoRoot);
+            Debug.Assert(pRoot.isInit != 0 && (this.pKeyInfo == null) == (pRoot.intKey != 0));
+            this.aiIdx[0] = 0;
+            this.info.nSize = 0;
+            this.atLast = 0;
+            this.validNKey = false;
             if (pRoot.nCell == 0 && 0 == pRoot.leaf)
             {
                 if (pRoot.pgno != 1)
                     return SysEx.SQLITE_CORRUPT_BKPT();
                 Pgno subpage = ConvertEx.sqlite3Get4byte(pRoot.aData, pRoot.hdrOffset + 8);
-                pCur.eState = CURSOR.VALID;
-                rc = moveToChild(pCur, subpage);
+                this.eState = CURSOR.VALID;
+                rc = moveToChild(subpage);
             }
             else
-                pCur.eState = (pRoot.nCell > 0 ? CURSOR.VALID : CURSOR.INVALID);
+                this.eState = (pRoot.nCell > 0 ? CURSOR.VALID : CURSOR.INVALID);
             return rc;
         }
 
-        internal static SQLITE moveToLeftmost(BtCursor pCur)
+        internal SQLITE moveToLeftmost()
         {
-            Debug.Assert(cursorHoldsMutex(pCur));
-            Debug.Assert(pCur.eState == CURSOR.VALID);
+            Debug.Assert(cursorHoldsMutex());
+            Debug.Assert(this.eState == CURSOR.VALID);
             MemPage pPage;
             var rc = SQLITE.OK;
-            while (rc == SQLITE.OK && 0 == (pPage = pCur.apPage[pCur.iPage]).leaf)
+            while (rc == SQLITE.OK && 0 == (pPage = this.apPage[this.iPage]).leaf)
             {
-                Debug.Assert(pCur.aiIdx[pCur.iPage] < pPage.nCell);
-                Pgno pgno = ConvertEx.sqlite3Get4byte(pPage.aData, findCell(pPage, pCur.aiIdx[pCur.iPage]));
-                rc = moveToChild(pCur, pgno);
+                Debug.Assert(this.aiIdx[this.iPage] < pPage.nCell);
+                Pgno pgno = ConvertEx.sqlite3Get4byte(pPage.aData, pPage.findCell(this.aiIdx[this.iPage]));
+                rc = moveToChild(pgno);
             }
             return rc;
         }
 
-        internal static SQLITE moveToRightmost(BtCursor pCur)
+        internal SQLITE moveToRightmost()
         {
-            Debug.Assert(cursorHoldsMutex(pCur));
-            Debug.Assert(pCur.eState == CURSOR.VALID);
+            Debug.Assert(cursorHoldsMutex());
+            Debug.Assert(this.eState == CURSOR.VALID);
             var rc = SQLITE.OK;
             MemPage pPage = null;
-            while (rc == SQLITE.OK && 0 == (pPage = pCur.apPage[pCur.iPage]).leaf)
+            while (rc == SQLITE.OK && 0 == (pPage = this.apPage[this.iPage]).leaf)
             {
                 Pgno pgno = ConvertEx.sqlite3Get4byte(pPage.aData, pPage.hdrOffset + 8);
-                pCur.aiIdx[pCur.iPage] = pPage.nCell;
-                rc = moveToChild(pCur, pgno);
+                this.aiIdx[this.iPage] = pPage.nCell;
+                rc = moveToChild(pgno);
             }
             if (rc == SQLITE.OK)
             {
-                pCur.aiIdx[pCur.iPage] = (ushort)(pPage.nCell - 1);
-                pCur.info.nSize = 0;
-                pCur.validNKey = false;
+                this.aiIdx[this.iPage] = (ushort)(pPage.nCell - 1);
+                this.info.nSize = 0;
+                this.validNKey = false;
             }
             return rc;
         }
 
-        internal static SQLITE sqlite3BtreeFirst(BtCursor pCur, ref int pRes)
+        internal SQLITE sqlite3BtreeFirst(ref int pRes)
         {
-            Debug.Assert(cursorHoldsMutex(pCur));
-            Debug.Assert(MutexEx.sqlite3_mutex_held(pCur.pBtree.db.mutex));
-            var rc = moveToRoot(pCur);
+            Debug.Assert(cursorHoldsMutex());
+            Debug.Assert(MutexEx.sqlite3_mutex_held(this.pBtree.db.mutex));
+            var rc = moveToRoot();
             if (rc == SQLITE.OK)
-                if (pCur.eState == CURSOR.INVALID)
+                if (this.eState == CURSOR.INVALID)
                 {
-                    Debug.Assert(pCur.apPage[pCur.iPage].nCell == 0);
+                    Debug.Assert(this.apPage[this.iPage].nCell == 0);
                     pRes = 1;
                 }
                 else
                 {
-                    Debug.Assert(pCur.apPage[pCur.iPage].nCell > 0);
+                    Debug.Assert(this.apPage[this.iPage].nCell > 0);
                     pRes = 0;
-                    rc = moveToLeftmost(pCur);
+                    rc = moveToLeftmost();
                 }
             return rc;
         }
 
-        internal static SQLITE sqlite3BtreeLast(BtCursor pCur, ref int pRes)
+        internal SQLITE sqlite3BtreeLast(ref int pRes)
         {
-            Debug.Assert(cursorHoldsMutex(pCur));
-            Debug.Assert(MutexEx.sqlite3_mutex_held(pCur.pBtree.db.mutex));
+            Debug.Assert(cursorHoldsMutex());
+            Debug.Assert(MutexEx.sqlite3_mutex_held(this.pBtree.db.mutex));
             // If the cursor already points to the last entry, this is a no-op.
-            if (pCur.eState == CURSOR.VALID && pCur.atLast != 0)
+            if (this.eState == CURSOR.VALID && this.atLast != 0)
             {
 #if DEBUG
                 // This block serves to Debug.Assert() that the cursor really does point to the last entry in the b-tree.
-                for (var ii = 0; ii < pCur.iPage; ii++)
-                    Debug.Assert(pCur.aiIdx[ii] == pCur.apPage[ii].nCell);
-                Debug.Assert(pCur.aiIdx[pCur.iPage] == pCur.apPage[pCur.iPage].nCell - 1);
-                Debug.Assert(pCur.apPage[pCur.iPage].leaf != 0);
+                for (var ii = 0; ii < this.iPage; ii++)
+                    Debug.Assert(this.aiIdx[ii] == this.apPage[ii].nCell);
+                Debug.Assert(this.aiIdx[this.iPage] == this.apPage[this.iPage].nCell - 1);
+                Debug.Assert(this.apPage[this.iPage].leaf != 0);
 #endif
                 return SQLITE.OK;
             }
-            var rc = moveToRoot(pCur);
+            var rc = moveToRoot();
             if (rc == SQLITE.OK)
-                if (pCur.eState == CURSOR.INVALID)
+                if (this.eState == CURSOR.INVALID)
                 {
-                    Debug.Assert(pCur.apPage[pCur.iPage].nCell == 0);
+                    Debug.Assert(this.apPage[this.iPage].nCell == 0);
                     pRes = 1;
                 }
                 else
                 {
-                    Debug.Assert(pCur.eState == CURSOR.VALID);
+                    Debug.Assert(this.eState == CURSOR.VALID);
                     pRes = 0;
-                    rc = moveToRightmost(pCur);
-                    pCur.atLast = (byte)(rc == SQLITE.OK ? 1 : 0);
+                    rc = moveToRightmost();
+                    this.atLast = (byte)(rc == SQLITE.OK ? 1 : 0);
                 }
             return rc;
         }
 
-        internal static SQLITE sqlite3BtreeMovetoUnpacked(BtCursor pCur, Btree.UnpackedRecord pIdxKey, long intKey, int biasRight, ref int pRes)
+        internal SQLITE sqlite3BtreeMovetoUnpacked(Btree.UnpackedRecord pIdxKey, long intKey, int biasRight, ref int pRes)
         {
-            Debug.Assert(cursorHoldsMutex(pCur));
-            Debug.Assert(MutexEx.sqlite3_mutex_held(pCur.pBtree.db.mutex));
-            Debug.Assert((pIdxKey == null) == (pCur.pKeyInfo == null));
+            Debug.Assert(cursorHoldsMutex());
+            Debug.Assert(MutexEx.sqlite3_mutex_held(this.pBtree.db.mutex));
+            Debug.Assert((pIdxKey == null) == (this.pKeyInfo == null));
             // If the cursor is already positioned at the point we are trying to move to, then just return without doing any work
-            if (pCur.eState == CURSOR.VALID && pCur.validNKey && pCur.apPage[0].intKey != 0)
+            if (this.eState == CURSOR.VALID && this.validNKey && this.apPage[0].intKey != 0)
             {
-                if (pCur.info.nKey == intKey)
+                if (this.info.nKey == intKey)
                 {
                     pRes = 0;
                     return SQLITE.OK;
                 }
-                if (pCur.atLast != 0 && pCur.info.nKey < intKey)
+                if (this.atLast != 0 && this.info.nKey < intKey)
                 {
                     pRes = -1;
                     return SQLITE.OK;
                 }
             }
-            var rc = moveToRoot(pCur);
-            if (rc != 0)
+            var rc = moveToRoot();
+            if (rc != SQLITE.OK)
                 return rc;
-            Debug.Assert(pCur.apPage[pCur.iPage] != null);
-            Debug.Assert(pCur.apPage[pCur.iPage].isInit != 0);
-            Debug.Assert(pCur.apPage[pCur.iPage].nCell > 0 || pCur.eState == CURSOR.INVALID);
-            if (pCur.eState == CURSOR.INVALID)
+            Debug.Assert(this.apPage[this.iPage] != null);
+            Debug.Assert(this.apPage[this.iPage].isInit != 0);
+            Debug.Assert(this.apPage[this.iPage].nCell > 0 || this.eState == CURSOR.INVALID);
+            if (this.eState == CURSOR.INVALID)
             {
                 pRes = -1;
-                Debug.Assert(pCur.apPage[pCur.iPage].nCell == 0);
+                Debug.Assert(this.apPage[this.iPage].nCell == 0);
                 return SQLITE.OK;
             }
-            Debug.Assert(pCur.apPage[0].intKey != 0 || pIdxKey != null);
+            Debug.Assert(this.apPage[0].intKey != 0 || pIdxKey != null);
             for (; ; )
             {
                 Pgno chldPg;
-                var pPage = pCur.apPage[pCur.iPage];
+                var pPage = this.apPage[this.iPage];
                 // pPage.nCell must be greater than zero. If this is the root-page the cursor would have been INVALID above and this for(;;) loop
                 // not run. If this is not the root-page, then the moveToChild() routine would have already detected db corruption. Similarly, pPage must
                 // be the right kind (index or table) of b-tree page. Otherwise a moveToChild() or moveToRoot() call would have detected corruption.
@@ -643,13 +643,13 @@ nextPage = pCur.aOverflow[iIdx+1];
                 var lwr = 0;
                 var upr = pPage.nCell - 1;
                 int idx;
-                pCur.aiIdx[pCur.iPage] = (ushort)(biasRight != 0 ? (idx = upr) : (idx = (upr + lwr) / 2));
+                this.aiIdx[this.iPage] = (ushort)(biasRight != 0 ? (idx = upr) : (idx = (upr + lwr) / 2));
+                int c;
                 for (; ; )
                 {
-                    int c;
-                    Debug.Assert(idx == pCur.aiIdx[pCur.iPage]);
-                    pCur.info.nSize = 0;
-                    int pCell = findCell(pPage, idx) + pPage.childPtrSize; // Pointer to current cell in pPage
+                    Debug.Assert(idx == this.aiIdx[this.iPage]);
+                    this.info.nSize = 0;
+                    int pCell = pPage.findCell(idx) + pPage.childPtrSize; // Pointer to current cell in pPage
                     if (pPage.intKey != 0)
                     {
                         var nCellKey = 0L;
@@ -668,8 +668,8 @@ nextPage = pCur.aOverflow[iIdx+1];
                             Debug.Assert(nCellKey > intKey);
                             c = +1;
                         }
-                        pCur.validNKey = true;
-                        pCur.info.nKey = nCellKey;
+                        this.validNKey = true;
+                        this.info.nKey = nCellKey;
                     }
                     else
                     {
@@ -690,10 +690,10 @@ nextPage = pCur.aOverflow[iIdx+1];
                             // and accessPayload() used to retrieve the record into the buffer before VdbeRecordCompare() can be called.
                             var pCellBody = new byte[pPage.aData.Length - pCell + pPage.childPtrSize];
                             Buffer.BlockCopy(pPage.aData, pCell - pPage.childPtrSize, pCellBody, 0, pCellBody.Length);
-                            btreeParseCellPtr(pPage, pCellBody, ref pCur.info);
-                            nCell = (int)pCur.info.nKey;
+                            pPage.btreeParseCellPtr(pCellBody, ref this.info);
+                            nCell = (int)this.info.nKey;
                             var pCellKey = MallocEx.sqlite3Malloc(nCell);
-                            rc = accessPayload(pCur, 0, (uint)nCell, pCellKey, 0);
+                            rc = accessPayload(0, (uint)nCell, pCellKey, 0);
                             if (rc != SQLITE.OK)
                             {
                                 pCellKey = null;
@@ -724,7 +724,7 @@ nextPage = pCur.aOverflow[iIdx+1];
                         upr = idx - 1;
                     if (lwr > upr)
                         break;
-                    pCur.aiIdx[pCur.iPage] = (ushort)(idx = (lwr + upr) / 2);
+                    this.aiIdx[this.iPage] = (ushort)(idx = (lwr + upr) / 2);
                 }
                 Debug.Assert(lwr == upr + 1);
                 Debug.Assert(pPage.isInit != 0);
@@ -733,152 +733,152 @@ nextPage = pCur.aOverflow[iIdx+1];
                 else if (lwr >= pPage.nCell)
                     chldPg = ConvertEx.sqlite3Get4byte(pPage.aData, pPage.hdrOffset + 8);
                 else
-                    chldPg = ConvertEx.sqlite3Get4byte(pPage.aData, findCell(pPage, lwr));
+                    chldPg = ConvertEx.sqlite3Get4byte(pPage.aData, pPage.findCell(lwr));
                 if (chldPg == 0)
                 {
-                    Debug.Assert(pCur.aiIdx[pCur.iPage] < pCur.apPage[pCur.iPage].nCell);
+                    Debug.Assert(this.aiIdx[this.iPage] < this.apPage[this.iPage].nCell);
                     pRes = c;
                     rc = SQLITE.OK;
                     goto moveto_finish;
                 }
-                pCur.aiIdx[pCur.iPage] = (ushort)lwr;
-                pCur.info.nSize = 0;
-                pCur.validNKey = false;
-                rc = moveToChild(pCur, chldPg);
-                if (rc != 0)
+                this.aiIdx[this.iPage] = (ushort)lwr;
+                this.info.nSize = 0;
+                this.validNKey = false;
+                rc = moveToChild(chldPg);
+                if (rc != SQLITE.OK)
                     goto moveto_finish;
             }
         moveto_finish:
             return rc;
         }
 
-        internal static bool sqlite3BtreeEof(BtCursor pCur)
+        internal bool sqlite3BtreeEof()
         {
             // TODO: What if the cursor is in CURSOR_REQUIRESEEK but all table entries have been deleted? This API will need to change to return an error code
             // as well as the boolean result value.
-            return (pCur.eState != CURSOR.VALID);
+            return (this.eState != CURSOR.VALID);
         }
 
-        internal static SQLITE sqlite3BtreeNext(BtCursor pCur, ref int pRes)
+        internal SQLITE sqlite3BtreeNext(ref int pRes)
         {
-            Debug.Assert(cursorHoldsMutex(pCur));
-            var rc = restoreCursorPosition(pCur);
+            Debug.Assert(cursorHoldsMutex());
+            var rc = restoreCursorPosition();
             if (rc != SQLITE.OK)
                 return rc;
-            if (pCur.eState == CURSOR.INVALID)
+            if (this.eState == CURSOR.INVALID)
             {
                 pRes = 1;
                 return SQLITE.OK;
             }
-            if (pCur.skipNext > 0)
+            if (this.skipNext > 0)
             {
-                pCur.skipNext = 0;
+                this.skipNext = 0;
                 pRes = 0;
                 return SQLITE.OK;
             }
-            pCur.skipNext = 0;
+            this.skipNext = 0;
             //
-            var pPage = pCur.apPage[pCur.iPage];
-            var idx = ++pCur.aiIdx[pCur.iPage];
+            var pPage = this.apPage[this.iPage];
+            var idx = ++this.aiIdx[this.iPage];
             Debug.Assert(pPage.isInit != 0);
             Debug.Assert(idx <= pPage.nCell);
-            pCur.info.nSize = 0;
-            pCur.validNKey = false;
+            this.info.nSize = 0;
+            this.validNKey = false;
             if (idx >= pPage.nCell)
             {
                 if (pPage.leaf == 0)
                 {
-                    rc = moveToChild(pCur, ConvertEx.sqlite3Get4byte(pPage.aData, pPage.hdrOffset + 8));
+                    rc = moveToChild(ConvertEx.sqlite3Get4byte(pPage.aData, pPage.hdrOffset + 8));
                     if (rc != SQLITE.OK)
                         return rc;
-                    rc = moveToLeftmost(pCur);
+                    rc = moveToLeftmost();
                     pRes = 0;
                     return rc;
                 }
                 do
                 {
-                    if (pCur.iPage == 0)
+                    if (this.iPage == 0)
                     {
                         pRes = 1;
-                        pCur.eState = CURSOR.INVALID;
+                        this.eState = CURSOR.INVALID;
                         return SQLITE.OK;
                     }
-                    moveToParent(pCur);
-                    pPage = pCur.apPage[pCur.iPage];
-                } while (pCur.aiIdx[pCur.iPage] >= pPage.nCell);
+                    moveToParent();
+                    pPage = this.apPage[this.iPage];
+                } while (this.aiIdx[this.iPage] >= pPage.nCell);
                 pRes = 0;
-                rc = (pPage.intKey != 0 ? sqlite3BtreeNext(pCur, ref pRes) : SQLITE.OK);
+                rc = (pPage.intKey != 0 ? sqlite3BtreeNext(ref pRes) : SQLITE.OK);
                 return rc;
             }
             pRes = 0;
             if (pPage.leaf != 0)
                 return SQLITE.OK;
-            rc = moveToLeftmost(pCur);
+            rc = moveToLeftmost();
             return rc;
         }
 
-        internal static SQLITE sqlite3BtreePrevious(BtCursor pCur, ref int pRes)
+        internal SQLITE sqlite3BtreePrevious(ref int pRes)
         {
-            Debug.Assert(cursorHoldsMutex(pCur));
-            var rc = restoreCursorPosition(pCur);
+            Debug.Assert(cursorHoldsMutex());
+            var rc = restoreCursorPosition();
             if (rc != SQLITE.OK)
                 return rc;
-            pCur.atLast = 0;
-            if (pCur.eState == CURSOR.INVALID)
+            this.atLast = 0;
+            if (this.eState == CURSOR.INVALID)
             {
                 pRes = 1;
                 return SQLITE.OK;
             }
-            if (pCur.skipNext < 0)
+            if (this.skipNext < 0)
             {
-                pCur.skipNext = 0;
+                this.skipNext = 0;
                 pRes = 0;
                 return SQLITE.OK;
             }
-            pCur.skipNext = 0;
+            this.skipNext = 0;
             //
-            var pPage = pCur.apPage[pCur.iPage];
+            var pPage = this.apPage[this.iPage];
             Debug.Assert(pPage.isInit != 0);
             if (pPage.leaf == 0)
             {
-                var idx = pCur.aiIdx[pCur.iPage];
-                rc = moveToChild(pCur, ConvertEx.sqlite3Get4byte(pPage.aData, findCell(pPage, idx)));
+                var idx = this.aiIdx[this.iPage];
+                rc = moveToChild(ConvertEx.sqlite3Get4byte(pPage.aData, pPage.findCell(idx)));
                 if (rc != SQLITE.OK)
                     return rc;
-                rc = moveToRightmost(pCur);
+                rc = moveToRightmost();
             }
             else
             {
-                while (pCur.aiIdx[pCur.iPage] == 0)
+                while (this.aiIdx[this.iPage] == 0)
                 {
-                    if (pCur.iPage == 0)
+                    if (this.iPage == 0)
                     {
-                        pCur.eState = CURSOR.INVALID;
+                        this.eState = CURSOR.INVALID;
                         pRes = 1;
                         return SQLITE.OK;
                     }
-                    moveToParent(pCur);
+                    moveToParent();
                 }
-                pCur.info.nSize = 0;
-                pCur.validNKey = false;
-                pCur.aiIdx[pCur.iPage]--;
-                pPage = pCur.apPage[pCur.iPage];
-                rc = (pPage.intKey != 0 && 0 == pPage.leaf ? sqlite3BtreePrevious(pCur, ref pRes) : SQLITE.OK);
+                this.info.nSize = 0;
+                this.validNKey = false;
+                this.aiIdx[this.iPage]--;
+                pPage = this.apPage[this.iPage];
+                rc = (pPage.intKey != 0 && 0 == pPage.leaf ? sqlite3BtreePrevious(ref pRes) : SQLITE.OK);
             }
             pRes = 0;
             return rc;
         }
 
 #if !SQLITE_OMIT_BTREECOUNT
-        internal static SQLITE sqlite3BtreeCount(BtCursor pCur, ref long pnEntry)
+        internal SQLITE sqlite3BtreeCount(ref long pnEntry)
         {
             long nEntry = 0; // Value to return in pnEntry
-            var rc = moveToRoot(pCur);
+            var rc = moveToRoot();
             // Unless an error occurs, the following loop runs one iteration for each page in the B-Tree structure (not including overflow pages).
             while (rc == SQLITE.OK)
             {
                 // If this is a leaf page or the tree is not an int-key tree, then this page contains countable entries. Increment the entry counter accordingly.
-                var pPage = pCur.apPage[pCur.iPage]; // Current page of the b-tree 
+                var pPage = this.apPage[this.iPage]; // Current page of the b-tree 
                 if (pPage.leaf != 0 || 0 == pPage.intKey)
                     nEntry += pPage.nCell;
                 // pPage is a leaf node. This loop navigates the cursor so that it points to the first interior cell that it points to the parent of
@@ -889,25 +889,24 @@ nextPage = pCur.aOverflow[iIdx+1];
                 {
                     do
                     {
-                        if (pCur.iPage == 0)
+                        if (this.iPage == 0)
                         {
                             // All pages of the b-tree have been visited. Return successfully.
                             pnEntry = nEntry;
                             return SQLITE.OK;
                         }
-                        moveToParent(pCur);
-                    } while (pCur.aiIdx[pCur.iPage] >= pCur.apPage[pCur.iPage].nCell);
-                    pCur.aiIdx[pCur.iPage]++;
-                    pPage = pCur.apPage[pCur.iPage];
+                        moveToParent();
+                    } while (this.aiIdx[this.iPage] >= this.apPage[this.iPage].nCell);
+                    this.aiIdx[this.iPage]++;
+                    pPage = this.apPage[this.iPage];
                 }
                 // Descend to the child node of the cell that the cursor currently points at. This is the right-child if (iIdx==pPage.nCell).
-                var iIdx = pCur.aiIdx[pCur.iPage]; // Index of child node in parent
-                rc = (iIdx == pPage.nCell ? moveToChild(pCur, ConvertEx.sqlite3Get4byte(pPage.aData, pPage.hdrOffset + 8)) : moveToChild(pCur, ConvertEx.sqlite3Get4byte(pPage.aData, findCell(pPage, iIdx))));
+                var iIdx = this.aiIdx[this.iPage]; // Index of child node in parent
+                rc = (iIdx == pPage.nCell ? moveToChild(ConvertEx.sqlite3Get4byte(pPage.aData, pPage.hdrOffset + 8)) : moveToChild(ConvertEx.sqlite3Get4byte(pPage.aData, pPage.findCell(iIdx))));
             }
             // An error has occurred. Return an error code.
             return rc;
         }
 #endif
-
     }
 }

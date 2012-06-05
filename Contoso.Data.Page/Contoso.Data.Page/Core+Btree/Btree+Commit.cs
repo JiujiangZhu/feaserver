@@ -6,134 +6,122 @@ using Contoso.Sys;
 using System.Diagnostics;
 using CURSOR = Contoso.Core.BtCursor.CURSOR;
 using VFSOPEN = Contoso.Sys.VirtualFileSystem.OPEN;
+
 namespace Contoso.Core
 {
     public partial class Btree
     {
-        internal static SQLITE sqlite3BtreeCommitPhaseOne(Btree p, string zMaster)
+        internal SQLITE sqlite3BtreeCommitPhaseOne(string zMaster)
         {
             var rc = SQLITE.OK;
-            if (p.inTrans == TRANS.WRITE)
+            if (this.inTrans == TRANS.WRITE)
             {
-                var pBt = p.pBt;
-                sqlite3BtreeEnter(p);
+                var pBt = this.pBt;
+                sqlite3BtreeEnter();
 #if !SQLITE_OMIT_AUTOVACUUM
                 if (pBt.autoVacuum)
                 {
-                    rc = autoVacuumCommit(pBt);
+                    rc = pBt.autoVacuumCommit();
                     if (rc != SQLITE.OK)
                     {
-                        sqlite3BtreeLeave(p);
+                        sqlite3BtreeLeave();
                         return rc;
                     }
                 }
 #endif
                 rc = pBt.pPager.sqlite3PagerCommitPhaseOne(zMaster, false);
-                sqlite3BtreeLeave(p);
+                sqlite3BtreeLeave();
             }
             return rc;
         }
 
-        internal static void btreeEndTransaction(Btree p)
+        internal void btreeEndTransaction()
         {
-            var pBt = p.pBt;
-            Debug.Assert(sqlite3BtreeHoldsMutex(p));
-            btreeClearHasContent(pBt);
-            if (p.inTrans > TRANS.NONE && p.db.activeVdbeCnt > 1)
+            var pBt = this.pBt;
+            Debug.Assert(sqlite3BtreeHoldsMutex(this));
+            pBt.btreeClearHasContent();
+            if (this.inTrans > TRANS.NONE && this.db.activeVdbeCnt > 1)
             {
                 // If there are other active statements that belong to this database handle, downgrade to a read-only transaction. The other statements
                 // may still be reading from the database.
-                downgradeAllSharedCacheTableLocks(p);
-                p.inTrans = TRANS.READ;
+                downgradeAllSharedCacheTableLocks(this);
+                this.inTrans = TRANS.READ;
             }
             else
             {
                 // If the handle had any kind of transaction open, decrement the transaction count of the shared btree. If the transaction count
                 // reaches 0, set the shared state to TRANS_NONE. The unlockBtreeIfUnused() call below will unlock the pager.  */
-                if (p.inTrans != TRANS.NONE)
+                if (this.inTrans != TRANS.NONE)
                 {
-                    clearAllSharedCacheTableLocks(p);
+                    clearAllSharedCacheTableLocks(this);
                     pBt.nTransaction--;
                     if (pBt.nTransaction == 0)
                         pBt.inTransaction = TRANS.NONE;
                 }
                 // Set the current transaction state to TRANS_NONE and unlock the pager if this call closed the only read or write transaction.
-                p.inTrans = TRANS.NONE;
-                unlockBtreeIfUnused(pBt);
+                this.inTrans = TRANS.NONE;
+                pBt.unlockBtreeIfUnused();
             }
-            btreeIntegrity(p);
+            btreeIntegrity();
         }
 
-        internal static SQLITE sqlite3BtreeCommitPhaseTwo(Btree p, int bCleanup)
+        internal SQLITE sqlite3BtreeCommitPhaseTwo(int bCleanup)
         {
-            if (p.inTrans == TRANS.NONE)
+            if (this.inTrans == TRANS.NONE)
                 return SQLITE.OK;
-            sqlite3BtreeEnter(p);
-            btreeIntegrity(p);
+            sqlite3BtreeEnter();
+            btreeIntegrity();
             // If the handle has a write-transaction open, commit the shared-btrees transaction and set the shared state to TRANS_READ.
-            if (p.inTrans == TRANS.WRITE)
+            if (this.inTrans == TRANS.WRITE)
             {
-                var pBt = p.pBt;
+                var pBt = this.pBt;
                 Debug.Assert(pBt.inTransaction == TRANS.WRITE);
                 Debug.Assert(pBt.nTransaction > 0);
                 var rc = pBt.pPager.sqlite3PagerCommitPhaseTwo();
                 if (rc != SQLITE.OK && bCleanup == 0)
                 {
-                    sqlite3BtreeLeave(p);
+                    sqlite3BtreeLeave();
                     return rc;
                 }
                 pBt.inTransaction = TRANS.READ;
             }
-            btreeEndTransaction(p);
-            sqlite3BtreeLeave(p);
+            btreeEndTransaction();
+            sqlite3BtreeLeave();
             return SQLITE.OK;
         }
 
-        internal static SQLITE sqlite3BtreeCommit(Btree p)
+        internal SQLITE sqlite3BtreeCommit()
         {
-            sqlite3BtreeEnter(p);
-            var rc = sqlite3BtreeCommitPhaseOne(p, null);
+            sqlite3BtreeEnter();
+            var rc = sqlite3BtreeCommitPhaseOne(null);
             if (rc == SQLITE.OK)
-                rc = sqlite3BtreeCommitPhaseTwo(p, 0);
-            sqlite3BtreeLeave(p);
+                rc = sqlite3BtreeCommitPhaseTwo(0);
+            sqlite3BtreeLeave();
             return rc;
         }
 
-#if DEBUG
-        internal static int countWriteCursors(BtShared pBt)
+        internal void sqlite3BtreeTripAllCursors(int errCode)
         {
-            var r = 0;
-            for (var pCur = pBt.pCursor; pCur != null; pCur = pCur.pNext)
-                if (pCur.wrFlag != 0 && pCur.eState != CURSOR.FAULT)
-                    r++;
-            return r;
-        }
-#else
-        internal static int countWriteCursors(BtShared pBt) { return -1; }
-#endif
-
-        static void sqlite3BtreeTripAllCursors(Btree pBtree, int errCode)
-        {
-            sqlite3BtreeEnter(pBtree);
-            for (var p = pBtree.pBt.pCursor; p != null; p = p.pNext)
+            sqlite3BtreeEnter();
+            for (var p = this.pBt.pCursor; p != null; p = p.pNext)
             {
-                sqlite3BtreeClearCursor(p);
+                p.sqlite3BtreeClearCursor();
                 p.eState = CURSOR.FAULT;
                 p.skipNext = errCode;
                 for (var i = 0; i <= p.iPage; i++)
                 {
-                    releasePage(p.apPage[i]);
+                    p.apPage[i].releasePage();
                     p.apPage[i] = null;
                 }
             }
-            sqlite3BtreeLeave(pBtree);
+            sqlite3BtreeLeave();
         }
 
-        internal static SQLITE sqlite3BtreeRollback(Btree p)
+        internal SQLITE sqlite3BtreeRollback()
         {
-            sqlite3BtreeEnter(p);
-            var pBt = p.pBt;
-            var rc = saveAllCursors(pBt, 0, null);
+            sqlite3BtreeEnter();
+            var pBt = this.pBt;
+            var rc = pBt.saveAllCursors(0, null);
 #if !SQLITE_OMIT_SHARED_CACHE
 if( rc!=SQLITE_OK ){
 /* This is a horrible situation. An IO or malloc() error occurred whilst
@@ -146,8 +134,8 @@ if( rc!=SQLITE_OK ){
 sqlite3BtreeTripAllCursors(p, rc);
 }
 #endif
-            btreeIntegrity(p);
-            if (p.inTrans == TRANS.WRITE)
+            btreeIntegrity();
+            if (this.inTrans == TRANS.WRITE)
             {
                 Debug.Assert(pBt.inTransaction == TRANS.WRITE);
                 var rc2 = pBt.pPager.sqlite3PagerRollback();
@@ -156,22 +144,21 @@ sqlite3BtreeTripAllCursors(p, rc);
                 // The rollback may have destroyed the pPage1.aData value.  So call btreeGetPage() on page 1 again to make
                 // sure pPage1.aData is set correctly.
                 var pPage1 = new MemPage();
-                if (btreeGetPage(pBt, 1, ref pPage1, 0) == SQLITE.OK)
+                if (pBt.btreeGetPage(1, ref pPage1, 0) == SQLITE.OK)
                 {
                     Pgno nPage = ConvertEx.sqlite3Get4byte(pPage1.aData, 28);
                     if (nPage == 0)
                         pBt.pPager.sqlite3PagerPagecount(out nPage);
                     pBt.nPage = nPage;
-                    releasePage(pPage1);
+                    pPage1.releasePage();
                 }
-                Debug.Assert(countWriteCursors(pBt) == 0);
+                Debug.Assert(pBt.countWriteCursors() == 0);
                 pBt.inTransaction = TRANS.READ;
             }
 
-            btreeEndTransaction(p);
-            sqlite3BtreeLeave(p);
+            btreeEndTransaction();
+            sqlite3BtreeLeave();
             return rc;
         }
-
     }
 }

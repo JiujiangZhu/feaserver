@@ -1,4 +1,5 @@
 ﻿using Pgno = System.UInt32;
+using Contoso.Sys;
 namespace Contoso.Core
 {
     public partial class BtCursor

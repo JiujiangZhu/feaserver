@@ -59,5 +59,19 @@ namespace Contoso.Core
             }
             return cp;
         }
+
+        public enum PTRMAP : byte
+        {
+            ROOTPAGE = 1,
+            FREEPAGE = 2,
+            OVERFLOW1 = 3,
+            OVERFLOW2 = 4,
+            BTREE = 5,
+        }
+
+        internal static uint PENDING_BYTE_PAGE(BtShared pBt) { return (uint)Pager.PAGER_MJ_PGNO(pBt.pPager); }
+        internal static Pgno PTRMAP_PAGENO(BtShared pBt, Pgno pgno) { return pBt.ptrmapPageno(pgno); }
+        internal static uint PTRMAP_PTROFFSET(uint pgptrmap, uint pgno) { return (5 * (pgno - pgptrmap - 1)); }
+        internal static bool PTRMAP_ISPAGE(BtShared pBt, uint pgno) { return (PTRMAP_PAGENO((pBt), (pgno)) == (pgno)); }
     }
 }

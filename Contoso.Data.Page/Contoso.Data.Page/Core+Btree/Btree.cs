@@ -1,6 +1,7 @@
 ﻿using Mem = System.Object;
 using Pgno = System.UInt32;
 using System;
+using System.Diagnostics;
 
 namespace Contoso.Core
 {
@@ -65,9 +66,17 @@ namespace Contoso.Core
         internal const byte PTF_LEAF = 0x08;
 
 
-        //static Pgno PENDING_BYTE_PAGE(BtShared pBt) { return Pager.PAGER_MJ_PGNO(pBt.pPager); }
-        //static Pgno PTRMAP_PAGENO(BtShared pBt, Pgno pgno) { return ptrmapPageno(pBt, pgno); }
-        //static Pgno PTRMAP_PTROFFSET(Pgno pgptrmap, Pgno pgno) { return (5 * (pgno - pgptrmap - 1)); }
-        //static bool PTRMAP_ISPAGE(BtShared pBt, Pgno pgno) { return (PTRMAP_PAGENO((pBt), (pgno)) == (pgno)); }
+        internal void sqlite3BtreeEnter() { }
+        internal void sqlite3BtreeLeave() { }
+#if DEBUG
+        internal void btreeIntegrity()
+        {
+            Debug.Assert(pBt.inTransaction != TRANS.NONE || pBt.nTransaction == 0);
+            Debug.Assert(pBt.inTransaction >= inTrans);
+        }
+#else
+        internal void btreeIntegrity() { }
+#endif
+
     }
 }

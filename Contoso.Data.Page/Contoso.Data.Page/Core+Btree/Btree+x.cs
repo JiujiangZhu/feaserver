@@ -7,6 +7,7 @@ using System.Diagnostics;
 using SAVEPOINT = Contoso.Core.Pager.SAVEPOINT;
 using CURSOR = Contoso.Core.BtCursor.CURSOR;
 using VFSOPEN = Contoso.Sys.VirtualFileSystem.OPEN;
+using PTRMAP = Contoso.Core.MemPage.PTRMAP;
 
 namespace Contoso.Core
 {
@@ -24,27 +25,34 @@ namespace Contoso.Core
 
         #region Properties
 
-        internal static Pager sqlite3BtreePager(Btree p)
+        internal Pager sqlite3BtreePager()
         {
-            return p.pBt.pPager;
+            return this.pBt.pPager;
         }
 
-        internal static string sqlite3BtreeGetFilename(Btree p)
+        internal string sqlite3BtreeGetFilename()
         {
-            Debug.Assert(p.pBt.pPager != null);
-            return p.pBt.pPager.sqlite3PagerFilename();
+            Debug.Assert(this.pBt.pPager != null);
+            return this.pBt.pPager.sqlite3PagerFilename();
         }
 
-        internal static string sqlite3BtreeGetJournalname(Btree p)
+        internal string sqlite3BtreeGetJournalname()
         {
-            Debug.Assert(p.pBt.pPager != null);
-            return p.pBt.pPager.sqlite3PagerJournalname();
+            Debug.Assert(this.pBt.pPager != null);
+            return this.pBt.pPager.sqlite3PagerJournalname();
         }
 
-        internal static bool sqlite3BtreeIsInTrans(Btree p)
+        internal bool sqlite3BtreeIsInTrans()
         {
-            Debug.Assert(p == null || MutexEx.sqlite3_mutex_held(p.db.mutex));
-            return (p != null && (p.inTrans == TRANS.WRITE));
+            Debug.Assert(this == null || MutexEx.sqlite3_mutex_held(this.db.mutex));
+            return (this != null && (this.inTrans == TRANS.WRITE));
+        }
+
+        internal Pgno sqlite3BtreeLastPage()
+        {
+            Debug.Assert(sqlite3BtreeHoldsMutex());
+            Debug.Assert(((this.pBt.nPage) & 0x8000000) == 0);
+            return (Pgno)this.pBt.btreePagecount();
         }
 
         #endregion
@@ -61,7 +69,7 @@ namespace Contoso.Core
                     // pPage might not be a btree page;  it might be an overflow page or ptrmap page or a free page.  In those cases, the following
                     // call to btreeInitPage() will likely return SQLITE_CORRUPT. But no harm is done by this.  And it is very important that
                     // btreeInitPage() be called on every btree page so we make the call for every page that comes in for re-initing.
-                    btreeInitPage(pPage);
+                    pPage.btreeInitPage();
             }
         }
 
@@ -286,7 +294,7 @@ break;
             {
                 // If the B-Tree was successfully opened, set the pager-cache size to the default value. Except, when opening on an existing shared pager-cache,
                 // do not change the pager-cache size.
-                if (sqlite3BtreeSchema(p, 0, null) == null)
+                if (p.sqlite3BtreeSchema(0, null, null) == null)
                     p.pBt.pPager.sqlite3PagerSetCachesize(SQLITE_DEFAULT_CACHE_SIZE);
             }
             if (mutexOpen != null)
@@ -301,7 +309,7 @@ break;
         {
             // Close all cursors opened via this handle.
             Debug.Assert(MutexEx.sqlite3_mutex_held(p.db.mutex));
-            sqlite3BtreeEnter(p);
+            p.sqlite3BtreeEnter();
             var pBt = p.pBt;
             var pCur = pBt.pCursor;
             while (pCur != null)
@@ -309,14 +317,14 @@ break;
                 var pTmp = pCur;
                 pCur = pCur.pNext;
                 if (pTmp.pBtree == p)
-                    sqlite3BtreeCloseCursor(pTmp);
+                    pTmp.sqlite3BtreeCloseCursor();
             }
             // Rollback any active transaction and free the handle structure. The call to sqlite3BtreeRollback() drops any table-locks held by this handle.
-            sqlite3BtreeRollback(p);
-            sqlite3BtreeLeave(p);
+            p.sqlite3BtreeRollback();
+            p.sqlite3BtreeLeave();
             // If there are still other outstanding references to the shared-btree structure, return now. The remainder of this procedure cleans up the shared-btree.
             Debug.Assert(p.wantToLock == 0 && !p.locked);
-            if (!p.sharable || removeFromSharingList(pBt))
+            if (!p.sharable || pBt.removeFromSharingList())
             {
                 // The pBt is no longer on the sharing list, so we can access it without having to hold the mutex.
                 // Clean out and delete the BtShared object.
@@ -337,48 +345,48 @@ if( p.pNext ) p.pNext.pPrev = p.pPrev;
             return SQLITE.OK;
         }
 
-        internal static SQLITE sqlite3BtreeSetCacheSize(Btree p, int mxPage)
+        internal SQLITE sqlite3BtreeSetCacheSize(int mxPage)
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(p.db.mutex));
-            sqlite3BtreeEnter(p);
-            var pBt = p.pBt;
-            sqlite3PagerSetCachesize(pBt.pPager, mxPage);
-            sqlite3BtreeLeave(p);
+            Debug.Assert(MutexEx.sqlite3_mutex_held(this.db.mutex));
+            sqlite3BtreeEnter();
+            var pBt = this.pBt;
+            pBt.pPager.sqlite3PagerSetCachesize(mxPage);
+            sqlite3BtreeLeave();
             return SQLITE.OK;
         }
 
 #if !SQLITE_OMIT_PAGER_PRAGMAS
-        internal static SQLITE sqlite3BtreeSetSafetyLevel(Btree p, int level, int fullSync, int ckptFullSync)
+        internal SQLITE sqlite3BtreeSetSafetyLevel(int level, int fullSync, int ckptFullSync)
         {
-            var pBt = p.pBt;
-            Debug.Assert(MutexEx.sqlite3_mutex_held(p.db.mutex));
+            var pBt = this.pBt;
+            Debug.Assert(MutexEx.sqlite3_mutex_held(this.db.mutex));
             Debug.Assert(level >= 1 && level <= 3);
-            sqlite3BtreeEnter(p);
+            sqlite3BtreeEnter();
             pBt.pPager.sqlite3PagerSetSafetyLevel(level, fullSync, ckptFullSync);
-            sqlite3BtreeLeave(p);
+            sqlite3BtreeLeave();
             return SQLITE.OK;
         }
 #endif
 
-        internal static int sqlite3BtreeSyncDisabled(Btree p)
+        internal int sqlite3BtreeSyncDisabled()
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(p.db.mutex));
-            sqlite3BtreeEnter(p);
-            var pBt = p.pBt;
+            Debug.Assert(MutexEx.sqlite3_mutex_held(this.db.mutex));
+            sqlite3BtreeEnter();
+            var pBt = this.pBt;
             Debug.Assert(pBt != null && pBt.pPager != null);
             var rc = (pBt.pPager.sqlite3PagerNosync() ? 1 : 0);
-            sqlite3BtreeLeave(p);
+            sqlite3BtreeLeave();
             return rc;
         }
 
-        internal static SQLITE sqlite3BtreeSetPageSize(Btree p, int pageSize, int nReserve, int iFix)
+        internal SQLITE sqlite3BtreeSetPageSize(int pageSize, int nReserve, int iFix)
         {
             Debug.Assert(nReserve >= -1 && nReserve <= 255);
-            sqlite3BtreeEnter(p);
-            var pBt = p.pBt;
+            sqlite3BtreeEnter();
+            var pBt = this.pBt;
             if (pBt.pageSizeFixed)
             {
-                sqlite3BtreeLeave(p);
+                sqlite3BtreeLeave();
                 return SQLITE.READONLY;
             }
             if (nReserve < 0)
@@ -394,51 +402,51 @@ if( p.pNext ) p.pNext.pPrev = p.pPrev;
             pBt.usableSize = (ushort)(pBt.pageSize - nReserve);
             if (iFix != 0)
                 pBt.pageSizeFixed = true;
-            sqlite3BtreeLeave(p);
+            sqlite3BtreeLeave();
             return rc;
         }
 
-        internal static int sqlite3BtreeGetPageSize(Btree p) { return (int)p.pBt.pageSize; }
+        internal int sqlite3BtreeGetPageSize() { return (int)this.pBt.pageSize; }
 
 #if !SQLITE_OMIT_PAGER_PRAGMAS || !SQLITE_OMIT_VACUUM
-        internal static int sqlite3BtreeGetReserve(Btree p)
+        internal int sqlite3BtreeGetReserve()
         {
-            sqlite3BtreeEnter(p);
-            var n = (int)(p.pBt.pageSize - p.pBt.usableSize);
-            sqlite3BtreeLeave(p);
+            sqlite3BtreeEnter();
+            var n = (int)(this.pBt.pageSize - this.pBt.usableSize);
+            sqlite3BtreeLeave();
             return n;
         }
 
-        internal static Pgno sqlite3BtreeMaxPageCount(Btree p, int mxPage)
+        internal Pgno sqlite3BtreeMaxPageCount(int mxPage)
         {
-            sqlite3BtreeEnter(p);
-            var n = (Pgno)p.pBt.pPager.sqlite3PagerMaxPageCount(mxPage);
-            sqlite3BtreeLeave(p);
+            sqlite3BtreeEnter();
+            var n = (Pgno)this.pBt.pPager.sqlite3PagerMaxPageCount(mxPage);
+            sqlite3BtreeLeave();
             return n;
         }
 
-        internal static int sqlite3BtreeSecureDelete(Btree p, int newFlag)
+        internal int sqlite3BtreeSecureDelete(int newFlag)
         {
-            if (p == null)
+            if (this == null)
                 return 0;
-            sqlite3BtreeEnter(p);
+            sqlite3BtreeEnter();
             if (newFlag >= 0)
-                p.pBt.secureDelete = (newFlag != 0);
-            var b = (p.pBt.secureDelete ? 1 : 0);
-            sqlite3BtreeLeave(p);
+                this.pBt.secureDelete = (newFlag != 0);
+            var b = (this.pBt.secureDelete ? 1 : 0);
+            sqlite3BtreeLeave();
             return b;
         }
 #endif
 
-        internal static SQLITE sqlite3BtreeSetAutoVacuum(Btree p, int autoVacuum)
+        internal SQLITE sqlite3BtreeSetAutoVacuum(int autoVacuum)
         {
 #if SQLITE_OMIT_AUTOVACUUM
             return SQLITE.READONLY;
 #else
-            sqlite3BtreeEnter(p);
+            sqlite3BtreeEnter();
             var rc = SQLITE.OK;
             var av = (byte)autoVacuum;
-            var pBt = p.pBt;
+            var pBt = this.pBt;
             if (pBt.pageSizeFixed && (av != 0) != pBt.autoVacuum)
                 rc = SQLITE.READONLY;
             else
@@ -446,31 +454,31 @@ if( p.pNext ) p.pNext.pPrev = p.pPrev;
                 pBt.autoVacuum = av != 0;
                 pBt.incrVacuum = av == 2;
             }
-            sqlite3BtreeLeave(p);
+            sqlite3BtreeLeave();
             return rc;
 #endif
         }
 
-        internal static int sqlite3BtreeGetAutoVacuum(Btree p)
+        internal int sqlite3BtreeGetAutoVacuum()
         {
 #if SQLITE_OMIT_AUTOVACUUM
 return BTREE.AUTOVACUUM_NONE;
 #else
-            sqlite3BtreeEnter(p);
-            var rc = ((!p.pBt.autoVacuum) ? BTREE_AUTOVACUUM_NONE : (!p.pBt.incrVacuum ? BTREE_AUTOVACUUM_FULL : BTREE_AUTOVACUUM_INCR));
-            sqlite3BtreeLeave(p);
+            sqlite3BtreeEnter();
+            var rc = (!this.pBt.autoVacuum ? BTREE_AUTOVACUUM_NONE : (!this.pBt.incrVacuum ? BTREE_AUTOVACUUM_FULL : BTREE_AUTOVACUUM_INCR));
+            sqlite3BtreeLeave();
             return rc;
 #endif
         }
 
-        internal static SQLITE sqlite3BtreeBeginTrans(Btree p, int wrflag)
+        internal SQLITE sqlite3BtreeBeginTrans(int wrflag)
         {
-            var pBt = p.pBt;
+            var pBt = this.pBt;
             var rc = SQLITE.OK;
-            sqlite3BtreeEnter(p);
-            btreeIntegrity(p);
+            sqlite3BtreeEnter();
+            btreeIntegrity();
             // If the btree is already in a write-transaction, or it is already in a read-transaction and a read-transaction is requested, this is a no-op.
-            if (p.inTrans == TRANS.WRITE || (p.inTrans == TRANS.READ && 0 == wrflag))
+            if (this.inTrans == TRANS.WRITE || (this.inTrans == TRANS.READ && 0 == wrflag))
                 goto trans_begun;
             // Write transactions are not possible on a read-only database
             if (pBt.readOnly && wrflag != 0)
@@ -500,10 +508,9 @@ rc = SQLITE_LOCKED_SHAREDCACHE;
 goto trans_begun;
 }
 #endif
-
             // Any read-only or read-write transaction implies a read-lock on page 1. So if some other shared-cache client already has a write-lock
             // on page 1, the transaction cannot be opened. */
-            rc = querySharedCacheTableLock(p, MASTER_ROOT, READ_LOCK);
+            rc = querySharedCacheTableLock(this, MASTER_ROOT, READ_LOCK);
             if (rc != SQLITE.OK)
                 goto trans_begun;
             pBt.initiallyEmpty = pBt.nPage == 0;
@@ -512,24 +519,24 @@ goto trans_begun;
                 // Call lockBtree() until either pBt.pPage1 is populated or lockBtree() returns something other than SQLITE_OK. lockBtree()
                 // may return SQLITE_OK but leave pBt.pPage1 set to 0 if after reading page 1 it discovers that the page-size of the database
                 // file is not pBt.pageSize. In this case lockBtree() will update pBt.pageSize to the page-size of the file on disk.
-                while (pBt.pPage1 == null && (rc = lockBtree(pBt)) == SQLITE.OK) ;
+                while (pBt.pPage1 == null && (rc = pBt.lockBtree()) == SQLITE.OK) ;
                 if (rc == SQLITE.OK && wrflag != 0)
                 {
                     if (pBt.readOnly)
                         rc = SQLITE.READONLY;
                     else
                     {
-                        rc = pBt.pPager.sqlite3PagerBegin(wrflag > 1, sqlite3TempInMemory(p.db) ? 1 : 0);
+                        rc = pBt.pPager.sqlite3PagerBegin(wrflag > 1, sqlite3TempInMemory(this.db) ? 1 : 0);
                         if (rc == SQLITE.OK)
-                            rc = newDatabase(pBt);
+                            rc = pBt.newDatabase();
                     }
                 }
                 if (rc != SQLITE.OK)
-                    unlockBtreeIfUnused(pBt);
+                    pBt.unlockBtreeIfUnused();
             } while (((int)rc & 0xFF) == (int)SQLITE.BUSY && pBt.inTransaction == TRANS.NONE && btreeInvokeBusyHandler(pBt) != 0);
             if (rc == SQLITE.OK)
             {
-                if (p.inTrans == TRANS.NONE)
+                if (this.inTrans == TRANS.NONE)
                 {
                     pBt.nTransaction++;
 #if !SQLITE_OMIT_SHARED_CACHE
@@ -541,9 +548,9 @@ pBt.pLock = &p.lock;
 }
 #endif
                 }
-                p.inTrans = (wrflag != 0 ? TRANS.WRITE : TRANS.READ);
-                if (p.inTrans > pBt.inTransaction)
-                    pBt.inTransaction = p.inTrans;
+                this.inTrans = (wrflag != 0 ? TRANS.WRITE : TRANS.READ);
+                if (this.inTrans > pBt.inTransaction)
+                    pBt.inTransaction = this.inTrans;
                 if (wrflag != 0)
                 {
                     var pPage1 = pBt.pPage1;
@@ -567,74 +574,74 @@ pBt.isExclusive = (u8)(wrflag>1);
             if (rc == SQLITE.OK && wrflag != 0)
                 // This call makes sure that the pager has the correct number of open savepoints. If the second parameter is greater than 0 and
                 // the sub-journal is not already open, then it will be opened here.
-                rc = pBt.pPager.sqlite3PagerOpenSavepoint(p.db.nSavepoint);
-            btreeIntegrity(p);
-            sqlite3BtreeLeave(p);
+                rc = pBt.pPager.sqlite3PagerOpenSavepoint(this.db.nSavepoint);
+            btreeIntegrity();
+            sqlite3BtreeLeave();
             return rc;
         }
 
-        internal static SQLITE sqlite3BtreeBeginStmt(Btree p, int iStatement)
+        internal SQLITE sqlite3BtreeBeginStmt(int iStatement)
         {
-            sqlite3BtreeEnter(p);
-            Debug.Assert(p.inTrans == TRANS.WRITE);
-            var pBt = p.pBt;
+            sqlite3BtreeEnter();
+            Debug.Assert(this.inTrans == TRANS.WRITE);
+            var pBt = this.pBt;
             Debug.Assert(!pBt.readOnly);
             Debug.Assert(iStatement > 0);
-            Debug.Assert(iStatement > p.db.nSavepoint);
+            Debug.Assert(iStatement > this.db.nSavepoint);
             Debug.Assert(pBt.inTransaction == TRANS.WRITE);
             // At the pager level, a statement transaction is a savepoint with an index greater than all savepoints created explicitly using
             // SQL statements. It is illegal to open, release or rollback any such savepoints while the statement transaction savepoint is active.
             var rc = pBt.pPager.sqlite3PagerOpenSavepoint(iStatement);
-            sqlite3BtreeLeave(p);
+            sqlite3BtreeLeave();
             return rc;
         }
 
-        internal static SQLITE sqlite3BtreeSavepoint(Btree p, SAVEPOINT op, int iSavepoint)
+        internal SQLITE sqlite3BtreeSavepoint(SAVEPOINT op, int iSavepoint)
         {
             var rc = SQLITE.OK;
-            if (p != null && p.inTrans == TRANS.WRITE)
+            if (this != null && this.inTrans == TRANS.WRITE)
             {
                 Debug.Assert(op == SAVEPOINT.RELEASE || op == SAVEPOINT.ROLLBACK);
                 Debug.Assert(iSavepoint >= 0 || (iSavepoint == -1 && op == SAVEPOINT.ROLLBACK));
-                sqlite3BtreeEnter(p);
-                var pBt = p.pBt;
+                sqlite3BtreeEnter();
+                var pBt = this.pBt;
                 rc = pBt.pPager.sqlite3PagerSavepoint(op, iSavepoint);
                 if (rc == SQLITE.OK)
                 {
                     if (iSavepoint < 0 && pBt.initiallyEmpty)
                         pBt.nPage = 0;
-                    rc = newDatabase(pBt);
+                    rc = pBt.newDatabase();
                     pBt.nPage = ConvertEx.sqlite3Get4byte(pBt.pPage1.aData, 28);
                     //The database size was written into the offset 28 of the header when the transaction started, so we know that the value at offset 28 is nonzero.
                     Debug.Assert(pBt.nPage > 0);
                 }
-                sqlite3BtreeLeave(p);
+                sqlite3BtreeLeave();
             }
             return rc;
         }
 
-        internal static SQLITE btreeCursor(Btree p, int iTable, int wrFlag, KeyInfo pKeyInfo, BtCursor pCur)
+        internal SQLITE btreeCursor(int iTable, int wrFlag, KeyInfo pKeyInfo, BtCursor pCur)
         {
-            Debug.Assert(sqlite3BtreeHoldsMutex(p));
+            Debug.Assert(sqlite3BtreeHoldsMutex());
             Debug.Assert(wrFlag == 0 || wrFlag == 1);
             // The following Debug.Assert statements verify that if this is a sharable b-tree database, the connection is holding the required table locks,
             // and that no other connection has any open cursor that conflicts with this lock.
-            Debug.Assert(hasSharedCacheTableLock(p, (uint)iTable, pKeyInfo != null ? 1 : 0, wrFlag + 1));
-            Debug.Assert(wrFlag == 0 || !hasReadConflicts(p, (uint)iTable));
+            Debug.Assert(hasSharedCacheTableLock(this, (uint)iTable, pKeyInfo != null ? 1 : 0, wrFlag + 1));
+            Debug.Assert(wrFlag == 0 || !hasReadConflicts(this, (uint)iTable));
             // Assert that the caller has opened the required transaction.
-            Debug.Assert(p.inTrans > TRANS.NONE);
-            Debug.Assert(wrFlag == 0 || p.inTrans == TRANS.WRITE);
-            var pBt = p.pBt;                 // Shared b-tree handle
+            Debug.Assert(this.inTrans > TRANS.NONE);
+            Debug.Assert(wrFlag == 0 || this.inTrans == TRANS.WRITE);
+            var pBt = this.pBt;                 // Shared b-tree handle
             Debug.Assert(pBt.pPage1 != null && pBt.pPage1.aData != null);
             if (Check.NEVER(wrFlag != 0 && pBt.readOnly))
                 return SQLITE.READONLY;
-            if (iTable == 1 && btreePagecount(pBt) == 0)
+            if (iTable == 1 && pBt.btreePagecount() == 0)
                 return SQLITE.EMPTY;
             // Now that no other errors can occur, finish filling in the BtCursor variables and link the cursor into the BtShared list.
             pCur.pgnoRoot = (Pgno)iTable;
             pCur.iPage = -1;
             pCur.pKeyInfo = pKeyInfo;
-            pCur.pBtree = p;
+            pCur.pBtree = this;
             pCur.pBt = pBt;
             pCur.wrFlag = (byte)wrFlag;
             pCur.pNext = pBt.pCursor;
@@ -646,22 +653,22 @@ pBt.isExclusive = (u8)(wrflag>1);
             return SQLITE.OK;
         }
 
-        internal static SQLITE sqlite3BtreeCursor(Btree p, int iTable, int wrFlag, KeyInfo pKeyInfo, BtCursor pCur)
+        internal SQLITE sqlite3BtreeCursor(int iTable, int wrFlag, KeyInfo pKeyInfo, BtCursor pCur)
         {
-            sqlite3BtreeEnter(p);
-            var rc = btreeCursor(p, iTable, wrFlag, pKeyInfo, pCur);
-            sqlite3BtreeLeave(p);
+            sqlite3BtreeEnter();
+            var rc = btreeCursor(iTable, wrFlag, pKeyInfo, pCur);
+            sqlite3BtreeLeave();
             return rc;
         }
 
-        internal static SQLITE btreeCreateTable(Btree p, ref int piTable, int createTabFlags)
+        internal SQLITE btreeCreateTable(ref int piTable, int createTabFlags)
         {
-            var pBt = p.pBt;
+            var pBt = this.pBt;
             var pRoot = new MemPage();
             Pgno pgnoRoot = 0;
             int ptfFlags;          // Page-type flage for the root page of new table
             SQLITE rc;
-            Debug.Assert(sqlite3BtreeHoldsMutex(p));
+            Debug.Assert(sqlite3BtreeHoldsMutex());
             Debug.Assert(pBt.inTransaction == TRANS.WRITE);
             Debug.Assert(!pBt.readOnly);
 #if SQLITE_OMIT_AUTOVACUUM
@@ -678,14 +685,14 @@ pBt.isExclusive = (u8)(wrflag>1);
                 invalidateAllOverflowCache(pBt);
                 // Read the value of meta[3] from the database to determine where the root page of the new table should go. meta[3] is the largest root-page
                 // created so far, so the new root-page is (meta[3]+1).
-                sqlite3BtreeGetMeta(p, BTREE_LARGEST_ROOT_PAGE, ref pgnoRoot);
+                sqlite3BtreeGetMeta(this, BTREE_LARGEST_ROOT_PAGE, ref pgnoRoot);
                 pgnoRoot++;
                 // The new root-page may not be allocated on a pointer-map page, or the PENDING_BYTE page.
-                while (pgnoRoot == PTRMAP_PAGENO(pBt, pgnoRoot) || pgnoRoot == PENDING_BYTE_PAGE(pBt))
+                while (pgnoRoot == MemPage.PTRMAP_PAGENO(pBt, pgnoRoot) || pgnoRoot == MemPage.PENDING_BYTE_PAGE(pBt))
                     pgnoRoot++;
                 Debug.Assert(pgnoRoot >= 3);
                 // Allocate a page. The page that currently resides at pgnoRoot will be moved to the allocated page (unless the allocated page happens to reside at pgnoRoot).
-                rc = allocateBtreePage(pBt, ref pPageMove, ref pgnoMove, pgnoRoot, 1);
+                rc = pBt.allocateBtreePage(ref pPageMove, ref pgnoMove, pgnoRoot, 1);
                 if (rc != SQLITE.OK)
                     return rc;
                 if (pgnoMove != pgnoRoot)
@@ -693,117 +700,117 @@ pBt.isExclusive = (u8)(wrflag>1);
                     // pgnoRoot is the page that will be used for the root-page of the new table (assuming an error did not occur). But we were
                     // allocated pgnoMove. If required (i.e. if it was not allocated by extending the file), the current page at position pgnoMove
                     // is already journaled.
-                    byte eType = 0;
+                    PTRMAP eType = 0;
                     Pgno iPtrPage = 0;
-                    releasePage(pPageMove);
+                    pPageMove.releasePage();
                     // Move the page currently at pgnoRoot to pgnoMove.
-                    rc = btreeGetPage(pBt, pgnoRoot, ref pRoot, 0);
+                    rc = pBt.btreeGetPage(pgnoRoot, ref pRoot, 0);
                     if (rc != SQLITE.OK)
                         return rc;
-                    rc = ptrmapGet(pBt, pgnoRoot, ref eType, ref iPtrPage);
-                    if (eType == PTRMAP_ROOTPAGE || eType == PTRMAP_FREEPAGE)
+                    rc = pBt.ptrmapGet(pgnoRoot, ref eType, ref iPtrPage);
+                    if (eType == PTRMAP.ROOTPAGE || eType == PTRMAP.FREEPAGE)
                         rc = SysEx.SQLITE_CORRUPT_BKPT();
                     if (rc != SQLITE.OK)
                     {
-                        releasePage(pRoot);
+                        pRoot.releasePage();
                         return rc;
                     }
-                    Debug.Assert(eType != PTRMAP_ROOTPAGE);
-                    Debug.Assert(eType != PTRMAP_FREEPAGE);
-                    rc = relocatePage(pBt, pRoot, eType, iPtrPage, pgnoMove, 0);
-                    releasePage(pRoot);
+                    Debug.Assert(eType != PTRMAP.ROOTPAGE);
+                    Debug.Assert(eType != PTRMAP.FREEPAGE);
+                    rc = pBt.relocatePage(pRoot, eType, iPtrPage, pgnoMove, 0);
+                    pRoot.releasePage();
                     // Obtain the page at pgnoRoot
                     if (rc != SQLITE.OK)
                         return rc;
-                    rc = btreeGetPage(pBt, pgnoRoot, ref pRoot, 0);
+                    rc = pBt.btreeGetPage(pgnoRoot, ref pRoot, 0);
                     if (rc != SQLITE.OK)
                         return rc;
-                    rc = sqlite3PagerWrite(pRoot.pDbPage);
+                    rc = Pager.sqlite3PagerWrite(pRoot.pDbPage);
                     if (rc != SQLITE.OK)
                     {
-                        releasePage(pRoot);
+                        pRoot.releasePage();
                         return rc;
                     }
                 }
                 else
                     pRoot = pPageMove;
                 // Update the pointer-map and meta-data with the new root-page number.
-                ptrmapPut(pBt, pgnoRoot, PTRMAP_ROOTPAGE, 0, ref rc);
+                pBt.ptrmapPut(pgnoRoot, PTRMAP.ROOTPAGE, 0, ref rc);
                 if (rc != SQLITE.OK)
                 {
-                    releasePage(pRoot);
+                    pRoot.releasePage();
                     return rc;
                 }
                 // When the new root page was allocated, page 1 was made writable in order either to increase the database filesize, or to decrement the
                 // freelist count.  Hence, the sqlite3BtreeUpdateMeta() call cannot fail.
                 Debug.Assert(Pager.sqlite3PagerIswriteable(pBt.pPage1.pDbPage));
-                rc = sqlite3BtreeUpdateMeta(p, 4, pgnoRoot);
+                rc = sqlite3BtreeUpdateMeta(4, pgnoRoot);
                 if (Check.NEVER(rc != SQLITE.OK))
                 {
-                    releasePage(pRoot);
+                    pRoot.releasePage();
                     return rc;
                 }
             }
             else
             {
-                rc = allocateBtreePage(pBt, ref pRoot, ref pgnoRoot, 1, 0);
+                rc = pBt.allocateBtreePage(ref pRoot, ref pgnoRoot, 1, 0);
                 if (rc != SQLITE.OK)
                     return rc;
             }
 #endif
             Debug.Assert(Pager.sqlite3PagerIswriteable(pRoot.pDbPage));
             ptfFlags = ((createTabFlags & BTREE_INTKEY) != 0 ? PTF_INTKEY | PTF_LEAFDATA | PTF_LEAF : PTF_ZERODATA | PTF_LEAF);
-            zeroPage(pRoot, ptfFlags);
+            pRoot.zeroPage(ptfFlags);
             Pager.sqlite3PagerUnref(pRoot.pDbPage);
             Debug.Assert((pBt.openFlags & BTREE_SINGLE) == 0 || pgnoRoot == 2);
             piTable = (int)pgnoRoot;
             return SQLITE.OK;
         }
 
-        internal static int sqlite3BtreeCreateTable(Btree p, ref int piTable, int flags)
+        internal SQLITE sqlite3BtreeCreateTable(ref int piTable, int flags)
         {
-            sqlite3BtreeEnter(p);
-            var rc = btreeCreateTable(p, ref piTable, flags);
-            sqlite3BtreeLeave(p);
+            sqlite3BtreeEnter();
+            var rc = btreeCreateTable(ref piTable, flags);
+            sqlite3BtreeLeave();
             return rc;
         }
 
-        internal static SQLITE sqlite3BtreeClearTable(Btree p, int iTable, ref int pnChange)
+        internal SQLITE sqlite3BtreeClearTable(int iTable, ref int pnChange)
         {
-            var pBt = p.pBt;
-            sqlite3BtreeEnter(p);
-            Debug.Assert(p.inTrans == TRANS.WRITE);
+            var pBt = this.pBt;
+            sqlite3BtreeEnter();
+            Debug.Assert(this.inTrans == TRANS.WRITE);
             // Invalidate all incrblob cursors open on table iTable (assuming iTable is the root of a table b-tree - if it is not, the following call is a no-op).
-            invalidateIncrblobCursors(p, 0, 1);
-            var rc = saveAllCursors(pBt, (Pgno)iTable, null);
+            invalidateIncrblobCursors(this, 0, 1);
+            var rc = pBt.saveAllCursors((Pgno)iTable, null);
             if (rc == SQLITE.OK)
-                rc = clearDatabasePage(pBt, (Pgno)iTable, 0, ref pnChange);
-            sqlite3BtreeLeave(p);
+                rc = pBt.clearDatabasePage((Pgno)iTable, 0, ref pnChange);
+            sqlite3BtreeLeave();
             return rc;
         }
 
-        internal static SQLITE btreeDropTable(Btree p, Pgno iTable, ref int piMoved)
+        internal SQLITE btreeDropTable(Pgno iTable, ref int piMoved)
         {
             MemPage pPage = null;
-            var pBt = p.pBt;
-            Debug.Assert(MutexEx.sqlite3BtreeHoldsMutex(p));
-            Debug.Assert(p.inTrans == TRANS.WRITE);
+            var pBt = this.pBt;
+            Debug.Assert(MutexEx.sqlite3BtreeHoldsMutex());
+            Debug.Assert(this.inTrans == TRANS.WRITE);
             // It is illegal to drop a table if any cursors are open on the database. This is because in auto-vacuum mode the backend may
             // need to move another root-page to fill a gap left by the deleted root page. If an open cursor was using this page a problem would occur.
             // This error is caught long before control reaches this point.
             if (Check.NEVER(pBt.pCursor))
             {
-                sqlite3ConnectionBlocked(p.db, pBt.pCursor.pBtree.db);
+                sqlite3ConnectionBlocked(this.db, pBt.pCursor.pBtree.db);
                 return SysEx.SQLITE_LOCKED_SHAREDCACHE;
             }
-            var rc = btreeGetPage(pBt, (Pgno)iTable, ref pPage, 0);
+            var rc = pBt.btreeGetPage((Pgno)iTable, ref pPage, 0);
             if (rc != SQLITE.OK)
                 return rc;
             var dummy0 = 0;
-            rc = sqlite3BtreeClearTable(p, (int)iTable, ref dummy0);
+            rc = sqlite3BtreeClearTable((int)iTable, ref dummy0);
             if (rc != SQLITE.OK)
             {
-                releasePage(pPage);
+                pPage.releasePage();
                 return rc;
             }
             piMoved = 0;
@@ -816,12 +823,12 @@ releasePage(pPage);
                 if (pBt.autoVacuum)
                 {
                     Pgno maxRootPgno = 0;
-                    sqlite3BtreeGetMeta(p, BTREE_LARGEST_ROOT_PAGE, ref maxRootPgno);
+                    sqlite3BtreeGetMeta(BTREE_LARGEST_ROOT_PAGE, ref maxRootPgno);
                     if (iTable == maxRootPgno)
                     {
                         // If the table being dropped is the table with the largest root-page number in the database, put the root page on the free list.
-                        freePage(pPage, ref rc);
-                        releasePage(pPage);
+                        pPage.freePage(ref rc);
+                        pPage.releasePage();
                         if (rc != SQLITE.OK)
                             return rc;
                     }
@@ -830,18 +837,18 @@ releasePage(pPage);
                         // The table being dropped does not have the largest root-page number in the database. So move the page that does into the
                         // gap left by the deleted root-page.
                         var pMove = new MemPage();
-                        releasePage(pPage);
-                        rc = btreeGetPage(pBt, maxRootPgno, ref pMove, 0);
+                        pPage.releasePage();
+                        rc = pBt.btreeGetPage(maxRootPgno, ref pMove, 0);
                         if (rc != SQLITE.OK)
                             return rc;
-                        rc = relocatePage(pBt, pMove, PTRMAP_ROOTPAGE, 0, iTable, 0);
-                        releasePage(pMove);
+                        rc = pBt.relocatePage(pMove, PTRMAP.ROOTPAGE, 0, iTable, 0);
+                        pMove.releasePage();
                         if (rc != SQLITE.OK)
                             return rc;
                         pMove = null;
-                        rc = btreeGetPage(pBt, maxRootPgno, ref pMove, 0);
-                        freePage(pMove, ref rc);
-                        releasePage(pMove);
+                        rc = pBt.btreeGetPage( maxRootPgno, ref pMove, 0);
+                        pMove.freePage(ref rc);
+                        pMove.releasePage();
                         if (rc != SQLITE.OK)
                             return rc;
                         piMoved = (int)maxRootPgno;
@@ -849,41 +856,41 @@ releasePage(pPage);
                     // Set the new 'max-root-page' value in the database header. This is the old value less one, less one more if that happens to
                     // be a root-page number, less one again if that is the PENDING_BYTE_PAGE.
                     maxRootPgno--;
-                    while (maxRootPgno == PENDING_BYTE_PAGE(pBt) || PTRMAP_ISPAGE(pBt, maxRootPgno))
+                    while (maxRootPgno == MemPage.PENDING_BYTE_PAGE(pBt) || MemPage.PTRMAP_ISPAGE(pBt, maxRootPgno))
                         maxRootPgno--;
-                    Debug.Assert(maxRootPgno != PENDING_BYTE_PAGE(pBt));
-                    rc = sqlite3BtreeUpdateMeta(p, 4, maxRootPgno);
+                    Debug.Assert(maxRootPgno != MemPage.PENDING_BYTE_PAGE(pBt));
+                    rc = sqlite3BtreeUpdateMeta(4, maxRootPgno);
                 }
                 else
                 {
-                    freePage(pPage, ref rc);
-                    releasePage(pPage);
+                    pPage.freePage(ref rc);
+                    pPage.releasePage();
                 }
 #endif
             }
             else
             {
                 // If sqlite3BtreeDropTable was called on page 1. This really never should happen except in a corrupt database.
-                zeroPage(pPage, PTF_INTKEY | PTF_LEAF);
-                releasePage(pPage);
+                pPage.zeroPage( PTF_INTKEY | PTF_LEAF);
+                pPage.releasePage();
             }
             return rc;
         }
 
-        internal static SQLITE sqlite3BtreeDropTable(Btree p, int iTable, ref int piMoved)
+        internal SQLITE sqlite3BtreeDropTable(int iTable, ref int piMoved)
         {
-            sqlite3BtreeEnter(p);
-            var rc = btreeDropTable(p, (uint)iTable, ref piMoved);
-            sqlite3BtreeLeave(p);
+            sqlite3BtreeEnter();
+            var rc = btreeDropTable((uint)iTable, ref piMoved);
+            sqlite3BtreeLeave();
             return rc;
         }
 
-        internal static void sqlite3BtreeGetMeta(Btree p, int idx, ref uint pMeta)
+        internal void sqlite3BtreeGetMeta(int idx, ref uint pMeta)
         {
-            var pBt = p.pBt;
-            sqlite3BtreeEnter(p);
-            Debug.Assert(p.inTrans > TRANS.NONE);
-            Debug.Assert(querySharedCacheTableLock(p, MASTER_ROOT, READ_LOCK) == SQLITE.OK);
+            var pBt = this.pBt;
+            sqlite3BtreeEnter();
+            Debug.Assert(this.inTrans > TRANS.NONE);
+            Debug.Assert(querySharedCacheTableLock(MASTER_ROOT, READ_LOCK) == SQLITE.OK);
             Debug.Assert(pBt.pPage1 != null);
             Debug.Assert(idx >= 0 && idx <= 15);
             pMeta = ConvertEx.sqlite3Get4byte(pBt.pPage1.aData, 36 + idx * 4);
@@ -891,18 +898,18 @@ releasePage(pPage);
 #if SQLITE_OMIT_AUTOVACUUM
             if (idx == BTREE_LARGEST_ROOT_PAGE && pMeta > 0) pBt.readOnly = 1;
 #endif
-            sqlite3BtreeLeave(p);
+            sqlite3BtreeLeave();
         }
 
-        internal static SQLITE sqlite3BtreeUpdateMeta(Btree p, int idx, uint iMeta)
+        internal SQLITE sqlite3BtreeUpdateMeta(int idx, uint iMeta)
         {
-            var pBt = p.pBt;
+            var pBt = this.pBt;
             Debug.Assert(idx >= 1 && idx <= 15);
-            sqlite3BtreeEnter(p);
-            Debug.Assert(p.inTrans == TRANS.WRITE);
+            sqlite3BtreeEnter();
+            Debug.Assert(this.inTrans == TRANS.WRITE);
             Debug.Assert(pBt.pPage1 != null);
             var pP1 = pBt.pPage1.aData;
-            var rc = sqlite3PagerWrite(pBt.pPage1.pDbPage);
+            var rc = Pager.sqlite3PagerWrite(pBt.pPage1.pDbPage);
             if (rc == SQLITE.OK)
             {
                 ConvertEx.sqlite3Put4byte(pP1, 36 + idx * 4, iMeta);
@@ -915,7 +922,7 @@ releasePage(pPage);
                 }
 #endif
             }
-            sqlite3BtreeLeave(p);
+            sqlite3BtreeLeave();
             return rc;
         }
 
@@ -936,40 +943,38 @@ return rc;
 }
 #endif
 
-        internal static bool sqlite3BtreeIsInReadTrans(Btree p)
+        internal bool sqlite3BtreeIsInReadTrans()
         {
-            Debug.Assert(p != null);
-            Debug.Assert(MutexEx.sqlite3_mutex_held(p.db.mutex));
-            return (p.inTrans != TRANS.NONE);
+            Debug.Assert(MutexEx.sqlite3_mutex_held(this.db.mutex));
+            return (this.inTrans != TRANS.NONE);
         }
 
-        internal static bool sqlite3BtreeIsInBackup(Btree p)
+        internal bool sqlite3BtreeIsInBackup()
         {
-            Debug.Assert(p != null);
-            Debug.Assert(MutexEx.sqlite3_mutex_held(p.db.mutex));
-            return (p.nBackup != 0);
+            Debug.Assert(MutexEx.sqlite3_mutex_held(this.db.mutex));
+            return (this.nBackup != 0);
         }
 
-        internal static ISchema sqlite3BtreeSchema(Btree p, int nBytes, Action<ISchema> xFree)
+        internal ISchema sqlite3BtreeSchema(int nBytes, Func<ISchema> xNew, Action<ISchema> xFree)
         {
-            var pBt = p.pBt;
-            sqlite3BtreeEnter(p);
+            var pBt = this.pBt;
+            sqlite3BtreeEnter();
             if (pBt.pSchema == null && nBytes != 0)
             {
-                pBt.pSchema = new Schema();
+                pBt.pSchema = xNew();
                 pBt.xFreeSchema = xFree;
             }
-            sqlite3BtreeLeave(p);
+            sqlite3BtreeLeave();
             return pBt.pSchema;
         }
 
-        internal static SQLITE sqlite3BtreeSchemaLocked(Btree p)
+        internal SQLITE sqlite3BtreeSchemaLocked()
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(p.db.mutex));
-            sqlite3BtreeEnter(p);
-            var rc = querySharedCacheTableLock(p, MASTER_ROOT, READ_LOCK);
+            Debug.Assert(MutexEx.sqlite3_mutex_held(this.db.mutex));
+            sqlite3BtreeEnter();
+            var rc = querySharedCacheTableLock(MASTER_ROOT, READ_LOCK);
             Debug.Assert(rc == SQLITE.OK || rc == SQLITE.LOCKED_SHAREDCACHE);
-            sqlite3BtreeLeave(p);
+            sqlite3BtreeLeave();
             return rc;
         }
 
@@ -1060,23 +1065,23 @@ pCur.isIncrblobHandle = 1;
 }
 #endif
 
-        internal static SQLITE sqlite3BtreeSetVersion(Btree pBtree, int iVersion)
+        internal SQLITE sqlite3BtreeSetVersion(int iVersion)
         {
-            var pBt = pBtree.pBt;
-            Debug.Assert(pBtree.inTrans == TRANS_NONE);
+            var pBt = this.pBt;
+            Debug.Assert(this.inTrans == TRANS.NONE);
             Debug.Assert(iVersion == 1 || iVersion == 2);
             // If setting the version fields to 1, do not automatically open the WAL connection, even if the version fields are currently set to 2.
             pBt.doNotUseWAL = iVersion == 1;
-            var rc = sqlite3BtreeBeginTrans(pBtree, 0);
+            var rc = sqlite3BtreeBeginTrans(0);
             if (rc == SQLITE.OK)
             {
                 var aData = pBt.pPage1.aData;
                 if (aData[18] != (byte)iVersion || aData[19] != (byte)iVersion)
                 {
-                    rc = sqlite3BtreeBeginTrans(pBtree, 2);
+                    rc = sqlite3BtreeBeginTrans(2);
                     if (rc == SQLITE.OK)
                     {
-                        rc = sqlite3PagerWrite(pBt.pPage1.pDbPage);
+                        rc = Pager.sqlite3PagerWrite(pBt.pPage1.pDbPage);
                         if (rc == SQLITE.OK)
                         {
                             aData[18] = (byte)iVersion;
