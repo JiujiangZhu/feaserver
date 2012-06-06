@@ -25,7 +25,7 @@ namespace Contoso.Core
             ERROR = 6,
         }
 
-        public enum LOCKINGMODE
+        public enum LOCKINGMODE : sbyte
         {
             QUERY = -1,
             NORMAL = 0,
@@ -45,7 +45,7 @@ namespace Contoso.Core
         }
 
         [Flags]
-        public enum PAGEROPEN
+        public enum PAGEROPEN : byte
         {
             OMIT_JOURNAL = 0x0001,
             NO_READLOCK = 0x0002,

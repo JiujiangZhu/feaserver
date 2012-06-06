@@ -1,11 +1,8 @@
-﻿using Pgno = System.UInt32;
-using DbPage = Contoso.Core.PgHdr;
-using System;
-using System.Text;
-using Contoso.Sys;
+﻿using System;
 using System.Diagnostics;
-using CURSOR = Contoso.Core.BtCursor.CURSOR;
-using VFSOPEN = Contoso.Sys.VirtualFileSystem.OPEN;
+using Contoso.Sys;
+using DbPage = Contoso.Core.PgHdr;
+using Pgno = System.UInt32;
 
 namespace Contoso.Core
 {
@@ -61,7 +58,7 @@ namespace Contoso.Core
                 this.iPage = -1;
                 this.eState = CURSOR.REQUIRESEEK;
             }
-            invalidateOverflowCache();
+            Btree.invalidateOverflowCache(this);
             return rc;
         }
 
@@ -79,13 +76,13 @@ namespace Contoso.Core
             if (pKey != null)
             {
                 Debug.Assert(nKey == (long)(int)nKey);
-                pIdxKey = sqlite3VdbeRecordUnpack(this.pKeyInfo, (int)nKey, pKey, aSpace, 16);
+                pIdxKey = Btree._vdbe.sqlite3VdbeRecordUnpack(this.pKeyInfo, (int)nKey, pKey, aSpace, 16);
             }
             else
                 pIdxKey = null;
             var rc = sqlite3BtreeMovetoUnpacked(pIdxKey, nKey, bias != 0 ? 1 : 0, ref pRes);
             if (pKey != null)
-                sqlite3VdbeDeleteUnpackedRecord(pIdxKey);
+                Btree._vdbe.sqlite3VdbeDeleteUnpackedRecord(pIdxKey);
             return rc;
         }
 
@@ -680,10 +677,10 @@ nextPage = pCur.aOverflow[iIdx+1];
                         var nCell = (int)pPage.aData[pCell + 0];
                         if (0 == (nCell & 0x80) && nCell <= pPage.maxLocal)
                             // This branch runs if the record-size field of the cell is a single byte varint and the record fits entirely on the main b-tree page.
-                            c = sqlite3VdbeRecordCompare(nCell, pPage.aData, pCell + 1, pIdxKey);
+                            c = Btree._vdbe.sqlite3VdbeRecordCompare(nCell, pPage.aData, pCell + 1, pIdxKey);
                         else if (0 == (pPage.aData[pCell + 1] & 0x80) && (nCell = ((nCell & 0x7f) << 7) + pPage.aData[pCell + 1]) <= pPage.maxLocal)
                             // The record-size field is a 2 byte varint and the record fits entirely on the main b-tree page.
-                            c = sqlite3VdbeRecordCompare(nCell, pPage.aData, pCell + 2, pIdxKey);
+                            c = Btree._vdbe.sqlite3VdbeRecordCompare(nCell, pPage.aData, pCell + 2, pIdxKey);
                         else
                         {
                             // The record flows over onto one or more overflow pages. In this case the whole cell needs to be parsed, a buffer allocated
@@ -699,7 +696,7 @@ nextPage = pCur.aOverflow[iIdx+1];
                                 pCellKey = null;
                                 goto moveto_finish;
                             }
-                            c = sqlite3VdbeRecordCompare(nCell, pCellKey, pIdxKey);
+                            c = Btree._vdbe.sqlite3VdbeRecordCompare(nCell, pCellKey, pIdxKey);
                             pCellKey = null;
                         }
                     }

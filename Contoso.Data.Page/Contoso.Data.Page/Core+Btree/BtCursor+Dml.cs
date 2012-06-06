@@ -1,12 +1,7 @@
-﻿using Pgno = System.UInt32;
-using DbPage = Contoso.Core.PgHdr;
-using System;
-using System.Text;
-using Contoso.Sys;
+﻿using System;
 using System.Diagnostics;
+using Contoso.Sys;
 using TRANS = Contoso.Core.Btree.TRANS;
-using CURSOR = Contoso.Core.BtCursor.CURSOR;
-using VFSOPEN = Contoso.Sys.VirtualFileSystem.OPEN;
 
 namespace Contoso.Core
 {

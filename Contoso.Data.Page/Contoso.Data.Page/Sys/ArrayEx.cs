@@ -21,6 +21,28 @@ namespace Contoso.Sys
                 if (a[i] != b[i]) return (a[i] < b[i] ? -1 : 1);
             return 0;
         }
+        public static int Compare(byte[] a, int aOffset, byte[] b, int bOffset, int count)
+        {
+            if (a.Length < aOffset + count) return (a.Length - aOffset < b.Length - bOffset ? -1 : 1);
+            if (b.Length < bOffset + count) return 1;
+            for (int i = 0; i < count; i++)
+                if (a[i + aOffset] != b[i + bOffset])
+                    return (a[i + aOffset] < b[i + bOffset] ? -1 : 1);
+            return 0;
+        }
+        public static int Compare(byte[] a, int aOffset, string b, int count)
+        {
+            if (a.Length < aOffset + count)
+                return (a.Length - aOffset < b.Length ? -1 : 1);
+            if (b.Length < count) return 1;
+            for (int i = 0; i < count; i++)
+                if (a[i + aOffset] != b[i])
+                    return (a[i + aOffset] < b[i] ? -1 : 1);
+            return 0;
+        }
+
+
+
 
         //public static unsafe int Compare(byte[] buffer1, int offset1, byte[] buffer2, int offset2, int count)
         //{

@@ -1,7 +1,6 @@
 ﻿using System;
-using Contoso.Sys;
-using Pgno = System.UInt32;
 using DbPage = Contoso.Core.PgHdr;
+using Pgno = System.UInt32;
 
 namespace Contoso.Core
 {

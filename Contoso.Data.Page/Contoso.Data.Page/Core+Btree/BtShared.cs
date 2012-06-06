@@ -1,6 +1,7 @@
-﻿using Contoso.Sys;
-using System;
+﻿using System;
+using Contoso.Sys;
 using Pgno = System.UInt32;
+
 namespace Contoso.Core
 {
     public partial class BtShared
@@ -13,7 +14,7 @@ namespace Contoso.Core
         public bool pageSizeFixed;      // True if the page size can no longer be changed
         public bool secureDelete;       // True if secure_delete is enabled
         public bool initiallyEmpty;     // Database is empty at start of transaction
-        public byte openFlags;          // Flags to sqlite3BtreeOpen()
+        public Btree.OPEN openFlags;          // Flags to sqlite3BtreeOpen()
 #if !SQLITE_OMIT_AUTOVACUUM
         public bool autoVacuum;         // True if auto-vacuum is enabled
         public bool incrVacuum;         // True if incr-vacuum is enabled

@@ -1,11 +1,5 @@
-﻿using Pgno = System.UInt32;
-using DbPage = Contoso.Core.PgHdr;
-using System;
-using System.Text;
-using Contoso.Sys;
-using System.Diagnostics;
-using CURSOR = Contoso.Core.BtCursor.CURSOR;
-using VFSOPEN = Contoso.Sys.VirtualFileSystem.OPEN;
+﻿using Contoso.Sys;
+using Pgno = System.UInt32;
 
 namespace Contoso.Core
 {
@@ -206,7 +200,7 @@ pLock.eLock = READ_LOCK;
 }
 }
 #else
-        internal static SQLITE querySharedCacheTableLock(Btree p, Pgno iTab, byte eLock) { return SQLITE.OK; }
+        internal static SQLITE querySharedCacheTableLock(Btree p, Pgno iTab, BtLock.ELOCK eLock) { return SQLITE.OK; }
         internal static void clearAllSharedCacheTableLocks(Btree a) { }
         internal static void downgradeAllSharedCacheTableLocks(Btree a) { }
         internal static bool hasSharedCacheTableLock(Btree a, Pgno b, int c, int d) { return true; }

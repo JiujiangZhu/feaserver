@@ -1,11 +1,8 @@
-﻿using Pgno = System.UInt32;
-using DbPage = Contoso.Core.PgHdr;
-using System;
-using System.Text;
-using Contoso.Sys;
+﻿using System;
 using System.Diagnostics;
-using CURSOR = Contoso.Core.BtCursor.CURSOR;
-using VFSOPEN = Contoso.Sys.VirtualFileSystem.OPEN;
+using Contoso.Sys;
+using DbPage = Contoso.Core.PgHdr;
+using Pgno = System.UInt32;
 
 namespace Contoso.Core
 {
@@ -59,7 +56,7 @@ namespace Contoso.Core
             }
             pInfo.nPayload = nPayload;
             pInfo.nHeader = n;
-            if (likely(nPayload <= this.maxLocal))
+            if (Check.LIKELY(nPayload <= this.maxLocal))
             {
                 // This is the (easy) common case where the entire payload fits on the local page.  No overflow is required.
                 if ((pInfo.nSize = (ushort)(n + nPayload)) < 4)

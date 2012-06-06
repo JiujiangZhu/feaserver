@@ -1,4 +1,7 @@
 ﻿namespace Contoso.Core
 {
-    public interface ISchema { }
+    public interface ISchema
+    {
+        byte file_format { get; set; }
+    }
 }

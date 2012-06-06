@@ -1,11 +1,7 @@
-﻿using Pgno = System.UInt32;
-using DbPage = Contoso.Core.PgHdr;
-using System;
-using System.Text;
-using Contoso.Sys;
+﻿using System;
 using System.Diagnostics;
-using CURSOR = Contoso.Core.BtCursor.CURSOR;
-using VFSOPEN = Contoso.Sys.VirtualFileSystem.OPEN;
+using Contoso.Sys;
+using Pgno = System.UInt32;
 using PTRMAP = Contoso.Core.MemPage.PTRMAP;
 
 namespace Contoso.Core

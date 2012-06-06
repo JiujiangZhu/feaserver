@@ -68,6 +68,7 @@
     <Compile Include="Core+Btree\MemPage.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Core\IVdbe.cs" />
     <Compile Include="Sys\VirtualFile+Stream.cs" />
     <Compile Include="Sys\MemJournalFile.cs" />
     <Compile Include="Core+Pager\Name\PCache1+Allocation.cs">
