@@ -1,11 +1,7 @@
-﻿using Pgno = System.UInt32;
-using DbPage = Contoso.Core.PgHdr;
-using System;
-using System.Text;
-using Contoso.Sys;
+﻿using System;
 using System.Diagnostics;
-using CURSOR = Contoso.Core.BtCursor.CURSOR;
-using VFSOPEN = Contoso.Sys.VirtualFileSystem.OPEN;
+using Contoso.Sys;
+using Pgno = System.UInt32;
 
 namespace Contoso.Core
 {
@@ -213,7 +209,7 @@ if (false)
             int pageFlags;               // Value of pPage.aData[0]
             int subtotal;                // Subtotal of bytes in cells on one page
             int iOvflSpace = 0;          // First unused byte of aOvflSpace[]
-            int szScratch;               // Size of scratch memory requested
+            //int szScratch;               // Size of scratch memory requested
             byte[][] apCell = null;                 // All cells begin balanced
             //
             pBt = pParent.pBt;
@@ -526,6 +522,7 @@ if (false)
             Debug.Assert(Pager.sqlite3PagerIswriteable(pParent.pDbPage));
             ConvertEx.sqlite3Put4byte(pParent.aData, pRight, apNew[nNew - 1].pgno);
             // Evenly distribute the data in apCell[] across the new pages. Insert divider cells into pParent as necessary.
+            j = 0;
             for (i = 0; i < nNew; i++)
             {
                 // Assemble the new sibling page.

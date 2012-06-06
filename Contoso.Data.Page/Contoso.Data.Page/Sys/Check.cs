@@ -23,5 +23,8 @@ namespace Contoso.Sys
         internal static int NEVER(int X) { return X; }
         internal static bool NEVER<T>(T X) { return false; }
 #endif
+
+        internal static bool LIKELY(bool X) { return !!X; }
+        internal static bool UNLIKELY(bool X) { return !!X; }
     }
 }

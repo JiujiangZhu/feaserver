@@ -1,11 +1,7 @@
-﻿using Pgno = System.UInt32;
-using DbPage = Contoso.Core.PgHdr;
-using System;
-using System.Text;
+﻿using System.Diagnostics;
 using Contoso.Sys;
-using System.Diagnostics;
 using CURSOR = Contoso.Core.BtCursor.CURSOR;
-using VFSOPEN = Contoso.Sys.VirtualFileSystem.OPEN;
+using Pgno = System.UInt32;
 
 namespace Contoso.Core
 {
@@ -21,7 +17,7 @@ namespace Contoso.Core
 #if !SQLITE_OMIT_AUTOVACUUM
                 if (pBt.autoVacuum)
                 {
-                    rc = pBt.autoVacuumCommit();
+                    rc = MemPage.autoVacuumCommit(pBt);
                     if (rc != SQLITE.OK)
                     {
                         sqlite3BtreeLeave();
@@ -38,7 +34,7 @@ namespace Contoso.Core
         internal void btreeEndTransaction()
         {
             var pBt = this.pBt;
-            Debug.Assert(sqlite3BtreeHoldsMutex(this));
+            Debug.Assert(sqlite3BtreeHoldsMutex());
             pBt.btreeClearHasContent();
             if (this.inTrans > TRANS.NONE && this.db.activeVdbeCnt > 1)
             {

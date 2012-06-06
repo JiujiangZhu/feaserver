@@ -1,12 +1,19 @@
-﻿using Mem = System.Object;
-using Pgno = System.UInt32;
-using System;
+﻿using System;
 using System.Diagnostics;
+using System.Text;
+using Mem = System.Object;
 
 namespace Contoso.Core
 {
     public partial class Btree
     {
+        const int SQLITE_DEFAULT_CACHE_SIZE = 2000;
+        const string SQLITE_FILE_HEADER = "SQLite format 3\0";
+        internal static byte[] zMagicHeader = Encoding.UTF8.GetBytes(SQLITE_FILE_HEADER);
+        const int MASTER_ROOT = 1;
+        const int EXTRA_SIZE = 0;
+        internal static IVdbe _vdbe;
+
         public enum TRANS : byte
         {
             NONE = 0,
@@ -14,14 +21,43 @@ namespace Contoso.Core
             WRITE = 2,
         }
 
-        [Flags]
-        public enum OPEN
+        [Flags] // was:BTREE_*
+        public enum OPEN : byte
         {
             OMIT_JOURNAL = 1, // Do not create or use a rollback journal 
             NO_READLOCK = 2,  // Omit readlocks on readonly files 
             MEMORY = 4,       // This is an in-memory DB 
             SINGLE = 8,       // The file contains at most 1 b-tree 
             UNORDERED = 16,   // Use of a hash implementation is OK 
+        }
+
+        // was:BTREE_*
+        public enum CREATETABLE
+        {
+            INTKEY = 1,
+            BLOBKEY = 2,
+        }
+
+        // was:BTREE_*
+        public enum META : byte
+        {
+            FREE_PAGE_COUNT = 0,
+            SCHEMA_VERSION = 1,
+            FILE_FORMAT = 2,
+            DEFAULT_CACHE_SIZE = 3,
+            LARGEST_ROOT_PAGE = 4,
+            TEXT_ENCODING = 5,
+            USER_VERSION = 6,
+            INCR_VACUUM = 7,
+        }
+
+        // was:BTREE_AUTOVACUUM_*
+        public enum AUTOVACUUM
+        {
+            DEFAULT = NONE,
+            NONE = 0,        // Do not do auto-vacuum
+            FULL = 1,        // Do full auto-vacuum
+            INCR = 2,        // Incremental vacuum
         }
 
         public class UnpackedRecord
@@ -66,8 +102,36 @@ namespace Contoso.Core
         internal const byte PTF_LEAF = 0x08;
 
 
+        // HOOKS
+#if !SQLITE_OMIT_SHARED_CACHE
+//void sqlite3BtreeEnter(Btree);
+//void sqlite3BtreeEnterAll(sqlite3);
+#else
         internal void sqlite3BtreeEnter() { }
         internal void sqlite3BtreeLeave() { }
+#endif
+#if !SQLITE_OMIT_SHARED_CACHE && SQLITE_THREADSAFE
+//int sqlite3BtreeSharable(Btree);
+//void sqlite3BtreeLeave(Btree);
+//void sqlite3BtreeEnterCursor(BtCursor);
+//void sqlite3BtreeLeaveCursor(BtCursor);
+//void sqlite3BtreeLeaveAll(sqlite3);
+#if !NDEBUG
+// These routines are used inside Debug.Assert() statements only.
+int sqlite3BtreeHoldsMutex(Btree);
+int sqlite3BtreeHoldsAllMutexes(sqlite3);
+int sqlite3SchemaMutexHeld(sqlite3*,int,Schema);
+#endif
+#else
+        //internal bool sqlite3BtreeSharable() { return false; }
+        //internal void sqlite3BtreeLeave() { }
+        //internal static void sqlite3BtreeEnterCursor(BtCursor X) { }
+        //internal static void sqlite3BtreeLeaveCursor(BtCursor X) { }
+        //internal static void sqlite3BtreeLeaveAll(sqlite3 X) { }
+        internal bool sqlite3BtreeHoldsMutex() { return true; }
+        //internal static bool sqlite3BtreeHoldsAllMutexes(sqlite3 X) { return true; }
+        //internal static bool sqlite3SchemaMutexHeld(sqlite3 X, int y, ISchema z) { return true; }
+#endif
 #if DEBUG
         internal void btreeIntegrity()
         {
@@ -77,6 +141,5 @@ namespace Contoso.Core
 #else
         internal void btreeIntegrity() { }
 #endif
-
     }
 }

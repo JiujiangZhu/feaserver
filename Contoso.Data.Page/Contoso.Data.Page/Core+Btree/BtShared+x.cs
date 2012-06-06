@@ -1,11 +1,10 @@
-﻿using Pgno = System.UInt32;
-using DbPage = Contoso.Core.PgHdr;
-using System;
-using System.Text;
-using Contoso.Sys;
+﻿using System;
 using System.Diagnostics;
+using Contoso.Core.Name;
+using Contoso.Sys;
 using CURSOR = Contoso.Core.BtCursor.CURSOR;
-using VFSOPEN = Contoso.Sys.VirtualFileSystem.OPEN;
+using DbPage = Contoso.Core.PgHdr;
+using Pgno = System.UInt32;
 using PTRMAP = Contoso.Core.MemPage.PTRMAP;
 using TRANS = Contoso.Core.Btree.TRANS;
 
@@ -192,7 +191,7 @@ return removed;
         }
 
         internal void allocateTempSpace() { if (this.pTmpSpace == null) this.pTmpSpace = MallocEx.sqlite3Malloc((int)this.pageSize); }
-        internal void freeTempSpace() { sqlite3PageFree(ref this.pTmpSpace); }
+        internal void freeTempSpace() { PCache1.sqlite3PageFree(ref this.pTmpSpace); }
 
         internal SQLITE lockBtree()
         {
@@ -216,7 +215,7 @@ return removed;
             {
                 var page1 = pPage1.aData;
                 rc = SQLITE.NOTADB;
-                if (ArrayEx.Compare(page1, zMagicHeader, 16) != 0)
+                if (ArrayEx.Compare(page1, Btree.zMagicHeader, 16) != 0)
                     goto page1_init_failed;
 #if SQLITE_OMIT_WAL
                 if (page1[18] > 1)
@@ -256,7 +255,7 @@ rc = SQLITE_NOTADB;
 #endif
                 // The maximum embedded fraction must be exactly 25%.  And the minimum embedded fraction must be 12.5% for both leaf-data and non-leaf-data.
                 // The original design allowed these amounts to vary, but as of version 3.6.0, we require them to be fixed.
-                if (ArrayEx.Compare(page1, 21, "\x0040\x0020\x0020", 3) != 0)//   "\100\040\040"
+                if (ArrayEx.Compare(page1, 21, "\x0040\x0020\x0020", 3) != 0) // "\100\040\040"
                     goto page1_init_failed;
                 var pageSize = (uint)((page1[16] << 8) | (page1[17] << 16));
                 if (((pageSize - 1) & pageSize) != 0 || pageSize > Pager.SQLITE_MAX_PAGE_SIZE || pageSize <= 256)
@@ -274,7 +273,7 @@ rc = SQLITE_NOTADB;
                     rc = this.pPager.sqlite3PagerSetPagesize(ref this.pageSize, (int)(pageSize - usableSize));
                     return rc;
                 }
-                if ((this.db.flags & SQLITE_RecoveryMode) == 0 && nPage > nPageFile)
+                if ((this.db.flags & sqlite3.SQLITE.RecoveryMode) == 0 && nPage > nPageFile)
                 {
                     rc = SysEx.SQLITE_CORRUPT_BKPT();
                     goto page1_init_failed;
@@ -334,8 +333,8 @@ rc = SQLITE_NOTADB;
             var rc = Pager.sqlite3PagerWrite(pP1.pDbPage);
             if (rc != SQLITE.OK)
                 return rc;
-            Buffer.BlockCopy(zMagicHeader, 0, data, 0, 16);
-            Debug.Assert(zMagicHeader.Length == 16);
+            Buffer.BlockCopy(Btree.zMagicHeader, 0, data, 0, 16);
+            Debug.Assert(Btree.zMagicHeader.Length == 16);
             data[16] = (byte)((this.pageSize >> 8) & 0xff);
             data[17] = (byte)((this.pageSize >> 16) & 0xff);
             data[18] = 1;
