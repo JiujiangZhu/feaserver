@@ -41,7 +41,7 @@ namespace Contoso.Core
 
         internal static void sqlite3_mutex_enter(sqlite3_mutex sqlite3_mutex) { }
         internal static void sqlite3_mutex_leave(sqlite3_mutex sqlite3_mutex) { }
-        internal static bool sqlite3_mutex_held(sqlite3_mutex sqlite3_mutex) { return true; }
+        internal static bool Held(sqlite3_mutex sqlite3_mutex) { return true; }
         internal static bool sqlite3_mutex_notheld(sqlite3_mutex sqlite3_mutex) { return true; }
     }
 }

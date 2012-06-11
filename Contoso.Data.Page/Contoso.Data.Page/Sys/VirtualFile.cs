@@ -97,7 +97,7 @@ namespace Contoso.Sys
             get { return 2; }
         }
 
-        public virtual SQLITE xClose()
+        public virtual RC xClose()
         {
             Debug.Assert(pShm == null);
 #if SQLITE_DEBUG
@@ -110,32 +110,32 @@ namespace Contoso.Sys
                 fs.Close();
                 rc = true;
             } while (!rc && ++cnt < MX_CLOSE_ATTEMPT);
-            return rc ? SQLITE.OK : winLogError(SQLITE.IOERR_CLOSE, "winClose", zPath);
+            return rc ? RC.OK : winLogError(RC.IOERR_CLOSE, "winClose", zPath);
         }
 
-        public virtual SQLITE xRead(byte[] buffer, int amount, long offset)
+        public virtual RC xRead(byte[] buffer, int amount, long offset)
         {
             if (buffer == null) buffer = new byte[amount]; 
 #if DEBUG
             SysEx.OSTRACE("READ {0} lock={1}", fs.GetHashCode(), locktype);
 #endif
             if (!fs.CanRead)
-                return SQLITE.IOERR_READ;
+                return RC.IOERR_READ;
             if (seekWinFile(offset) != 0)
-                return SQLITE.FULL;
+                return RC.FULL;
             int nRead; // Number of bytes actually read from file
             try { nRead = fs.Read(buffer, 0, amount); }
-            catch (Exception) { lastErrno = (uint)Marshal.GetLastWin32Error(); return winLogError(SQLITE.IOERR_READ, "winRead", zPath); }
+            catch (Exception) { lastErrno = (uint)Marshal.GetLastWin32Error(); return winLogError(RC.IOERR_READ, "winRead", zPath); }
             if (nRead < amount)
             {
                 // Unread parts of the buffer must be zero-filled
                 Array.Clear(buffer, (int)nRead, (int)(amount - nRead));
-                return SQLITE.IOERR_SHORT_READ;
+                return RC.IOERR_SHORT_READ;
             }
-            return SQLITE.OK;
+            return RC.OK;
         }
 
-        public virtual SQLITE xWrite(byte[] buffer, int amount, long offset)
+        public virtual RC xWrite(byte[] buffer, int amount, long offset)
         {
             Debug.Assert(amount > 0);
 #if DEBUG
@@ -150,18 +150,18 @@ namespace Contoso.Sys
                 rc = 1;
                 wrote = fs.Position - wrote;
             }
-            catch (IOException) { return SQLITE.READONLY; }
+            catch (IOException) { return RC.READONLY; }
             if (rc == 0 || amount > (int)wrote)
             {
                 lastErrno = (uint)Marshal.GetLastWin32Error();
-                return (lastErrno == ERROR_HANDLE_DISK_FULL || lastErrno == ERROR_DISK_FULL ? SQLITE.FULL : winLogError(SQLITE.IOERR_WRITE, "winWrite", zPath));
+                return (lastErrno == ERROR_HANDLE_DISK_FULL || lastErrno == ERROR_DISK_FULL ? RC.FULL : winLogError(RC.IOERR_WRITE, "winWrite", zPath));
             }
-            return SQLITE.OK;
+            return RC.OK;
         }
 
-        public virtual SQLITE xTruncate(long size)
+        public virtual RC xTruncate(long size)
         {
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
 #if DEBUG
             SysEx.OSTRACE("TRUNCATE {0} {1,ll}", fs.Name, size);
 #endif
@@ -169,13 +169,13 @@ namespace Contoso.Sys
             // actual file size after the operation may be larger than the requested size).
             if (szChunk != 0)
                 size = ((size + szChunk - 1) / szChunk) * szChunk;
-            try { fs.SetLength(size); rc = SQLITE.OK; }
-            catch (IOException e) { lastErrno = (uint)Marshal.GetLastWin32Error(); rc = winLogError(SQLITE.IOERR_TRUNCATE, "winTruncate2", zPath); }
-            SysEx.OSTRACE("TRUNCATE {0} {1,%ll} {2}", fs.GetHashCode(), size, rc == SQLITE.OK ? "ok" : "failed");
+            try { fs.SetLength(size); rc = RC.OK; }
+            catch (IOException e) { lastErrno = (uint)Marshal.GetLastWin32Error(); rc = winLogError(RC.IOERR_TRUNCATE, "winTruncate2", zPath); }
+            SysEx.OSTRACE("TRUNCATE {0} {1,%ll} {2}", fs.GetHashCode(), size, rc == RC.OK ? "ok" : "failed");
             return rc;
         }
 
-        public virtual SQLITE xSync(SYNC flags)
+        public virtual RC xSync(SYNC flags)
         {
             // Check that one of SQLITE_SYNC_NORMAL or FULL was passed 
             Debug.Assert(((int)flags & 0x0F) == (int)SYNC.NORMAL || ((int)flags & 0x0F) == (int)SYNC.FULL);
@@ -184,24 +184,24 @@ namespace Contoso.Sys
 return SQLITE.OK;
 #else
             fs.Flush();
-            return SQLITE.OK;
+            return RC.OK;
 #endif
         }
 
-        public virtual SQLITE xFileSize(ref long size)
+        public virtual RC xFileSize(ref long size)
         {
             size = (fs.CanRead ? fs.Length : 0);
-            return SQLITE.OK;
+            return RC.OK;
         }
 
-        public virtual SQLITE xLock(LOCK locktype)
+        public virtual RC xLock(LOCK locktype)
         {
 #if DEBUG
             SysEx.OSTRACE("LOCK {0} {1} was {2}({3})", fs.GetHashCode(), locktype, this.locktype, sharedLockByte);
 #endif
             // If there is already a lock of this type or more restrictive on the OsFile, do nothing. Don't use the end_lock: exit path, as sqlite3OsEnterMutex() hasn't been called yet.
             if (this.locktype >= locktype)
-                return SQLITE.OK;
+                return RC.OK;
             // Make sure the locking sequence is correct
             Debug.Assert(this.locktype != LOCK.NO || locktype == LOCK.SHARED);
             Debug.Assert(locktype != LOCK.PENDING);
@@ -282,35 +282,35 @@ return SQLITE.OK;
             if (gotPendingLock && locktype == LOCK.SHARED)
                 lockingStrategy.UnlockFile(this, PENDING_BYTE, 1);
             // Update the state of the lock has held in the file descriptor then return the appropriate result code.
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             if (res != 0)
-                rc = SQLITE.OK;
+                rc = RC.OK;
             else
             {
 #if DEBUG
                 SysEx.OSTRACE("LOCK FAILED {0} trying for {1} but got {2}", fs.GetHashCode(), locktype, newLocktype);
 #endif
                 lastErrno = error;
-                rc = SQLITE.BUSY;
+                rc = RC.BUSY;
             }
             this.locktype = newLocktype;
             return rc;
         }
 
-        public virtual SQLITE xUnlock(LOCK locktype)
+        public virtual RC xUnlock(LOCK locktype)
         {
             Debug.Assert(locktype <= LOCK.SHARED);
 #if DEBUG
             SysEx.OSTRACE("UNLOCK {0} to {1} was {2}({3})", fs.GetHashCode(), locktype, this.locktype, sharedLockByte);
 #endif
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             var type = this.locktype;
             if (type >= LOCK.EXCLUSIVE)
             {
                 lockingStrategy.UnlockFile(this, SHARED_FIRST, SHARED_SIZE);
                 if (locktype == LOCK.SHARED && getReadLock() == 0)
                     // This should never happen.  We should always be able to reacquire the read lock 
-                    rc = winLogError(SQLITE.IOERR_UNLOCK, "winUnlock", zPath);
+                    rc = winLogError(RC.IOERR_UNLOCK, "winUnlock", zPath);
             }
             if (type >= LOCK.RESERVED)
                 try { lockingStrategy.UnlockFile(this, RESERVED_BYTE, 1); }
@@ -326,7 +326,7 @@ return SQLITE.OK;
             return rc;
         }
 
-        public virtual SQLITE xCheckReservedLock(ref int pResOut)
+        public virtual RC xCheckReservedLock(ref int pResOut)
         {
             int rc;
             if (locktype >= LOCK.RESERVED)
@@ -351,30 +351,30 @@ return SQLITE.OK;
 #endif
             }
             pResOut = rc;
-            return SQLITE.OK;
+            return RC.OK;
         }
 
-        public virtual SQLITE xFileControl(FCNTL op, ref long pArg)
+        public virtual RC xFileControl(FCNTL op, ref long pArg)
         {
             switch (op)
             {
                 case FCNTL.LOCKSTATE:
                     pArg = (int)locktype;
-                    return SQLITE.OK;
+                    return RC.OK;
                 case FCNTL.LAST_ERRNO:
                     pArg = (int)lastErrno;
-                    return SQLITE.OK;
+                    return RC.OK;
                 case FCNTL.CHUNK_SIZE:
                     szChunk = (int)pArg;
-                    return SQLITE.OK;
+                    return RC.OK;
                 case FCNTL.SIZE_HINT:
                     var sz = (long)pArg;
                     xTruncate(sz);
-                    return SQLITE.OK;
+                    return RC.OK;
                 case FCNTL.SYNC_OMITTED:
-                    return SQLITE.OK;
+                    return RC.OK;
             }
-            return SQLITE.NOTFOUND;
+            return RC.NOTFOUND;
         }
 
         public virtual int xSectorSize() { return (int)sectorSize; }
@@ -383,12 +383,12 @@ return SQLITE.OK;
 
         #endregion
 
-        internal static SQLITE winLogError(SQLITE a, string b, string c) { var sf = new StackTrace(new StackFrame(true)).GetFrame(0); return winLogErrorAtLine(a, b, c, sf.GetFileLineNumber()); }
-        private static SQLITE winLogErrorAtLine(SQLITE errcode, string zFunc, string zPath, int iLine)
+        internal static RC winLogError(RC a, string b, string c) { var sf = new StackTrace(new StackFrame(true)).GetFrame(0); return winLogErrorAtLine(a, b, c, sf.GetFileLineNumber()); }
+        private static RC winLogErrorAtLine(RC errcode, string zFunc, string zPath, int iLine)
         {
             var iErrno = (uint)Marshal.GetLastWin32Error();
             var zMsg = Marshal.GetLastWin32Error().ToString();
-            Debug.Assert(errcode != SQLITE.OK);
+            Debug.Assert(errcode != RC.OK);
             if (zPath == null)
                 zPath = string.Empty;
             int i;
@@ -401,7 +401,7 @@ return SQLITE.OK;
         private int seekWinFile(long iOffset)
         {
             try { fs.Seek(iOffset, SeekOrigin.Begin); }
-            catch (Exception e) { lastErrno = (uint)Marshal.GetLastWin32Error(); winLogError(SQLITE.IOERR_SEEK, "seekWinFile", zPath); return 1; }
+            catch (Exception e) { lastErrno = (uint)Marshal.GetLastWin32Error(); winLogError(RC.IOERR_SEEK, "seekWinFile", zPath); return 1; }
             return 0;
         }
 
@@ -423,7 +423,7 @@ return SQLITE.OK;
             if (Environment.OSVersion.Platform >= PlatformID.Win32NT)
                 try { lockingStrategy.UnlockFile(this, SHARED_FIRST, SHARED_SIZE); }
                 catch (Exception) { res = 0; }
-            if (res == 0) { lastErrno = (uint)Marshal.GetLastWin32Error(); winLogError(SQLITE.IOERR_UNLOCK, "unlockReadLock", zPath); }
+            if (res == 0) { lastErrno = (uint)Marshal.GetLastWin32Error(); winLogError(RC.IOERR_UNLOCK, "unlockReadLock", zPath); }
             return res;
         }
     }

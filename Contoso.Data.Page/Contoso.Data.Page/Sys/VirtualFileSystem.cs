@@ -70,12 +70,12 @@ namespace Contoso.Sys
             ct.pAppData = this.pAppData;
         }
 
-        public SQLITE xOpen(string zName, VirtualFile pFile, OPEN flags, out OPEN pOutFlags)
+        public RC xOpen(string zName, VirtualFile pFile, OPEN flags, out OPEN pOutFlags)
         {
             pOutFlags = 0;
             // If argument zPath is a NULL pointer, this function is required to open a temporary file. Use this buffer to store the file name in.
             //var zTmpname = new StringBuilder(MAX_PATH + 1);        // Buffer used to create temp filename
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             var eType = (OPEN)((int)flags & 0xFFFFFF00);  // Type of file to open
             var isExclusive = (flags & OPEN.EXCLUSIVE) != 0;
             var isDelete = (flags & OPEN.DELETEONCLOSE) != 0;
@@ -171,7 +171,7 @@ pFile.lastErrno = 1;
 #else
                 pFile.lastErrno = (uint)Marshal.GetLastWin32Error();
 #endif
-                VirtualFile.winLogError(SQLITE.CANTOPEN, "winOpen", zName);
+                VirtualFile.winLogError(RC.CANTOPEN, "winOpen", zName);
                 return (isReadWrite ? xOpen(zName, pFile, ((flags | OPEN.READONLY) & ~(OPEN.CREATE | OPEN.READWRITE)), out pOutFlags) : SysEx.SQLITE_CANTOPEN_BKPT());
             }
             pOutFlags = (isReadWrite ? OPEN.READWRITE : OPEN.READONLY);
@@ -188,12 +188,12 @@ pFile.lastErrno = 1;
 
         private ulong getSectorSize(string zName) { return SQLITE_DEFAULT_SECTOR_SIZE; }
 
-        public SQLITE xDelete(string zName, int syncDir)
+        public RC xDelete(string zName, int syncDir)
         {
             int cnt = 0;
             int error;
             SysEx.UNUSED_PARAMETER(syncDir);
-            SQLITE rc;
+            RC rc;
             if (Environment.OSVersion.Platform >= PlatformID.Win32NT)
             {
                 do
@@ -205,7 +205,7 @@ pFile.lastErrno = 1;
 #else
                     if (!File.Exists(zName))
 #endif
-                    { rc = SQLITE.IOERR; break; }
+                    { rc = RC.IOERR; break; }
                     try
                     {
 #if WINDOWS_PHONE
@@ -215,10 +215,10 @@ pFile.lastErrno = 1;
 #else
                         File.Delete(zName);
 #endif
-                        rc = SQLITE.OK;
+                        rc = RC.OK;
                     }
-                    catch (IOException e) { rc = SQLITE.IOERR; Thread.Sleep(100); }
-                } while (rc != SQLITE.OK && ++cnt < MX_DELETION_ATTEMPTS);
+                    catch (IOException e) { rc = RC.IOERR; Thread.Sleep(100); }
+                } while (rc != RC.OK && ++cnt < MX_DELETION_ATTEMPTS);
                 // isNT() is 1 if SQLITE_OS_WINCE==1, so this else is never executed. Since the ASCII version of these Windows API do not exist for WINCE,
                 // it's important to not reference them for WINCE builds.
 #if !SQLITE_OS_WINCE
@@ -227,28 +227,28 @@ pFile.lastErrno = 1;
             {
                 do
                 {
-                    if (!File.Exists(zName)) { rc = SQLITE.IOERR; break; }
-                    try { File.Delete(zName); rc = SQLITE.OK; }
-                    catch (IOException e) { rc = SQLITE.IOERR; Thread.Sleep(100); }
-                } while (rc != SQLITE.OK && cnt++ < MX_DELETION_ATTEMPTS);
+                    if (!File.Exists(zName)) { rc = RC.IOERR; break; }
+                    try { File.Delete(zName); rc = RC.OK; }
+                    catch (IOException e) { rc = RC.IOERR; Thread.Sleep(100); }
+                } while (rc != RC.OK && cnt++ < MX_DELETION_ATTEMPTS);
 #endif
             }
 #if DEBUG
             SysEx.OSTRACE("DELETE \"{0}\"", zName);
 #endif
-            if (rc == SQLITE.OK)
+            if (rc == RC.OK)
                 return rc;
 #if SQLITE_SILVERLIGHT
             error = (int)ERROR_NOT_SUPPORTED;
 #else
             error = Marshal.GetLastWin32Error();
 #endif
-            return (rc == SQLITE.INVALID && error == VirtualFile.ERROR_FILE_NOT_FOUND ? SQLITE.OK : VirtualFile.winLogError(SQLITE.IOERR_DELETE, "winDelete", zName));
+            return (rc == RC.INVALID && error == VirtualFile.ERROR_FILE_NOT_FOUND ? RC.OK : VirtualFile.winLogError(RC.IOERR_DELETE, "winDelete", zName));
         }
 
-        public SQLITE xAccess(string zName, ACCESS flags, out int pResOut)
+        public RC xAccess(string zName, ACCESS flags, out int pResOut)
         {
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             // Do a quick test to prevent the try/catch block
             if (flags == ACCESS.EXISTS)
             {
@@ -259,7 +259,7 @@ pFile.lastErrno = 1;
 #else
                 pResOut = (File.Exists(zName) ? 1 : 0);
 #endif
-                return SQLITE.OK;
+                return RC.OK;
             }
             FileAttributes attr = 0;
             try
@@ -282,32 +282,32 @@ pFile.lastErrno = 1;
             }
             // isNT() is 1 if SQLITE_OS_WINCE==1, so this else is never executed. Since the ASCII version of these Windows API do not exist for WINCE,
             // it's important to not reference them for WINCE builds.
-            catch (IOException) { VirtualFile.winLogError(SQLITE.IOERR_ACCESS, "winAccess", zName); }
+            catch (IOException) { VirtualFile.winLogError(RC.IOERR_ACCESS, "winAccess", zName); }
             switch (flags)
             {
                 case ACCESS.READ:
-                case ACCESS.EXISTS: rc = (attr != 0 ? SQLITE.ERROR : SQLITE.OK); break;
-                case ACCESS.READWRITE: rc = (attr == 0 ? SQLITE.OK : (attr & FileAttributes.ReadOnly) != 0 ? SQLITE.OK : SQLITE.ERROR); break;
-                default: Debug.Assert("" == "Invalid flags argument"); rc = SQLITE.OK; break;
+                case ACCESS.EXISTS: rc = (attr != 0 ? RC.ERROR : RC.OK); break;
+                case ACCESS.READWRITE: rc = (attr == 0 ? RC.OK : (attr & FileAttributes.ReadOnly) != 0 ? RC.OK : RC.ERROR); break;
+                default: Debug.Assert("" == "Invalid flags argument"); rc = RC.OK; break;
             }
             pResOut = (int)rc;
-            return SQLITE.OK;
+            return RC.OK;
         }
 
-        public SQLITE xFullPathname(string zName, out string zOut)
+        public RC xFullPathname(string zName, out string zOut)
         {
             if (zName[0] == '/' && Char.IsLetter(zName[1]) && zName[2] == ':')
                 zName = zName.Substring(1);
             try { zOut = Path.GetFullPath(zName); }
             catch (Exception) { zOut = zName; }
-            return SQLITE.OK;
+            return RC.OK;
         }
 
         // TODO -- Fix This
         public IntPtr xDlOpen(string zFilename) { return IntPtr.Zero; }
-        public SQLITE xDlError(int nByte, string zErrMsg) { return SQLITE.OK; }
+        public RC xDlError(int nByte, string zErrMsg) { return RC.OK; }
         public IntPtr xDlSym(IntPtr data, string zSymbol) { return IntPtr.Zero; }
-        public SQLITE xDlClose(IntPtr data) { return SQLITE.OK; }
+        public RC xDlClose(IntPtr data) { return RC.OK; }
 
         public int xRandomness(int nByte, byte[] buffer)
         {
@@ -325,20 +325,20 @@ pFile.lastErrno = 1;
 #else
 processId = 28376023;
 #endif
-                ConvertEx.put32bits(buffer, n, processId);
+                ConvertEx.Put4(buffer, n, processId);
                 n += 4;
             }
             if (sizeof(ulong) <= nByte - n)
             {
                 uint i = (uint)new DateTime().Ticks;
-                ConvertEx.put32bits(buffer, n, i);
+                ConvertEx.Put4(buffer, n, i);
                 n += 4;
             }
             if (sizeof(long) <= nByte - n)
             {
                 long i = DateTime.UtcNow.Millisecond;
-                ConvertEx.put32bits(buffer, n, (uint)(i & 0xFFFFFFFF));
-                ConvertEx.put32bits(buffer, n, (uint)(i >> 32));
+                ConvertEx.Put4(buffer, n, (uint)(i & 0xFFFFFFFF));
+                ConvertEx.Put4(buffer, n, (uint)(i >> 32));
                 n += sizeof(long);
             }
             return n;
@@ -351,34 +351,34 @@ processId = 28376023;
             return millisecondsTimeout * 1000;
         }
 
-        public SQLITE xCurrentTime(ref double currenttime)
+        public RC xCurrentTime(ref double currenttime)
         {
             long i = 0;
             var rc = xCurrentTimeInt64(ref i);
-            if (rc == SQLITE.OK)
+            if (rc == RC.OK)
                 currenttime = i / 86400000.0;
             return rc;
         }
 
-        public SQLITE xGetLastError(int nBuf, ref string zBuf)
+        public RC xGetLastError(int nBuf, ref string zBuf)
         {
 #if SQLITE_SILVERLIGHT
             zBuf = "Unknown error";
 #else
             zBuf = Marshal.GetLastWin32Error().ToString();
 #endif
-            return SQLITE.OK;
+            return RC.OK;
         }
 
-        public SQLITE xCurrentTimeInt64(ref long pTime)
+        public RC xCurrentTimeInt64(ref long pTime)
         {
             const long winFiletimeEpoch = 23058135 * (long)8640000;
             pTime = winFiletimeEpoch + DateTime.UtcNow.ToFileTimeUtc() / (long)10000;
-            return SQLITE.OK;
+            return RC.OK;
         }
 
-        public SQLITE xSetSystemCall(string zName, long sqlite3_syscall_ptr) { return SQLITE.OK; }
-        public SQLITE xGetSystemCall(string zName, long sqlite3_syscall_ptr) { return SQLITE.OK; }
-        public SQLITE xNextSystemCall(string zName, long sqlite3_syscall_ptr) { return SQLITE.OK; }
+        public RC xSetSystemCall(string zName, long sqlite3_syscall_ptr) { return RC.OK; }
+        public RC xGetSystemCall(string zName, long sqlite3_syscall_ptr) { return RC.OK; }
+        public RC xNextSystemCall(string zName, long sqlite3_syscall_ptr) { return RC.OK; }
     }
 }

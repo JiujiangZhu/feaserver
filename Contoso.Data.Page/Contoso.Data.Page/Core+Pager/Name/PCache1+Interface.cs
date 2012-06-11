@@ -16,7 +16,7 @@ namespace Contoso.Core.Name
             get { return null; }
         }
 
-        public static SQLITE xInit(object NotUsed)
+        public static RC xInit(object NotUsed)
         {
             SysEx.UNUSED_PARAMETER(NotUsed);
             Debug.Assert(!pcache1.isInit);
@@ -28,7 +28,7 @@ namespace Contoso.Core.Name
             }
             pcache1.grp.mxPinned = 10;
             pcache1.isInit = true;
-            return SQLITE.OK;
+            return RC.OK;
         }
 
         public static void xShutdown(object NotUsed)

@@ -13,11 +13,11 @@ namespace Contoso.Core
         private static void expensive_assert(bool x) { Debug.Assert(x); }
 #endif
 
-        internal static SQLITE sqlite3PcacheInitialize()  {  return IPCache.xInit(IPCache.pArg);  }
+        internal static RC sqlite3PcacheInitialize()  {  return IPCache.xInit(IPCache.pArg);  }
         internal static void sqlite3PcacheShutdown()  { IPCache.xShutdown(IPCache.pArg); }
         internal static int sqlite3PcacheSize() { return 4; }
 
-        internal static void sqlite3PcacheOpen(int szPage, int szExtra, bool bPurgeable, Func<object, PgHdr, SQLITE> xStress, object pStress, PCache p)
+        internal static void sqlite3PcacheOpen(int szPage, int szExtra, bool bPurgeable, Func<object, PgHdr, RC> xStress, object pStress, PCache p)
         {
             p.Clear();
             p.szPage = szPage;
@@ -39,7 +39,7 @@ namespace Contoso.Core
             this.szPage = szPage;
         }
 
-        internal SQLITE sqlite3PcacheFetch(Pgno pgno, int createFlag, ref PgHdr ppPage)
+        internal RC sqlite3PcacheFetch(Pgno pgno, int createFlag, ref PgHdr ppPage)
         {
             Debug.Assert(createFlag == 1 || createFlag == 0);
             Debug.Assert(pgno > 0);
@@ -73,7 +73,7 @@ namespace Contoso.Core
                     sqlite3_log(SQLITE_FULL, "spill page %d making room for %d - cache used: %d/%d", pPg.pgno, pgno, sqlite3GlobalConfig.pcache.xPagecount(pCache.pCache), pCache.nMax);
 #endif
                     var rc = xStress(pStress, pPg);
-                    if (rc != SQLITE.OK && rc != SQLITE.BUSY)
+                    if (rc != RC.OK && rc != RC.BUSY)
                         return rc;
                 }
                 pPage = pCache.xFetch(pgno, 2);
@@ -95,7 +95,7 @@ namespace Contoso.Core
                     pPage1 = pPage;
             }
             ppPage = pPage;
-            return (pPage == null && eCreate != 0 ? SQLITE.NOMEM : SQLITE.OK);
+            return (pPage == null && eCreate != 0 ? RC.NOMEM : RC.OK);
         }
 
         internal static void sqlite3PcacheRelease(PgHdr p)

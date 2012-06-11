@@ -2,7 +2,7 @@
 namespace Contoso.Sys
 {
     [Flags]
-    public enum SQLITE
+    public enum RC
     {
         INVALID = -1,
         OK = 0,

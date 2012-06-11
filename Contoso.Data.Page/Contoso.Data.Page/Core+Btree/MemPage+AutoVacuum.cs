@@ -8,101 +8,101 @@ namespace Contoso.Core
     public partial class MemPage
     {
 #if !SQLITE_OMIT_AUTOVACUUM
-        internal SQLITE setChildPtrmaps()
+        internal RC setChildPtrmaps()
         {
-            var pBt = this.pBt;
-            var isInitOrig = this.isInit;
-            var pgno = this.pgno;
-            Debug.Assert(MutexEx.sqlite3_mutex_held(this.pBt.mutex));
+            var hasInitLast = HasInit;
+            Debug.Assert(MutexEx.Held(Shared.Mutex));
             var rc = btreeInitPage();
-            if (rc != SQLITE.OK)
+            if (rc != RC.OK)
                 goto set_child_ptrmaps_out;
-            var nCell = this.nCell; // Number of cells in page pPage
-            for (var i = 0; i < nCell; i++)
+            var cells = Cells; // Number of cells in page pPage
+            var shared = Shared;
+            var id = ID;
+            for (var i = 0; i < cells; i++)
             {
-                var pCell = findCell(i);
-                ptrmapPutOvflPtr(pCell, ref rc);
-                if (this.leaf == 0)
+                var cell = FindCell(i);
+                ptrmapPutOvflPtr(cell, ref rc);
+                if (Leaf == 0)
                 {
-                    var childPgno = (Pgno)ConvertEx.sqlite3Get4byte(this.aData, pCell);
-                    pBt.ptrmapPut(childPgno, PTRMAP.BTREE, pgno, ref rc);
+                    var childPgno = (Pgno)ConvertEx.Get4(Data, cell);
+                    shared.ptrmapPut(childPgno, PTRMAP.BTREE, id, ref rc);
                 }
             }
-            if (this.leaf == 0)
+            if (Leaf == 0)
             {
-                var childPgno = (Pgno)ConvertEx.sqlite3Get4byte(this.aData, this.hdrOffset + 8);
-                pBt.ptrmapPut(childPgno, PTRMAP.BTREE, pgno, ref rc);
+                var childPgno = (Pgno)ConvertEx.Get4(Data, HeaderOffset + 8);
+                shared.ptrmapPut(childPgno, PTRMAP.BTREE, id, ref rc);
             }
         set_child_ptrmaps_out:
-            this.isInit = isInitOrig;
+            HasInit = hasInitLast;
             return rc;
         }
 
-        internal SQLITE modifyPagePointer(Pgno iFrom, Pgno iTo, PTRMAP eType)
+        internal RC modifyPagePointer(Pgno iFrom, Pgno iTo, PTRMAP eType)
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(this.pBt.mutex));
-            Debug.Assert(Pager.sqlite3PagerIswriteable(this.pDbPage));
+            Debug.Assert(MutexEx.Held(this.Shared.Mutex));
+            Debug.Assert(Pager.sqlite3PagerIswriteable(this.DbPage));
             if (eType == PTRMAP.OVERFLOW2)
             {
                 // The pointer is always the first 4 bytes of the page in this case.
-                if (ConvertEx.sqlite3Get4byte(this.aData) != iFrom)
+                if (ConvertEx.Get4(this.Data) != iFrom)
                     return SysEx.SQLITE_CORRUPT_BKPT();
-                ConvertEx.sqlite3Put4byte(this.aData, iTo);
+                ConvertEx.Put4L(this.Data, iTo);
             }
             else
             {
-                var isInitOrig = this.isInit;
+                var isInitOrig = this.HasInit;
                 btreeInitPage();
-                var nCell = this.nCell;
+                var nCell = this.Cells;
                 int i;
                 for (i = 0; i < nCell; i++)
                 {
-                    var pCell = findCell(i);
+                    var pCell = FindCell(i);
                     if (eType == PTRMAP.OVERFLOW1)
                     {
                         var info = new CellInfo();
                         btreeParseCellPtr(pCell, ref info);
                         if (info.iOverflow != 0)
-                            if (iFrom == ConvertEx.sqlite3Get4byte(this.aData, pCell, info.iOverflow))
+                            if (iFrom == ConvertEx.Get4(this.Data, pCell, info.iOverflow))
                             {
-                                ConvertEx.sqlite3Put4byte(this.aData, pCell + info.iOverflow, (int)iTo);
+                                ConvertEx.Put4(this.Data, pCell + info.iOverflow, (int)iTo);
                                 break;
                             }
                     }
                     else
                     {
-                        if (ConvertEx.sqlite3Get4byte(this.aData, pCell) == iFrom)
+                        if (ConvertEx.Get4(this.Data, pCell) == iFrom)
                         {
-                            ConvertEx.sqlite3Put4byte(this.aData, pCell, (int)iTo);
+                            ConvertEx.Put4(this.Data, pCell, (int)iTo);
                             break;
                         }
                     }
                 }
                 if (i == nCell)
                 {
-                    if (eType != PTRMAP.BTREE || ConvertEx.sqlite3Get4byte(this.aData, this.hdrOffset + 8) != iFrom)
+                    if (eType != PTRMAP.BTREE || ConvertEx.Get4(this.Data, this.HeaderOffset + 8) != iFrom)
                         return SysEx.SQLITE_CORRUPT_BKPT();
-                    ConvertEx.sqlite3Put4byte(this.aData, this.hdrOffset + 8, iTo);
+                    ConvertEx.Put4L(this.Data, this.HeaderOffset + 8, iTo);
                 }
-                this.isInit = isInitOrig;
+                this.HasInit = isInitOrig;
             }
-            return SQLITE.OK;
+            return RC.OK;
         }
 
-        internal static SQLITE relocatePage(BtShared pBt, MemPage pDbPage, PTRMAP eType, Pgno iPtrPage, Pgno iFreePage, int isCommit)
+        internal static RC relocatePage(BtShared pBt, MemPage pDbPage, PTRMAP eType, Pgno iPtrPage, Pgno iFreePage, int isCommit)
         {
             var pPtrPage = new MemPage();   // The page that contains a pointer to pDbPage
-            var iDbPage = pDbPage.pgno;
-            var pPager = pBt.pPager;
+            var iDbPage = pDbPage.ID;
+            var pPager = pBt.Pager;
             Debug.Assert(eType == PTRMAP.OVERFLOW2 || eType == PTRMAP.OVERFLOW1 || eType == PTRMAP.BTREE || eType == PTRMAP.ROOTPAGE);
-            Debug.Assert(MutexEx.sqlite3_mutex_held(pBt.mutex));
-            Debug.Assert(pDbPage.pBt == pBt);
+            Debug.Assert(MutexEx.Held(pBt.Mutex));
+            Debug.Assert(pDbPage.Shared == pBt);
             // Move page iDbPage from its current location to page number iFreePage
             Btree.TRACE("AUTOVACUUM: Moving %d to free page %d (ptr page %d type %d)\n", iDbPage, iFreePage, iPtrPage, eType);
-            var rc = pPager.sqlite3PagerMovepage(pDbPage.pDbPage, iFreePage, isCommit);
-            if (rc != SQLITE.OK)
+            var rc = pPager.sqlite3PagerMovepage(pDbPage.DbPage, iFreePage, isCommit);
+            if (rc != RC.OK)
                 return rc;
-            pDbPage.pgno = iFreePage;
+            pDbPage.ID = iFreePage;
             // If pDbPage was a btree-page, then it may have child pages and/or cells that point to overflow pages. The pointer map entries for all these
             // pages need to be changed.
             // If pDbPage is an overflow page, then the first 4 bytes may store a pointer to a subsequent overflow page. If this is the case, then
@@ -110,16 +110,16 @@ namespace Contoso.Core
             if (eType == PTRMAP.BTREE || eType == PTRMAP.ROOTPAGE)
             {
                 rc = pDbPage.setChildPtrmaps();
-                if (rc != SQLITE.OK)
+                if (rc != RC.OK)
                     return rc;
             }
             else
             {
-                var nextOvfl = (Pgno)ConvertEx.sqlite3Get4byte(pDbPage.aData);
+                var nextOvfl = (Pgno)ConvertEx.Get4(pDbPage.Data);
                 if (nextOvfl != 0)
                 {
                     pBt.ptrmapPut(nextOvfl, PTRMAP.OVERFLOW2, iFreePage, ref rc);
-                    if (rc != SQLITE.OK)
+                    if (rc != RC.OK)
                         return rc;
                 }
             }
@@ -127,36 +127,36 @@ namespace Contoso.Core
             if (eType != PTRMAP.ROOTPAGE)
             {
                 rc = pBt.btreeGetPage(iPtrPage, ref pPtrPage, 0);
-                if (rc != SQLITE.OK)
+                if (rc != RC.OK)
                     return rc;
-                rc = Pager.sqlite3PagerWrite(pPtrPage.pDbPage);
-                if (rc != SQLITE.OK)
+                rc = Pager.sqlite3PagerWrite(pPtrPage.DbPage);
+                if (rc != RC.OK)
                 {
                     pPtrPage.releasePage();
                     return rc;
                 }
                 rc = pPtrPage.modifyPagePointer(iDbPage, iFreePage, eType);
                 pPtrPage.releasePage();
-                if (rc == SQLITE.OK)
+                if (rc == RC.OK)
                     pBt.ptrmapPut(iFreePage, eType, iPtrPage, ref rc);
             }
             return rc;
         }
 
-        internal static SQLITE incrVacuumStep(BtShared pBt, Pgno nFin, Pgno iLastPg)
+        internal static RC incrVacuumStep(BtShared pBt, Pgno nFin, Pgno iLastPg)
         {
             Pgno nFreeList;           // Number of pages still on the free-list
-            Debug.Assert(MutexEx.sqlite3_mutex_held(pBt.mutex));
+            Debug.Assert(MutexEx.Held(pBt.Mutex));
             Debug.Assert(iLastPg > nFin);
             if (!PTRMAP_ISPAGE(pBt, iLastPg) && iLastPg != PENDING_BYTE_PAGE(pBt))
             {
                 PTRMAP eType = 0;
                 Pgno iPtrPage = 0;
-                nFreeList = ConvertEx.sqlite3Get4byte(pBt.pPage1.aData, 36);
+                nFreeList = ConvertEx.Get4(pBt.Page1.Data, 36);
                 if (nFreeList == 0)
-                    return SQLITE.DONE;
+                    return RC.DONE;
                 var rc = pBt.ptrmapGet( iLastPg, ref eType, ref iPtrPage);
-                if (rc != SQLITE.OK)
+                if (rc != RC.OK)
                     return rc;
                 if (eType == PTRMAP.ROOTPAGE)
                     return SysEx.SQLITE_CORRUPT_BKPT();
@@ -169,7 +169,7 @@ namespace Contoso.Core
                         Pgno iFreePg = 0;
                         var pFreePg = new MemPage();
                         rc = pBt.allocateBtreePage( ref pFreePg, ref iFreePg, iLastPg, 1);
-                        if (rc != SQLITE.OK)
+                        if (rc != RC.OK)
                             return rc;
                         Debug.Assert(iFreePg == iLastPg);
                         pFreePg.releasePage();
@@ -180,7 +180,7 @@ namespace Contoso.Core
                     Pgno iFreePg = 0; // Index of free page to move pLastPg to
                     var pLastPg = new MemPage();
                     rc = pBt.btreeGetPage( iLastPg, ref pLastPg, 0);
-                    if (rc != SQLITE.OK)
+                    if (rc != RC.OK)
                         return rc;
                     // If nFin is zero, this loop runs exactly once and page pLastPg is swapped with the first free page pulled off the free list.
                     // On the other hand, if nFin is greater than zero, then keep looping until a free-page located within the first nFin pages of the file is found.
@@ -188,7 +188,7 @@ namespace Contoso.Core
                     {
                         var pFreePg = new MemPage();
                         rc = pBt.allocateBtreePage(ref pFreePg, ref iFreePg, 0, 0);
-                        if (rc != SQLITE.OK)
+                        if (rc != RC.OK)
                         {
                             pLastPg.releasePage();
                             return rc;
@@ -196,11 +196,11 @@ namespace Contoso.Core
                         pFreePg.releasePage();
                     } while (nFin != 0 && iFreePg > nFin);
                     Debug.Assert(iFreePg < iLastPg);
-                    rc = Pager.sqlite3PagerWrite(pLastPg.pDbPage);
-                    if (rc == SQLITE.OK)
+                    rc = Pager.sqlite3PagerWrite(pLastPg.DbPage);
+                    if (rc == RC.OK)
                         rc = relocatePage(pBt, pLastPg, eType, iPtrPage, iFreePg, (nFin != 0) ? 1 : 0);
                     pLastPg.releasePage();
-                    if (rc != SQLITE.OK)
+                    if (rc != RC.OK)
                         return rc;
                 }
             }
@@ -213,64 +213,64 @@ namespace Contoso.Core
                     {
                         var pPg = new MemPage();
                         var rc = pBt.btreeGetPage(iLastPg, ref pPg, 0);
-                        if (rc != SQLITE.OK)
+                        if (rc != RC.OK)
                             return rc;
-                        rc = Pager.sqlite3PagerWrite(pPg.pDbPage);
+                        rc = Pager.sqlite3PagerWrite(pPg.DbPage);
                         pPg.releasePage();
-                        if (rc != SQLITE.OK)
+                        if (rc != RC.OK)
                             return rc;
                     }
                     iLastPg--;
                 }
-                pBt.pPager.sqlite3PagerTruncateImage(iLastPg);
-                pBt.nPage = iLastPg;
+                pBt.Pager.sqlite3PagerTruncateImage(iLastPg);
+                pBt.Pages = iLastPg;
             }
-            return SQLITE.OK;
+            return RC.OK;
         }
 
-        internal static SQLITE sqlite3BtreeIncrVacuum(Btree p)
+        internal static RC sqlite3BtreeIncrVacuum(Btree p)
         {
-            var pBt = p.pBt;
+            var pBt = p.Shared;
             p.sqlite3BtreeEnter();
-            Debug.Assert(pBt.inTransaction == TRANS.WRITE && p.inTrans == TRANS.WRITE);
-            SQLITE rc;
-            if (!pBt.autoVacuum)
-                rc = SQLITE.DONE;
+            Debug.Assert(pBt.InTransaction == TRANS.WRITE && p.inTrans == TRANS.WRITE);
+            RC rc;
+            if (!pBt.AutoVacuum)
+                rc = RC.DONE;
             else
             {
                 Btree.invalidateAllOverflowCache(pBt);
                 rc = incrVacuumStep(pBt, 0, pBt.btreePagecount());
-                if (rc == SQLITE.OK)
+                if (rc == RC.OK)
                 {
-                    rc = Pager.sqlite3PagerWrite(pBt.pPage1.pDbPage);
-                    ConvertEx.sqlite3Put4byte(pBt.pPage1.aData, (uint)28, pBt.nPage);
+                    rc = Pager.sqlite3PagerWrite(pBt.Page1.DbPage);
+                    ConvertEx.Put4(pBt.Page1.Data, 28, pBt.Pages);
                 }
             }
             p.sqlite3BtreeLeave();
             return rc;
         }
 
-        internal static SQLITE autoVacuumCommit(BtShared pBt)
+        internal static RC autoVacuumCommit(BtShared pBt)
         {
-            var rc = SQLITE.OK;
-            var pPager = pBt.pPager;
+            var rc = RC.OK;
+            var pPager = pBt.Pager;
 #if DEBUG
             var nRef = pPager.sqlite3PagerRefcount();
 #else
             var nRef = 0;
 #endif
-            Debug.Assert(MutexEx.sqlite3_mutex_held(pBt.mutex));
+            Debug.Assert(MutexEx.Held(pBt.Mutex));
             Btree.invalidateAllOverflowCache(pBt);
-            Debug.Assert(pBt.autoVacuum);
-            if (!pBt.incrVacuum)
+            Debug.Assert(pBt.AutoVacuum);
+            if (!pBt.IncrVacuum)
             {
                 var nOrig = pBt.btreePagecount(); // Database size before freeing
                 if (PTRMAP_ISPAGE(pBt, nOrig) || nOrig == PENDING_BYTE_PAGE(pBt))
                     // It is not possible to create a database for which the final page is either a pointer-map page or the pending-byte page. If one
                     // is encountered, this indicates corruption.
                     return SysEx.SQLITE_CORRUPT_BKPT();
-                var nFree = (Pgno)ConvertEx.sqlite3Get4byte(pBt.pPage1.aData, 36); // Number of pages on the freelist initially
-                var nEntry = (int)pBt.usableSize / 5; // Number of entries on one ptrmap page
+                var nFree = (Pgno)ConvertEx.Get4(pBt.Page1.Data, 36); // Number of pages on the freelist initially
+                var nEntry = (int)pBt.UsableSize / 5; // Number of entries on one ptrmap page
                 var nPtrmap = (Pgno)((nFree - nOrig + PTRMAP_PAGENO(pBt, nOrig) + (Pgno)nEntry) / nEntry); // Number of PtrMap pages to be freed 
                 var nFin = nOrig - nFree - nPtrmap; // Number of pages in database after autovacuuming
                 if (nOrig > PENDING_BYTE_PAGE(pBt) && nFin < PENDING_BYTE_PAGE(pBt))
@@ -279,18 +279,18 @@ namespace Contoso.Core
                     nFin--;
                 if (nFin > nOrig)
                     return SysEx.SQLITE_CORRUPT_BKPT();
-                for (var iFree = nOrig; iFree > nFin && rc == SQLITE.OK; iFree--)
+                for (var iFree = nOrig; iFree > nFin && rc == RC.OK; iFree--)
                     rc = incrVacuumStep(pBt, nFin, iFree);
-                if ((rc == SQLITE.DONE || rc == SQLITE.OK) && nFree > 0)
+                if ((rc == RC.DONE || rc == RC.OK) && nFree > 0)
                 {
-                    rc = Pager.sqlite3PagerWrite(pBt.pPage1.pDbPage);
-                    ConvertEx.sqlite3Put4byte(pBt.pPage1.aData, 32, 0);
-                    ConvertEx.sqlite3Put4byte(pBt.pPage1.aData, 36, 0);
-                    ConvertEx.sqlite3Put4byte(pBt.pPage1.aData, (uint)28, nFin);
-                    pBt.pPager.sqlite3PagerTruncateImage(nFin);
-                    pBt.nPage = nFin;
+                    rc = Pager.sqlite3PagerWrite(pBt.Page1.DbPage);
+                    ConvertEx.Put4(pBt.Page1.Data, 32, 0);
+                    ConvertEx.Put4(pBt.Page1.Data, 36, 0);
+                    ConvertEx.Put4(pBt.Page1.Data, 28, nFin);
+                    pBt.Pager.sqlite3PagerTruncateImage(nFin);
+                    pBt.Pages = nFin;
                 }
-                if (rc != SQLITE.OK)
+                if (rc != RC.OK)
                     pPager.sqlite3PagerRollback();
             }
             Debug.Assert(nRef == pPager.sqlite3PagerRefcount());

@@ -503,10 +503,10 @@ shmpage_out:
   return rc;
 }
 #else
-        public virtual SQLITE xShmMap(int iPg, int pgsz, int pInt, out object pvolatile) { pvolatile = null; return SQLITE.OK; }
-        public virtual SQLITE xShmLock(int offset, int n, int flags) { return SQLITE.OK; }
+        public virtual RC xShmMap(int iPg, int pgsz, int pInt, out object pvolatile) { pvolatile = null; return RC.OK; }
+        public virtual RC xShmLock(int offset, int n, int flags) { return RC.OK; }
         public virtual void xShmBarrier() { }
-        public virtual SQLITE xShmUnmap(int deleteFlag) { return SQLITE.OK; }
+        public virtual RC xShmUnmap(int deleteFlag) { return RC.OK; }
 #endif
         #endregion
     }

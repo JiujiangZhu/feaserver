@@ -13,7 +13,7 @@ namespace Contoso.Core
             ROLLBACK = 2,
         }
 
-        internal SQLITE pagerPlaybackSavepoint(PagerSavepoint pSavepoint)
+        internal RC pagerPlaybackSavepoint(PagerSavepoint pSavepoint)
         {
             Debug.Assert(this.eState != PAGER.ERROR);
             Debug.Assert(this.eState >= PAGER.WRITER_LOCKED);
@@ -34,34 +34,34 @@ namespace Contoso.Core
             // There might be records in the main journal that have a page number greater than the current database size (pPager.dbSize) but those
             // will be skipped automatically.  Pages are added to pDone as they are played back.
             long iHdrOff;             // End of first segment of main-journal records
-            var rc = SQLITE.OK;      // Return code
+            var rc = RC.OK;      // Return code
             if (pSavepoint != null && !this.pagerUseWal())
             {
                 iHdrOff = (pSavepoint.iHdrOffset != 0 ? pSavepoint.iHdrOffset : szJ);
                 this.journalOff = pSavepoint.iOffset;
-                while (rc == SQLITE.OK && this.journalOff < iHdrOff)
+                while (rc == RC.OK && this.journalOff < iHdrOff)
                     rc = pager_playback_one_page(ref this.journalOff, pDone, 1, 1);
-                Debug.Assert(rc != SQLITE.DONE);
+                Debug.Assert(rc != RC.DONE);
             }
             else
                 this.journalOff = 0;
             // Continue rolling back records out of the main journal starting at the first journal header seen and continuing until the effective end
             // of the main journal file.  Continue to skip out-of-range pages and continue adding pages rolled back to pDone.
-            while (rc == SQLITE.OK && this.journalOff < szJ)
+            while (rc == RC.OK && this.journalOff < szJ)
             {
                 uint nJRec;         // Number of Journal Records
                 uint dummy;
                 rc = readJournalHdr(0, szJ, out nJRec, out dummy);
-                Debug.Assert(rc != SQLITE.DONE);
+                Debug.Assert(rc != RC.DONE);
                 // The "pPager.journalHdr+JOURNAL_HDR_SZ(pPager)==pPager.journalOff" test is related to ticket #2565.  See the discussion in the
                 // pager_playback() function for additional information.
                 if (nJRec == 0 && this.journalHdr + JOURNAL_HDR_SZ(this) >= this.journalOff)
                     nJRec = (uint)((szJ - this.journalOff) / JOURNAL_PG_SZ(this));
-                for (uint ii = 0; rc == SQLITE.OK && ii < nJRec && this.journalOff < szJ; ii++)
+                for (uint ii = 0; rc == RC.OK && ii < nJRec && this.journalOff < szJ; ii++)
                     rc = pager_playback_one_page(ref this.journalOff, pDone, 1, 1);
-                Debug.Assert(rc != SQLITE.DONE);
+                Debug.Assert(rc != RC.DONE);
             }
-            Debug.Assert(rc != SQLITE.OK || this.journalOff >= szJ);
+            Debug.Assert(rc != RC.OK || this.journalOff >= szJ);
             // Finally,  rollback pages from the sub-journal.  Page that were previously rolled back out of the main journal (and are hence in pDone)
             // will be skipped.  Out-of-range pages are also skipped.
             if (pSavepoint != null)
@@ -69,15 +69,15 @@ namespace Contoso.Core
                 long offset = pSavepoint.iSubRec * (4 + this.pageSize);
                 if (this.pagerUseWal())
                     rc = this.pWal.sqlite3WalSavepointUndo(pSavepoint.aWalData);
-                for (var ii = pSavepoint.iSubRec; rc == SQLITE.OK && ii < this.nSubRec; ii++)
+                for (var ii = pSavepoint.iSubRec; rc == RC.OK && ii < this.nSubRec; ii++)
                 {
                     Debug.Assert(offset == ii * (4 + this.pageSize));
                     rc = pager_playback_one_page(ref offset, pDone, 0, 1);
                 }
-                Debug.Assert(rc != SQLITE.DONE);
+                Debug.Assert(rc != RC.DONE);
             }
             Bitvec.sqlite3BitvecDestroy(ref pDone);
-            if (rc == SQLITE.OK)
+            if (rc == RC.OK)
                 this.journalOff = (int)szJ;
             return rc;
         }
@@ -93,24 +93,24 @@ namespace Contoso.Core
             nSubRec = 0;
         }
 
-        internal SQLITE addToSavepointBitvecs(Pgno pgno)
+        internal RC addToSavepointBitvecs(Pgno pgno)
         {
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             for (var ii = 0; ii < nSavepoint; ii++)
             {
                 var p = aSavepoint[ii];
                 if (pgno <= p.nOrig)
                 {
                     rc |= p.pInSavepoint.sqlite3BitvecSet(pgno);
-                    Debug.Assert(rc == SQLITE.OK || rc == SQLITE.NOMEM);
+                    Debug.Assert(rc == RC.OK || rc == RC.NOMEM);
                 }
             }
             return rc;
         }
 
-        internal SQLITE sqlite3PagerOpenSavepoint(int nSavepoint)
+        internal RC sqlite3PagerOpenSavepoint(int nSavepoint)
         {
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             var nCurrent = this.nSavepoint;        // Current number of savepoints 
             Debug.Assert(this.eState >= PAGER.WRITER_LOCKED);
             Debug.Assert(assert_pager_state());
@@ -138,12 +138,12 @@ namespace Contoso.Core
             return rc;
         }
 
-        internal SQLITE sqlite3PagerSavepoint(SAVEPOINT op, int iSavepoint)
+        internal RC sqlite3PagerSavepoint(SAVEPOINT op, int iSavepoint)
         {
             var rc = this.errCode;
             Debug.Assert(op == SAVEPOINT.RELEASE || op == SAVEPOINT.ROLLBACK);
             Debug.Assert(iSavepoint >= 0 || op == SAVEPOINT.ROLLBACK);
-            if (rc == SQLITE.OK && iSavepoint < this.nSavepoint)
+            if (rc == RC.OK && iSavepoint < this.nSavepoint)
             {
                 // Figure out how many savepoints will still be active after this operation. Store this value in nNew. Then free resources associated
                 // with any savepoints that are destroyed by this operation.
@@ -159,7 +159,7 @@ namespace Contoso.Core
                         if (this.sjfd is MemJournalFile)
                         {
                             rc = this.sjfd.xTruncate(0);
-                            Debug.Assert(rc == SQLITE.OK);
+                            Debug.Assert(rc == RC.OK);
                         }
                         this.nSubRec = 0;
                     }
@@ -169,7 +169,7 @@ namespace Contoso.Core
                     {
                         var pSavepoint = (nNew == 0 ? (PagerSavepoint)null : this.aSavepoint[nNew - 1]);
                         rc = pagerPlaybackSavepoint(pSavepoint);
-                        Debug.Assert(rc != SQLITE.DONE);
+                        Debug.Assert(rc != RC.DONE);
                     }
             }
             return rc;

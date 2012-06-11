@@ -80,7 +80,7 @@ namespace Contoso.Core
         public Pgno dbOrigSize;             // dbSize before the current transaction 
         public Pgno dbFileSize;             // Number of pages in the database file 
         public Pgno dbHintSize;             // Value passed to FCNTL_SIZE_HINT call 
-        public SQLITE errCode;              // One of several kinds of errors 
+        public RC errCode;              // One of several kinds of errors 
         public int nRec;                    // Pages journalled since last j-header written 
         public uint cksumInit;              // Quasi-random value added to every checksum 
         public uint nSubRec;                // Number of records written to sub-journal 
@@ -146,10 +146,10 @@ namespace Contoso.Core
         internal static int pagerUseWal(Pager pPager) { return (pPager.pWal != 0); }
 #else
         internal bool pagerUseWal() { return false; }
-        internal SQLITE pagerRollbackWal() { return SQLITE.OK; }
-        internal SQLITE pagerWalFrames(PgHdr w, Pgno x, int y, VirtualFile.SYNC z) { return SQLITE.OK; }
-        internal SQLITE pagerOpenWalIfPresent() { return SQLITE.OK; }
-        internal SQLITE pagerBeginReadTransaction() { return SQLITE.OK; }
+        internal RC pagerRollbackWal() { return RC.OK; }
+        internal RC pagerWalFrames(PgHdr w, Pgno x, int y, VirtualFile.SYNC z) { return RC.OK; }
+        internal RC pagerOpenWalIfPresent() { return RC.OK; }
+        internal RC pagerBeginReadTransaction() { return RC.OK; }
 #endif
 
 #if SQLITE_ENABLE_ATOMIC_WRITE

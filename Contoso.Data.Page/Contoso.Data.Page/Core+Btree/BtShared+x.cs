@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using Contoso.Core.Name;
 using Contoso.Sys;
-using CURSOR = Contoso.Core.BtCursor.CURSOR;
+using CURSOR = Contoso.Core.BtreeCursor.CursorState;
 using DbPage = Contoso.Core.PgHdr;
 using Pgno = System.UInt32;
 using PTRMAP = Contoso.Core.MemPage.PTRMAP;
@@ -14,37 +14,37 @@ namespace Contoso.Core
     {
         #region Properties
 
-        internal SQLITE btreeSetHasContent(Pgno pgno)
+        internal RC btreeSetHasContent(Pgno pgno)
         {
-            var rc = SQLITE.OK;
-            if (this.pHasContent == null)
+            var rc = RC.OK;
+            if (this.HasContent == null)
             {
-                Debug.Assert(pgno <= this.nPage);
-                this.pHasContent = new Bitvec(this.nPage);
+                Debug.Assert(pgno <= this.Pages);
+                this.HasContent = new Bitvec(this.Pages);
             }
-            if (rc == SQLITE.OK && pgno <= this.pHasContent.sqlite3BitvecSize())
-                rc = this.pHasContent.sqlite3BitvecSet(pgno);
+            if (rc == RC.OK && pgno <= this.HasContent.sqlite3BitvecSize())
+                rc = this.HasContent.sqlite3BitvecSet(pgno);
             return rc;
         }
 
         internal bool btreeGetHasContent(Pgno pgno)
         {
-            var p = this.pHasContent;
+            var p = this.HasContent;
             return (p != null && (pgno > p.sqlite3BitvecSize() || p.sqlite3BitvecTest(pgno) != 0));
         }
 
         internal void btreeClearHasContent()
         {
-            Bitvec.sqlite3BitvecDestroy(ref this.pHasContent);
-            this.pHasContent = null;
+            Bitvec.sqlite3BitvecDestroy(ref this.HasContent);
+            this.HasContent = null;
         }
 
 #if DEBUG
         internal int countWriteCursors()
         {
             var r = 0;
-            for (var pCur = this.pCursor; pCur != null; pCur = pCur.pNext)
-                if (pCur.wrFlag != 0 && pCur.eState != CURSOR.FAULT)
+            for (var pCur = this.Cursors; pCur != null; pCur = pCur.Next)
+                if (pCur.Writeable && pCur.State != CURSOR.FAULT)
                     r++;
             return r;
         }
@@ -54,27 +54,27 @@ namespace Contoso.Core
 
         #endregion
 
-        internal SQLITE saveAllCursors(Pgno iRoot, BtCursor pExcept)
+        internal RC saveAllCursors(Pgno iRoot, BtreeCursor pExcept)
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(this.mutex));
-            Debug.Assert(pExcept == null || pExcept.pBt == this);
-            for (var p = this.pCursor; p != null; p = p.pNext)
-                if (p != pExcept && (0 == iRoot || p.pgnoRoot == iRoot) && p.eState == CURSOR.VALID)
+            Debug.Assert(MutexEx.Held(this.Mutex));
+            Debug.Assert(pExcept == null || pExcept.Shared == this);
+            for (var p = this.Cursors; p != null; p = p.Next)
+                if (p != pExcept && (0 == iRoot || p.RootID == iRoot) && p.State == CURSOR.VALID)
                 {
-                    var rc = p.saveCursorPosition();
-                    if (rc != SQLITE.OK)
+                    var rc = p.SavePosition();
+                    if (rc != RC.OK)
                         return rc;
                 }
-            return SQLITE.OK;
+            return RC.OK;
         }
 
 #if !SQLITE_OMIT_AUTOVACUUM
         internal Pgno ptrmapPageno(Pgno pgno)
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(this.mutex));
+            Debug.Assert(MutexEx.Held(this.Mutex));
             if (pgno < 2)
                 return 0;
-            var nPagesPerMapPage = (int)(this.usableSize / 5 + 1);
+            var nPagesPerMapPage = (int)(this.UsableSize / 5 + 1);
             var iPtrMap = (Pgno)((pgno - 2) / nPagesPerMapPage);
             var ret = (Pgno)(iPtrMap * nPagesPerMapPage) + 2;
             if (ret == MemPage.PENDING_BYTE_PAGE(this))
@@ -82,14 +82,14 @@ namespace Contoso.Core
             return ret;
         }
 
-        internal void ptrmapPut(Pgno key, PTRMAP eType, Pgno parent, ref SQLITE pRC)
+        internal void ptrmapPut(Pgno key, PTRMAP eType, Pgno parent, ref RC pRC)
         {
             if (pRC != 0)
                 return;
-            Debug.Assert(MutexEx.sqlite3_mutex_held(this.mutex));
+            Debug.Assert(MutexEx.Held(this.Mutex));
             // The master-journal page number must never be used as a pointer map page
             Debug.Assert(!MemPage.PTRMAP_ISPAGE(this, MemPage.PENDING_BYTE_PAGE(this)));
-            Debug.Assert(this.autoVacuum);
+            Debug.Assert(this.AutoVacuum);
             if (key == 0)
             {
                 pRC = SysEx.SQLITE_CORRUPT_BKPT();
@@ -97,8 +97,8 @@ namespace Contoso.Core
             }
             var iPtrmap = MemPage.PTRMAP_PAGENO(this, key);
             var pDbPage = new PgHdr();  // The pointer map page 
-            var rc = this.pPager.sqlite3PagerGet(iPtrmap, ref pDbPage);
-            if (rc != SQLITE.OK)
+            var rc = this.Pager.sqlite3PagerGet(iPtrmap, ref pDbPage);
+            if (rc != RC.OK)
             {
                 pRC = rc;
                 return;
@@ -109,29 +109,29 @@ namespace Contoso.Core
                 pRC = SysEx.SQLITE_CORRUPT_BKPT();
                 goto ptrmap_exit;
             }
-            Debug.Assert(offset <= (int)this.usableSize - 5);
+            Debug.Assert(offset <= (int)this.UsableSize - 5);
             var pPtrmap = Pager.sqlite3PagerGetData(pDbPage); // The pointer map data 
-            if (eType != (PTRMAP)pPtrmap[offset] || ConvertEx.sqlite3Get4byte(pPtrmap, offset + 1) != parent)
+            if (eType != (PTRMAP)pPtrmap[offset] || ConvertEx.Get4(pPtrmap, offset + 1) != parent)
             {
                 Btree.TRACE("PTRMAP_UPDATE: {0}->({1},{2})", key, eType, parent);
                 pRC = rc = Pager.sqlite3PagerWrite(pDbPage);
-                if (rc == SQLITE.OK)
+                if (rc == RC.OK)
                 {
                     pPtrmap[offset] = (byte)eType;
-                    ConvertEx.sqlite3Put4byte(pPtrmap, offset + 1, parent);
+                    ConvertEx.Put4L(pPtrmap, offset + 1, parent);
                 }
             }
         ptrmap_exit:
             Pager.sqlite3PagerUnref(pDbPage);
         }
 
-        internal SQLITE ptrmapGet(Pgno key, ref PTRMAP pEType, ref Pgno pPgno)
+        internal RC ptrmapGet(Pgno key, ref PTRMAP pEType, ref Pgno pPgno)
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(this.mutex));
+            Debug.Assert(MutexEx.Held(this.Mutex));
             var iPtrmap = (int)MemPage.PTRMAP_PAGENO(this, key);
             var pDbPage = new PgHdr(); // The pointer map page
-            var rc = this.pPager.sqlite3PagerGet((Pgno)iPtrmap, ref pDbPage);
-            if (rc != SQLITE.OK)
+            var rc = this.Pager.sqlite3PagerGet((Pgno)iPtrmap, ref pDbPage);
+            if (rc != RC.OK)
                 return rc;
             var pPtrmap = Pager.sqlite3PagerGetData(pDbPage);// Pointer map page data
             var offset = (int)MemPage.PTRMAP_PTROFFSET((Pgno)iPtrmap, key);
@@ -140,14 +140,14 @@ namespace Contoso.Core
                 Pager.sqlite3PagerUnref(pDbPage);
                 return SysEx.SQLITE_CORRUPT_BKPT();
             }
-            Debug.Assert(offset <= (int)this.usableSize - 5);
+            Debug.Assert(offset <= (int)this.UsableSize - 5);
             var v = pPtrmap[offset];
             if (v < 1 || v > 5)
                 return SysEx.SQLITE_CORRUPT_BKPT();
             pEType = (PTRMAP)v;
-            pPgno = ConvertEx.sqlite3Get4byte(pPtrmap, offset + 1);
+            pPgno = ConvertEx.Get4(pPtrmap, offset + 1);
             Pager.sqlite3PagerUnref(pDbPage);
-            return SQLITE.OK;
+            return RC.OK;
         }
 
 #else
@@ -159,70 +159,69 @@ namespace Contoso.Core
         internal bool removeFromSharingList()
         {
 #if !SQLITE_OMIT_SHARED_CACHE
-sqlite3_mutex pMaster;
-BtShared pList;
-bool removed = false;
-Debug.Assert( sqlite3_mutex_notheld(pBt.mutex) );
-pMaster = sqlite3MutexAlloc(SQLITE_MUTEX_STATIC_MASTER);
-sqlite3_mutex_enter(pMaster);
-pBt.nRef--;
-if( pBt.nRef<=0 ){
-if( GLOBAL(BtShared*,sqlite3SharedCacheList)==pBt ){
-GLOBAL(BtShared*,sqlite3SharedCacheList) = pBt.pNext;
-}else{
-pList = GLOBAL(BtShared*,sqlite3SharedCacheList);
-while( ALWAYS(pList) && pList.pNext!=pBt ){
-pList=pList.pNext;
-}
-if( ALWAYS(pList) ){
-pList.pNext = pBt.pNext;
-}
-}
-if( SQLITE_THREADSAFE ){
-sqlite3_mutex_free(pBt.mutex);
-}
-removed = true;
-}
-sqlite3_mutex_leave(pMaster);
-return removed;
+            sqlite3_mutex pMaster;
+            BtShared pList;
+            bool removed = false;
+            Debug.Assert(MutexEx.sqlite3_mutex_notheld(Mutex));
+            pMaster = MutexEx.sqlite3MutexAlloc(SQLITE_MUTEX_STATIC_MASTER);
+            MutexEx.sqlite3_mutex_enter(pMaster);
+            nRef--;
+            if (nRef <= 0)
+            {
+                if (GLOBAL(BtShared, sqlite3SharedCacheList) == this)
+                    GLOBAL(BtShared, sqlite3SharedCacheList) = pNext;
+                else
+                {
+                    pList = GLOBAL(BtShared, sqlite3SharedCacheList);
+                    while (Check.ALWAYS(pList) && pList.pNext != this)
+                        pList = pList.pNext;
+                    if (Check.ALWAYS(pList))
+                        pList.pNext = pNext;
+                }
+                if (SQLITE_THREADSAFE)
+                    MutexEx.sqlite3_mutex_free(Mutex);
+                removed = true;
+            }
+            MutexEx.sqlite3_mutex_leave(pMaster);
+            return removed;
 #else
             return true;
 #endif
         }
 
-        internal void allocateTempSpace() { if (this.pTmpSpace == null) this.pTmpSpace = MallocEx.sqlite3Malloc((int)this.pageSize); }
+        internal void allocateTempSpace() { if (this.pTmpSpace == null) this.pTmpSpace = MallocEx.sqlite3Malloc((int)this.PageSize); }
         internal void freeTempSpace() { PCache1.sqlite3PageFree(ref this.pTmpSpace); }
 
-        internal SQLITE lockBtree()
+        internal RC lockBtree()
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(this.mutex));
-            Debug.Assert(this.pPage1 == null);
-            var rc = this.pPager.sqlite3PagerSharedLock();
-            if (rc != SQLITE.OK)
+            Debug.Assert(MutexEx.Held(this.Mutex));
+            Debug.Assert(this.Page1 == null);
+            var rc = this.Pager.sqlite3PagerSharedLock();
+            if (rc != RC.OK)
                 return rc;
             MemPage pPage1 = null; // Page 1 of the database file
             rc = btreeGetPage(1, ref pPage1, 0);
-            if (rc != SQLITE.OK)
+            if (rc != RC.OK)
                 return rc;
             // Do some checking to help insure the file we opened really is a valid database file.
             Pgno nPageHeader;      // Number of pages in the database according to hdr
-            var nPage = nPageHeader = ConvertEx.sqlite3Get4byte(pPage1.aData, 28); // Number of pages in the database
+            var nPage = nPageHeader = ConvertEx.Get4(pPage1.Data, 28); // Number of pages in the database
             Pgno nPageFile;    // Number of pages in the database file
-            this.pPager.sqlite3PagerPagecount(out nPageFile);
-            if (nPage == 0 || ArrayEx.Compare(pPage1.aData, 24, pPage1.aData, 92, 4) != 0)
+            this.Pager.sqlite3PagerPagecount(out nPageFile);
+            if (nPage == 0 || ArrayEx.Compare(pPage1.Data, 24, pPage1.Data, 92, 4) != 0)
                 nPage = nPageFile;
             if (nPage > 0)
             {
-                var page1 = pPage1.aData;
-                rc = SQLITE.NOTADB;
+                var page1 = pPage1.Data;
+                rc = RC.NOTADB;
                 if (ArrayEx.Compare(page1, Btree.zMagicHeader, 16) != 0)
                     goto page1_init_failed;
 #if SQLITE_OMIT_WAL
                 if (page1[18] > 1)
-                    this.readOnly = true;
+                    this.ReadOnly = true;
                 if (page1[19] > 1)
                 {
-                    this.pSchema.file_format = page1[19];
+                    this.Schema.file_format = page1[19];
                     goto page1_init_failed;
                 }
 #else
@@ -262,29 +261,29 @@ rc = SQLITE_NOTADB;
                     goto page1_init_failed;
                 Debug.Assert((pageSize & 7) == 0);
                 var usableSize = pageSize - page1[20];
-                if (pageSize != this.pageSize)
+                if (pageSize != this.PageSize)
                 {
                     // After reading the first page of the database assuming a page size of BtShared.pageSize, we have discovered that the page-size is
                     // actually pageSize. Unlock the database, leave pBt.pPage1 at zero and return SQLITE_OK. The caller will call this function
                     // again with the correct page-size.
                     pPage1.releasePage();
-                    this.usableSize = usableSize;
-                    this.pageSize = pageSize;
-                    rc = this.pPager.sqlite3PagerSetPagesize(ref this.pageSize, (int)(pageSize - usableSize));
+                    this.UsableSize = usableSize;
+                    this.PageSize = pageSize;
+                    rc = this.Pager.sqlite3PagerSetPagesize(ref this.PageSize, (int)(pageSize - usableSize));
                     return rc;
                 }
-                if ((this.db.flags & sqlite3.SQLITE.RecoveryMode) == 0 && nPage > nPageFile)
+                if ((this.DB.flags & sqlite3.SQLITE.RecoveryMode) == 0 && nPage > nPageFile)
                 {
                     rc = SysEx.SQLITE_CORRUPT_BKPT();
                     goto page1_init_failed;
                 }
                 if (usableSize < 480)
                     goto page1_init_failed;
-                this.pageSize = pageSize;
-                this.usableSize = usableSize;
+                this.PageSize = pageSize;
+                this.UsableSize = usableSize;
 #if !SQLITE_OMIT_AUTOVACUUM
-                this.autoVacuum = (ConvertEx.sqlite3Get4byte(page1, 36 + 4 * 4) != 0);
-                this.incrVacuum = (ConvertEx.sqlite3Get4byte(page1, 36 + 7 * 4) != 0);
+                this.AutoVacuum = (ConvertEx.Get4(page1, 36 + 4 * 4) != 0);
+                this.IncrVacuum = (ConvertEx.Get4(page1, 36 + 7 * 4) != 0);
 #endif
             }
             // maxLocal is the maximum amount of payload to store locally for a cell.  Make sure it is small enough so that at least minFanout
@@ -295,81 +294,81 @@ rc = SQLITE_NOTADB;
             //     4-byte nData value
             //     4-byte overflow page pointer
             // So a cell consists of a 2-byte pointer, a header which is as much as 17 bytes long, 0 to N bytes of payload, and an optional 4 byte overflow page pointer.
-            this.maxLocal = (ushort)((this.usableSize - 12) * 64 / 255 - 23);
-            this.minLocal = (ushort)((this.usableSize - 12) * 32 / 255 - 23);
-            this.maxLeaf = (ushort)(this.usableSize - 35);
-            this.minLeaf = (ushort)((this.usableSize - 12) * 32 / 255 - 23);
-            Debug.Assert(this.maxLeaf + 23 <= Btree.MX_CELL_SIZE(this));
-            this.pPage1 = pPage1;
-            this.nPage = nPage;
-            return SQLITE.OK;
+            this.MaxLocal = (ushort)((this.UsableSize - 12) * 64 / 255 - 23);
+            this.MinLocal = (ushort)((this.UsableSize - 12) * 32 / 255 - 23);
+            this.MaxLeaf = (ushort)(this.UsableSize - 35);
+            this.MinLeaf = (ushort)((this.UsableSize - 12) * 32 / 255 - 23);
+            Debug.Assert(this.MaxLeaf + 23 <= Btree.MX_CELL_SIZE(this));
+            this.Page1 = pPage1;
+            this.Pages = nPage;
+            return RC.OK;
         page1_init_failed:
             pPage1.releasePage();
-            this.pPage1 = null;
+            this.Page1 = null;
             return rc;
         }
 
         internal void unlockBtreeIfUnused()
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(this.mutex));
-            Debug.Assert(this.pCursor == null || this.inTransaction > TRANS.NONE);
-            if (this.inTransaction == TRANS.NONE && this.pPage1 != null)
+            Debug.Assert(MutexEx.Held(this.Mutex));
+            Debug.Assert(this.Cursors == null || this.InTransaction > TRANS.NONE);
+            if (this.InTransaction == TRANS.NONE && this.Page1 != null)
             {
-                Debug.Assert(this.pPage1.aData != null);
+                Debug.Assert(this.Page1.Data != null);
                 //Debug.Assert(pBt.pPager.sqlite3PagerRefcount() == 1 );
-                this.pPage1.releasePage();
-                this.pPage1 = null;
+                this.Page1.releasePage();
+                this.Page1 = null;
             }
         }
 
-        internal SQLITE newDatabase()
+        internal RC newDatabase()
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(this.mutex));
-            if (this.nPage > 0)
-                return SQLITE.OK;
-            var pP1 = this.pPage1;
+            Debug.Assert(MutexEx.Held(this.Mutex));
+            if (this.Pages > 0)
+                return RC.OK;
+            var pP1 = this.Page1;
             Debug.Assert(pP1 != null);
-            var data = pP1.aData;
-            var rc = Pager.sqlite3PagerWrite(pP1.pDbPage);
-            if (rc != SQLITE.OK)
+            var data = pP1.Data;
+            var rc = Pager.sqlite3PagerWrite(pP1.DbPage);
+            if (rc != RC.OK)
                 return rc;
             Buffer.BlockCopy(Btree.zMagicHeader, 0, data, 0, 16);
             Debug.Assert(Btree.zMagicHeader.Length == 16);
-            data[16] = (byte)((this.pageSize >> 8) & 0xff);
-            data[17] = (byte)((this.pageSize >> 16) & 0xff);
+            data[16] = (byte)((this.PageSize >> 8) & 0xff);
+            data[17] = (byte)((this.PageSize >> 16) & 0xff);
             data[18] = 1;
             data[19] = 1;
-            Debug.Assert(this.usableSize <= this.pageSize && this.usableSize + 255 >= this.pageSize);
-            data[20] = (byte)(this.pageSize - this.usableSize);
+            Debug.Assert(this.UsableSize <= this.PageSize && this.UsableSize + 255 >= this.PageSize);
+            data[20] = (byte)(this.PageSize - this.UsableSize);
             data[21] = 64;
             data[22] = 32;
             data[23] = 32;
             pP1.zeroPage(Btree.PTF_INTKEY | Btree.PTF_LEAF | Btree.PTF_LEAFDATA);
-            this.pageSizeFixed = true;
+            this.PageSizeFixed = true;
 #if !SQLITE_OMIT_AUTOVACUUM
-            Debug.Assert(this.autoVacuum == true || this.autoVacuum == false);
-            Debug.Assert(this.incrVacuum == true || this.incrVacuum == false);
-            ConvertEx.sqlite3Put4byte(data, 36 + 4 * 4, this.autoVacuum ? 1 : 0);
-            ConvertEx.sqlite3Put4byte(data, 36 + 7 * 4, this.incrVacuum ? 1 : 0);
+            Debug.Assert(this.AutoVacuum == true || this.AutoVacuum == false);
+            Debug.Assert(this.IncrVacuum == true || this.IncrVacuum == false);
+            ConvertEx.Put4(data, 36 + 4 * 4, this.AutoVacuum ? 1 : 0);
+            ConvertEx.Put4(data, 36 + 7 * 4, this.IncrVacuum ? 1 : 0);
 #endif
-            this.nPage = 1;
+            this.Pages = 1;
             data[31] = 1;
-            return SQLITE.OK;
+            return RC.OK;
         }
 
-        internal SQLITE getOverflowPage(Pgno ovfl, out MemPage ppPage, out Pgno pPgnoNext)
+        internal RC getOverflowPage(Pgno ovfl, out MemPage ppPage, out Pgno pPgnoNext)
         {
             Pgno next = 0;
             MemPage pPage = null;
             ppPage = null;
-            var rc = SQLITE.OK;
-            Debug.Assert(MutexEx.sqlite3_mutex_held(this.mutex));
+            var rc = RC.OK;
+            Debug.Assert(MutexEx.Held(this.Mutex));
             // Debug.Assert( pPgnoNext != 0);
 #if !SQLITE_OMIT_AUTOVACUUM
             // Try to find the next page in the overflow list using the autovacuum pointer-map pages. Guess that the next page in
             // the overflow list is page number (ovfl+1). If that guess turns out to be wrong, fall back to loading the data of page
             // number ovfl to determine the next page number.
-            if (this.autoVacuum)
+            if (this.AutoVacuum)
             {
                 Pgno pgno = 0;
                 Pgno iGuess = ovfl + 1;
@@ -379,107 +378,107 @@ rc = SQLITE_NOTADB;
                 if (iGuess <= btreePagecount())
                 {
                     rc = ptrmapGet(iGuess, ref eType, ref pgno);
-                    if (rc == SQLITE.OK && eType == PTRMAP.OVERFLOW2 && pgno == ovfl)
+                    if (rc == RC.OK && eType == PTRMAP.OVERFLOW2 && pgno == ovfl)
                     {
                         next = iGuess;
-                        rc = SQLITE.DONE;
+                        rc = RC.DONE;
                     }
                 }
             }
 #endif
-            Debug.Assert(next == 0 || rc == SQLITE.DONE);
-            if (rc == SQLITE.OK)
+            Debug.Assert(next == 0 || rc == RC.DONE);
+            if (rc == RC.OK)
             {
                 rc = btreeGetPage(ovfl, ref pPage, 0);
-                Debug.Assert(rc == SQLITE.OK || pPage == null);
-                if (rc == SQLITE.OK)
-                    next = ConvertEx.sqlite3Get4byte(pPage.aData);
+                Debug.Assert(rc == RC.OK || pPage == null);
+                if (rc == RC.OK)
+                    next = ConvertEx.Get4(pPage.Data);
             }
             pPgnoNext = next;
             if (ppPage != null)
                 ppPage = pPage;
             else
                 pPage.releasePage();
-            return (rc == SQLITE.DONE ? SQLITE.OK : rc);
+            return (rc == RC.DONE ? RC.OK : rc);
         }
 
-        internal SQLITE clearDatabasePage(Pgno pgno, int freePageFlag, ref int pnChange)
+        internal RC clearDatabasePage(Pgno pgno, int freePageFlag, ref int pnChange)
         {
             var pPage = new MemPage();
-            Debug.Assert(MutexEx.sqlite3_mutex_held(this.mutex));
+            Debug.Assert(MutexEx.Held(this.Mutex));
             if (pgno > btreePagecount())
                 return SysEx.SQLITE_CORRUPT_BKPT();
             var rc = getAndInitPage(pgno, ref pPage);
-            if (rc != SQLITE.OK)
+            if (rc != RC.OK)
                 return rc;
-            for (var i = 0; i < pPage.nCell; i++)
+            for (var i = 0; i < pPage.Cells; i++)
             {
-                var iCell = pPage.findCell(i);
-                var pCell = pPage.aData;
-                if (pPage.leaf == 0)
+                var iCell = pPage.FindCell(i);
+                var pCell = pPage.Data;
+                if (pPage.Leaf == 0)
                 {
-                    rc = clearDatabasePage(ConvertEx.sqlite3Get4byte(pCell, iCell), 1, ref pnChange);
-                    if (rc != SQLITE.OK)
+                    rc = clearDatabasePage(ConvertEx.Get4(pCell, iCell), 1, ref pnChange);
+                    if (rc != RC.OK)
                         goto cleardatabasepage_out;
                 }
                 rc = pPage.clearCell(iCell);
-                if (rc != SQLITE.OK)
+                if (rc != RC.OK)
                     goto cleardatabasepage_out;
             }
-            if (pPage.leaf == 0)
+            if (pPage.Leaf == 0)
             {
-                rc = clearDatabasePage(ConvertEx.sqlite3Get4byte(pPage.aData, 8), 1, ref pnChange);
-                if (rc != SQLITE.OK)
+                rc = clearDatabasePage(ConvertEx.Get4(pPage.Data, 8), 1, ref pnChange);
+                if (rc != RC.OK)
                     goto cleardatabasepage_out;
             }
             else
-                pnChange += pPage.nCell;
+                pnChange += pPage.Cells;
             if (freePageFlag != 0)
                 pPage.freePage(ref rc);
-            else if ((rc = Pager.sqlite3PagerWrite(pPage.pDbPage)) == SQLITE.OK)
-                pPage.zeroPage(pPage.aData[0] | Btree.PTF_LEAF);
+            else if ((rc = Pager.sqlite3PagerWrite(pPage.DbPage)) == RC.OK)
+                pPage.zeroPage(pPage.Data[0] | Btree.PTF_LEAF);
         cleardatabasepage_out:
             pPage.releasePage();
             return rc;
         }
 
-        internal SQLITE btreeGetPage(Pgno pgno, ref MemPage ppPage, int noContent)
+        internal RC btreeGetPage(Pgno pgno, ref MemPage ppPage, int noContent)
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(this.mutex));
+            Debug.Assert(MutexEx.Held(this.Mutex));
             DbPage pDbPage = null;
-            var rc = this.pPager.sqlite3PagerAcquire(pgno, ref pDbPage, (byte)noContent);
-            if (rc != SQLITE.OK)
+            var rc = this.Pager.sqlite3PagerAcquire(pgno, ref pDbPage, (byte)noContent);
+            if (rc != RC.OK)
                 return rc;
             ppPage = MemPage.btreePageFromDbPage(pDbPage, pgno, this);
-            return SQLITE.OK;
+            return RC.OK;
         }
 
         internal MemPage btreePageLookup(Pgno pgno)
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(this.mutex));
-            var pDbPage = this.pPager.sqlite3PagerLookup(pgno);
+            Debug.Assert(MutexEx.Held(this.Mutex));
+            var pDbPage = this.Pager.sqlite3PagerLookup(pgno);
             return (pDbPage ? MemPage.btreePageFromDbPage(pDbPage, pgno, this) : null);
         }
 
-        internal Pgno btreePagecount() { return this.nPage; }
+        internal Pgno btreePagecount() { return this.Pages; }
 
-        internal SQLITE getAndInitPage(Pgno pgno, ref MemPage ppPage)
+        internal RC getAndInitPage(Pgno pgno, ref MemPage ppPage)
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(this.mutex));
-            SQLITE rc;
+            Debug.Assert(MutexEx.Held(this.Mutex));
+            RC rc;
             if (pgno > btreePagecount())
                 rc = SysEx.SQLITE_CORRUPT_BKPT();
             else
             {
                 rc = btreeGetPage(pgno, ref ppPage, 0);
-                if (rc == SQLITE.OK)
+                if (rc == RC.OK)
                 {
                     rc = ppPage.btreeInitPage();
-                    if (rc != SQLITE.OK)
+                    if (rc != RC.OK)
                         ppPage.releasePage();
                 }
             }
-            Debug.Assert(pgno != 0 || rc == SQLITE.CORRUPT);
+            Debug.Assert(pgno != 0 || rc == RC.CORRUPT);
             return rc;
         }
     }

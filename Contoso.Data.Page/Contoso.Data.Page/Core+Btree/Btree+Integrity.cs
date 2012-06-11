@@ -5,7 +5,7 @@ using System.Text;
 using Contoso.Sys;
 using System.Diagnostics;
 using SAVEPOINT = Contoso.Core.Pager.SAVEPOINT;
-using CURSOR = Contoso.Core.BtCursor.CURSOR;
+using CURSOR = Contoso.Core.BtreeCursor.CursorState;
 using VFSOPEN = Contoso.Sys.VirtualFileSystem.OPEN;
 using PTRMAP = Contoso.Core.MemPage.PTRMAP;
 

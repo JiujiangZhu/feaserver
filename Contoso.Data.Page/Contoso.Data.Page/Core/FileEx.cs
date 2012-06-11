@@ -4,15 +4,15 @@ namespace Contoso.Core
 {
     public partial class FileEx
     {
-        internal static SQLITE sqlite3OsClose(VirtualFile id)
+        internal static RC sqlite3OsClose(VirtualFile id)
         {
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             if (id.isOpen) { rc = id.xClose(); id.isOpen = false; }
             return rc;
         }
-        internal static SQLITE sqlite3OsCloseFree(VirtualFile id)
+        internal static RC sqlite3OsCloseFree(VirtualFile id)
         {
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             Debug.Assert(id != null);
             rc = sqlite3OsClose(id);
             return rc;
