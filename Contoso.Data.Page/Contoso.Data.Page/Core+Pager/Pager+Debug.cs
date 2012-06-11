@@ -54,17 +54,17 @@ namespace Contoso.Core
 0 == memDb
 #endif
 );
-                    Debug.Assert(errCode == SQLITE.OK);
+                    Debug.Assert(errCode == RC.OK);
                     Debug.Assert(pPCache.sqlite3PcacheRefCount() == 0 || tempFile);
                     break;
                 case PAGER.READER:
-                    Debug.Assert(errCode == SQLITE.OK);
+                    Debug.Assert(errCode == RC.OK);
                     Debug.Assert(eLock != VFSLOCK.UNKNOWN);
                     Debug.Assert(eLock >= VFSLOCK.SHARED || noReadlock != 0);
                     break;
                 case PAGER.WRITER_LOCKED:
                     Debug.Assert(eLock != VFSLOCK.UNKNOWN);
-                    Debug.Assert(errCode == SQLITE.OK);
+                    Debug.Assert(errCode == RC.OK);
                     if (!pagerUseWal())
                         Debug.Assert(eLock >= VFSLOCK.RESERVED);
                     Debug.Assert(dbSize == dbOrigSize);
@@ -74,7 +74,7 @@ namespace Contoso.Core
                     break;
                 case PAGER.WRITER_CACHEMOD:
                     Debug.Assert(eLock != VFSLOCK.UNKNOWN);
-                    Debug.Assert(errCode == SQLITE.OK);
+                    Debug.Assert(errCode == RC.OK);
                     if (!pagerUseWal())
                     {
                         // It is possible that if journal_mode=wal here that neither the journal file nor the WAL file are open. This happens during
@@ -87,7 +87,7 @@ namespace Contoso.Core
                     break;
                 case PAGER.WRITER_DBMOD:
                     Debug.Assert(eLock == VFSLOCK.EXCLUSIVE);
-                    Debug.Assert(errCode == SQLITE.OK);
+                    Debug.Assert(errCode == RC.OK);
                     Debug.Assert(!pagerUseWal());
                     Debug.Assert(eLock >= VFSLOCK.EXCLUSIVE);
                     Debug.Assert(jfd.isOpen || journalMode == JOURNALMODE.OFF || journalMode == JOURNALMODE.WAL);
@@ -95,14 +95,14 @@ namespace Contoso.Core
                     break;
                 case PAGER.WRITER_FINISHED:
                     Debug.Assert(eLock == VFSLOCK.EXCLUSIVE);
-                    Debug.Assert(errCode == SQLITE.OK);
+                    Debug.Assert(errCode == RC.OK);
                     Debug.Assert(!pagerUseWal());
                     Debug.Assert(jfd.isOpen || journalMode == JOURNALMODE.OFF || journalMode == JOURNALMODE.WAL);
                     break;
                 case PAGER.ERROR:
                     // There must be at least one outstanding reference to the pager if in ERROR state. Otherwise the pager should have already dropped
                     // back to OPEN state.
-                    Debug.Assert(errCode != SQLITE.OK);
+                    Debug.Assert(errCode != RC.OK);
                     Debug.Assert(pPCache.sqlite3PcacheRefCount() > 0);
                     break;
             }

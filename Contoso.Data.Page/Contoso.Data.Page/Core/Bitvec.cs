@@ -72,7 +72,7 @@ namespace Contoso.Core
             return 0;
         }
 
-        internal SQLITE sqlite3BitvecSet(uint i)
+        internal RC sqlite3BitvecSet(uint i)
         {
             Debug.Assert(i > 0);
             Debug.Assert(i <= iSize);
@@ -89,7 +89,7 @@ namespace Contoso.Core
             if (p.iSize <= BITVEC_NBIT)
             {
                 p.u.aBitmap[i / BITVEC_SZELEM] |= (byte)(1 << (int)(i & (BITVEC_SZELEM - 1)));
-                return SQLITE.OK;
+                return RC.OK;
             }
             var h = BITVEC_HASH(i++);
             // if there wasn't a hash collision, and this doesn't completely fill the hash, then just add it without worring about sub-dividing and re-hashing.
@@ -102,7 +102,7 @@ namespace Contoso.Core
             do
             {
                 if (p.u.aHash[h] == i)
-                    return SQLITE.OK;
+                    return RC.OK;
                 h++;
                 if (h >= BITVEC_NINT)
                     h = 0;
@@ -124,7 +124,7 @@ namespace Contoso.Core
         bitvec_set_end:
             p.nSet++;
             p.u.aHash[h] = i;
-            return SQLITE.OK;
+            return RC.OK;
         }
 
         internal void sqlite3BitvecClear(uint i, uint[] pBuf)

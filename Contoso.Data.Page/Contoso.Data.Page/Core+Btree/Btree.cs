@@ -80,8 +80,8 @@ namespace Contoso.Core
             public Mem[] aMem;          // Values
         }
 
-        public sqlite3 db;        // The database connection holding this Btree 
-        public BtShared pBt;      // Sharable content of this Btree 
+        public sqlite3 DB;        // The database connection holding this Btree 
+        public BtShared Shared;      // Sharable content of this Btree 
         public TRANS inTrans;     // TRANS_NONE, TRANS_READ or TRANS_WRITE 
         public bool sharable;     // True if we can share pBt with another db 
         public bool locked;       // True if db currently has pBt locked 
@@ -90,11 +90,11 @@ namespace Contoso.Core
         public Btree pNext;       // List of other sharable Btrees from the same db 
         public Btree pPrev;       // Back pointer of the same list 
 #if !SQLITE_OMIT_SHARED_CACHE
-        BtLock lock;              // Object used to lock page 1 
+        public BtreeLock Locks;              // Object used to lock page 1 
 #endif
 
-        internal static int MX_CELL_SIZE(BtShared pBt) { return (int)(pBt.pageSize - 8); }
-        internal static int MX_CELL(BtShared pBt) { return ((int)(pBt.pageSize - 8) / 6); }
+        internal static int MX_CELL_SIZE(BtShared pBt) { return (int)(pBt.PageSize - 8); }
+        internal static int MX_CELL(BtShared pBt) { return ((int)(pBt.PageSize - 8) / 6); }
 
         internal const byte PTF_INTKEY = 0x01;
         internal const byte PTF_ZERODATA = 0x02;
@@ -104,39 +104,40 @@ namespace Contoso.Core
 
         // HOOKS
 #if !SQLITE_OMIT_SHARED_CACHE
-//void sqlite3BtreeEnter(Btree);
-//void sqlite3BtreeEnterAll(sqlite3);
+        internal void sqlite3BtreeEnter() { }
+        //void sqlite3BtreeEnterAll(sqlite3);
+        internal void sqlite3BtreeLeave() { }
 #else
         internal void sqlite3BtreeEnter() { }
         internal void sqlite3BtreeLeave() { }
 #endif
 #if !SQLITE_OMIT_SHARED_CACHE && SQLITE_THREADSAFE
-//int sqlite3BtreeSharable(Btree);
-//void sqlite3BtreeLeave(Btree);
-//void sqlite3BtreeEnterCursor(BtCursor);
-//void sqlite3BtreeLeaveCursor(BtCursor);
-//void sqlite3BtreeLeaveAll(sqlite3);
-#if !NDEBUG
-// These routines are used inside Debug.Assert() statements only.
-int sqlite3BtreeHoldsMutex(Btree);
-int sqlite3BtreeHoldsAllMutexes(sqlite3);
-int sqlite3SchemaMutexHeld(sqlite3*,int,Schema);
+        //int sqlite3BtreeSharable(Btree);
+        //void sqlite3BtreeLeave(Btree);
+        //void sqlite3BtreeEnterCursor(BtCursor);
+        //void sqlite3BtreeLeaveCursor(BtCursor);
+        //void sqlite3BtreeLeaveAll(sqlite3);
+#if !DEBUG
+        // These routines are used inside Debug.Assert() statements only.
+        internal bool sqlite3BtreeHoldsMutex() { return true; }
+        internal static bool sqlite3BtreeHoldsAllMutexes(sqlite3 x) { return true; }
+        internal static bool sqlite3SchemaMutexHeld(sqlite3 x, int y, ISchema z) { return true; }
 #endif
 #else
         //internal bool sqlite3BtreeSharable() { return false; }
         //internal void sqlite3BtreeLeave() { }
-        //internal static void sqlite3BtreeEnterCursor(BtCursor X) { }
-        //internal static void sqlite3BtreeLeaveCursor(BtCursor X) { }
-        //internal static void sqlite3BtreeLeaveAll(sqlite3 X) { }
+        //internal static void sqlite3BtreeEnterCursor(BtCursor x) { }
+        //internal static void sqlite3BtreeLeaveCursor(BtCursor x) { }
+        //internal static void sqlite3BtreeLeaveAll(sqlite3 x) { }
         internal bool sqlite3BtreeHoldsMutex() { return true; }
-        //internal static bool sqlite3BtreeHoldsAllMutexes(sqlite3 X) { return true; }
-        //internal static bool sqlite3SchemaMutexHeld(sqlite3 X, int y, ISchema z) { return true; }
+        //internal static bool sqlite3BtreeHoldsAllMutexes(sqlite3 x) { return true; }
+        //internal static bool sqlite3SchemaMutexHeld(sqlite3 x, int y, ISchema z) { return true; }
 #endif
 #if DEBUG
         internal void btreeIntegrity()
         {
-            Debug.Assert(pBt.inTransaction != TRANS.NONE || pBt.nTransaction == 0);
-            Debug.Assert(pBt.inTransaction >= inTrans);
+            Debug.Assert(Shared.InTransaction != TRANS.NONE || Shared.Transactions == 0);
+            Debug.Assert(Shared.InTransaction >= inTrans);
         }
 #else
         internal void btreeIntegrity() { }

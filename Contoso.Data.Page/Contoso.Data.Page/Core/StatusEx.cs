@@ -58,7 +58,7 @@ namespace Contoso.Core
                 wsdStat.mxValue[(int)op] = wsdStat.nowValue[(int)op];
         }
 
-        public static SQLITE sqlite3_status(STATUS op, ref int pCurrent, ref int pHighwater, int resetFlag)
+        public static RC sqlite3_status(STATUS op, ref int pCurrent, ref int pHighwater, int resetFlag)
         {
             wsdStatInit();
             if (op < 0 || (int)op >= wsdStat.nowValue.Length)
@@ -67,7 +67,7 @@ namespace Contoso.Core
             pHighwater = wsdStat.mxValue[(int)op];
             if (resetFlag != 0)
                 wsdStat.mxValue[(int)op] = wsdStat.nowValue[(int)op];
-            return SQLITE.OK;
+            return RC.OK;
         }
 
         //public static SQLITE sqlite3_db_status(sqlite3 db, int op, ref int pCurrent, ref int pHighwater, int resetFlag)

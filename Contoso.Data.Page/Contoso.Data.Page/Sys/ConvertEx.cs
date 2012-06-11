@@ -4,6 +4,11 @@ namespace Contoso.Sys
 {
     public static class ConvertEx
     {
+        private const int SLOT_2_0 = 0x001fc07f;
+        private const uint SLOT_4_2_0 = (uint)0xf01fc07f;
+        private const uint SQLITE_MAX_U32 = (uint)((((ulong)1) << 32) - 1);
+
+
         // The variable-length integer encoding is as follows:
         //
         // KEY:
@@ -19,201 +24,13 @@ namespace Contoso.Sys
         // 49 bits - BBBBBBA
         // 56 bits - BBBBBBBA
         // 64 bits - BBBBBBBBC
-
-        // Write a 64-bit variable-length integer to memory starting at p[0]. The length of data write will be between 1 and 9 bytes.  The number
-        // of bytes written is returned.
-        // A variable-length integer consists of the lower 7 bits of each byte for all bytes that have the 8th bit set and one byte with the 8th
-        // bit clear.  Except, if we get to the 9th byte, it stores the full 8 bits and is the last byte.
-        public static int getVarint(byte[] p, out uint v)
-        {
-            v = p[0];
-            if (v <= 0x7F)
-                return 1;
-            ulong ulong_v = 0;
-            var result = sqlite3GetVarint(p, 0, out ulong_v);
-            v = (uint)ulong_v;
-            return result;
-        }
-        public static int getVarint(byte[] p, int offset, out uint v)
-        {
-            v = p[offset + 0];
-            if (v <= 0x7F)
-                return 1;
-            ulong ulong_v = 0;
-            var result = sqlite3GetVarint(p, offset, out ulong_v);
-            v = (uint)ulong_v;
-            return result;
-        }
-        public static int getVarint(byte[] p, int offset, out int v)
-        {
-            v = p[offset + 0];
-            if (v <= 0x7F)
-                return 1;
-            ulong ulong_v = 0;
-            var result = sqlite3GetVarint(p, offset, out ulong_v);
-            v = (int)ulong_v;
-            return result;
-        }
-        public static int getVarint(byte[] p, int offset, out long v)
-        {
-            v = offset >= p.Length ? 0 : (int)p[offset + 0];
-            if (v <= 0x7F)
-                return 1;
-            if (offset + 1 >= p.Length)
-            {
-                v = 65535;
-                return 2;
-            }
-            else
-            {
-                ulong ulong_v = 0;
-                var result = sqlite3GetVarint(p, offset, out ulong_v);
-                v = (long)ulong_v;
-                return result;
-            }
-        }
-        public static int getVarint(byte[] p, int offset, out ulong v)
-        {
-            v = p[offset + 0];
-            if (v <= 0x7F)
-                return 1;
-            var result = sqlite3GetVarint(p, offset, out v);
-            return result;
-        }
-        public static int getVarint32(byte[] p, out uint v)
-        {
-            v = p[0];
-            if (v <= 0x7F)
-                return 1;
-            return sqlite3GetVarint32(p, 0, out v);
-        }
-        public static int getVarint32(string s, uint offset, out int v)
-        {
-            var pByte4 = new byte[4];
-            v = s[(int)offset];
-            if (v <= 0x7F)
-                return 1;
-            pByte4[0] = (byte)s[(int)offset + 0];
-            pByte4[1] = (byte)s[(int)offset + 1];
-            pByte4[2] = (byte)s[(int)offset + 2];
-            pByte4[3] = (byte)s[(int)offset + 3];
-            uint uint_v = 0;
-            var result = sqlite3GetVarint32(pByte4, 0, out uint_v);
-            v = (int)uint_v;
-            return sqlite3GetVarint32(pByte4, 0, out v);
-        }
-        public static int getVarint32(string s, uint offset, out uint v)
-        {
-            var pByte4 = new byte[4];
-            v = s[(int)offset];
-            if (v <= 0x7F)
-                return 1;
-            pByte4[0] = (byte)s[(int)offset + 0];
-            pByte4[1] = (byte)s[(int)offset + 1];
-            pByte4[2] = (byte)s[(int)offset + 2];
-            pByte4[3] = (byte)s[(int)offset + 3];
-            return sqlite3GetVarint32(pByte4, 0, out v);
-        }
-        public static int getVarint32(byte[] p, uint offset, out uint v)
-        {
-            v = p[offset];
-            if (v <= 0x7F)
-                return 1;
-            return sqlite3GetVarint32(p, (int)offset, out v);
-        }
-        public static int getVarint32(byte[] p, int offset, out uint v)
-        {
-            v = (offset >= p.Length ? 0 : (uint)p[offset]);
-            if (v <= 0x7F)
-                return 1;
-            return sqlite3GetVarint32(p, offset, out v);
-        }
-        public static int getVarint32(byte[] p, int offset, out int v)
-        {
-            v = p[offset + 0];
-            if (v <= 0x7F)
-                return 1;
-            uint uint_v = 0;
-            var result = sqlite3GetVarint32(p, offset, out uint_v);
-            v = (int)uint_v;
-            return result;
-        }
-        public static int putVarint(byte[] p, int offset, int v) { return putVarint(p, offset, (ulong)v); }
-        public static int putVarint(byte[] p, int offset, ulong v) { return sqlite3PutVarint(p, offset, v); }
-        public static int sqlite3PutVarint(byte[] p, int offset, int v) { return sqlite3PutVarint(p, offset, (ulong)v); }
-        public static int sqlite3PutVarint(byte[] p, int offset, ulong v)
-        {
-            int i, j, n;
-            if ((v & (((ulong)0xff000000) << 32)) != 0)
-            {
-                p[offset + 8] = (byte)v;
-                v >>= 8;
-                for (i = 7; i >= 0; i--)
-                {
-                    p[offset + i] = (byte)((v & 0x7f) | 0x80);
-                    v >>= 7;
-                }
-                return 9;
-            }
-            n = 0;
-            var bufByte10 = new byte[10];
-            do
-            {
-                bufByte10[n++] = (byte)((v & 0x7f) | 0x80);
-                v >>= 7;
-            } while (v != 0);
-            bufByte10[0] &= 0x7f;
-            Debug.Assert(n <= 9);
-            for (i = 0, j = n - 1; j >= 0; j--, i++)
-                p[offset + i] = bufByte10[j];
-            return n;
-        }
-
-        // This routine is a faster version of sqlite3PutVarint() that only works for 32-bit positive integers and which is optimized for
-        // the common case of small integers.
-        public static int putVarint32(byte[] p, int offset, int v)
-        {
-#if !putVarint32
-            if ((v & ~0x7f) == 0)
-            {
-                p[offset] = (byte)v;
-                return 1;
-            }
-#endif
-            if ((v & ~0x3fff) == 0)
-            {
-                p[offset] = (byte)((v >> 7) | 0x80);
-                p[offset + 1] = (byte)(v & 0x7f);
-                return 2;
-            }
-            return sqlite3PutVarint(p, offset, v);
-        }
-        public static int putVarint32(byte[] p, int v)
-        {
-            if ((v & ~0x7f) == 0)
-            {
-                p[0] = (byte)v;
-                return 1;
-            }
-            else if ((v & ~0x3fff) == 0)
-            {
-                p[0] = (byte)((v >> 7) | 0x80);
-                p[1] = (byte)(v & 0x7f);
-                return 2;
-            }
-            return sqlite3PutVarint(p, 0, v);
-        }
-
-        // Bitmasks used by sqlite3GetVarint().  These precomputed constants are defined here rather than simply putting the constant expressions
-        // inline in order to work around bugs in the RVT compiler.
-        // SLOT_2_0     A mask for  (0x7f<<14) | 0x7f
-        // SLOT_4_2_0   A mask for  (0x7f<<28) | SLOT_2_0
-        const int SLOT_2_0 = 0x001fc07f;
-        const uint SLOT_4_2_0 = (uint)0xf01fc07f;
-        const uint SQLITE_MAX_U32 = (uint)((((ulong)1) << 32) - 1);
-
-        // Read a 64-bit variable-length integer from memory starting at p[0]. Return the number of bytes read.  The value is stored in *v.
-        public static byte sqlite3GetVarint(byte[] p, int offset, out ulong v)
+        public static byte GetVarint9(byte[] p, out int v) { v = p[0]; if (v <= 0x7F) return 1; ulong uv; var r = _GetVarint9L(p, 0, out uv); v = (int)uv; return r; }
+        public static byte GetVarint9(byte[] p, out uint v) { v = p[0]; if (v <= 0x7F) return 1; ulong uv; var r = _GetVarint9L(p, 0, out uv); v = (uint)uv; return r; }
+        public static byte GetVarint9(byte[] p, uint offset, out int v) { v = p[offset]; if (v <= 0x7F) return 1; ulong uv; var r = _GetVarint9L(p, offset, out uv); v = (int)uv; return r; }
+        public static byte GetVarint9(byte[] p, uint offset, out uint v) { v = p[offset]; if (v <= 0x7F) return 1; ulong uv; var r = _GetVarint9L(p, offset, out uv); v = (uint)uv; return r; }
+        public static byte GetVarint9L(byte[] p, uint offset, out long v) { v = p[offset]; if (v <= 0x7F) return 1; ulong uv; var r = _GetVarint9L(p, offset, out uv); v = (long)uv; return r; }
+        public static byte GetVarint9L(byte[] p, uint offset, out ulong v) { v = p[offset]; if (v <= 0x7F) return 1; var r = _GetVarint9L(p, offset, out v); return r; }
+        private static byte _GetVarint9L(byte[] p, uint offset, out ulong v)
         {
             uint a, b, s;
             a = p[offset + 0];
@@ -337,26 +154,31 @@ namespace Contoso.Sys
             return 9;
         }
 
-        // Read a 32-bit variable-length integer from memory starting at p[0]. Return the number of bytes read.  The value is stored in *v.
-        // If the varint stored in p[0] is larger than can fit in a 32-bit unsigned integer, then set *v to 0xffffffff.
-        // A MACRO version, getVarint32, is provided which inlines the single-byte case.  All code should use the MACRO version as
-        // this function assumes the single-byte case has already been handled.
-        public static byte sqlite3GetVarint32(byte[] p, out int v)
+        public static byte GetVarint4(byte[] p, out int v) { v = p[0]; if (v <= 0x7F) return 1; uint uv; var r = _GetVarint(p, 0, out uv); v = (int)uv; return r; }
+        public static byte GetVarint4(byte[] p, out uint v) { v = p[0]; if (v <= 0x7F) return 1; return _GetVarint(p, 0, out v); }
+        public static byte GetVarint4(byte[] p, uint offset, out int v) { v = p[offset]; if (v <= 0x7F) return 1; uint uv; var r = _GetVarint(p, offset, out uv); v = (int)uv; return r; }
+        public static byte GetVarint4(byte[] p, uint offset, out uint v) { v = p[offset]; if (v <= 0x7F) return 1; return _GetVarint(p, offset, out v); }
+        public static byte GetVarint4(string p, uint offset, out int v)
         {
-            uint uint_v = 0;
-            byte result = sqlite3GetVarint32(p, 0, out uint_v);
-            v = (int)uint_v;
-            return result;
+            v = p[(int)offset]; if (v <= 0x7F) return 1;
+            var a = new byte[4];
+            a[0] = (byte)p[(int)offset + 0];
+            a[1] = (byte)p[(int)offset + 1];
+            a[2] = (byte)p[(int)offset + 2];
+            a[3] = (byte)p[(int)offset + 3];
+            uint uv; var r = _GetVarint(a, 0, out uv); v = (int)uv; return r;
         }
-        public static byte sqlite3GetVarint32(byte[] p, int offset, out int v)
+        public static byte GetVarint4(string p, uint offset, out uint v)
         {
-            uint uint_v = 0;
-            byte result = sqlite3GetVarint32(p, offset, out uint_v);
-            v = (int)uint_v;
-            return result;
+            v = p[(int)offset]; if (v <= 0x7F) return 1;
+            var a = new byte[4];
+            a[0] = (byte)p[(int)offset + 0];
+            a[1] = (byte)p[(int)offset + 1];
+            a[2] = (byte)p[(int)offset + 2];
+            a[3] = (byte)p[(int)offset + 3];
+            return _GetVarint(a, 0, out v);
         }
-        public static byte sqlite3GetVarint32(byte[] p, out uint v) { return sqlite3GetVarint32(p, 0, out v); }
-        public static byte sqlite3GetVarint32(byte[] p, int offset, out uint v)
+        private static byte _GetVarint(byte[] p, uint offset, out uint v)
         {
             uint a, b;
             // The 1-byte case.  Overwhelmingly the most common.  Handled inline  by the getVarin32() macro
@@ -392,100 +214,151 @@ namespace Contoso.Sys
             // routine.
             {
                 ulong ulong_v = 0;
-                byte n = sqlite3GetVarint(p, offset, out ulong_v);
+                byte n = _GetVarint9L(p, offset, out ulong_v);
                 Debug.Assert(n > 3 && n <= 9);
                 v = ((ulong_v & SQLITE_MAX_U32) != ulong_v ? 0xffffffff : (uint)ulong_v);
                 return n;
             }
         }
 
-        // Return the number of bytes that will be needed to store the given 64-bit integer.
-        public static int sqlite3VarintLen(ulong v)
+        public static int PutVarint9(byte[] p, uint offset, int v) { return PutVarint9L(p, offset, (ulong)v); }
+        public static int PutVarint9L(byte[] p, uint offset, ulong v)
         {
-            var i = 0;
+            int i, j, n;
+            if ((v & (((ulong)0xff000000) << 32)) != 0)
+            {
+                p[offset + 8] = (byte)v;
+                v >>= 8;
+                for (i = 7; i >= 0; i--)
+                {
+                    p[offset + i] = (byte)((v & 0x7f) | 0x80);
+                    v >>= 7;
+                }
+                return 9;
+            }
+            n = 0;
+            var bufByte10 = new byte[10];
             do
             {
-                i++;
+                bufByte10[n++] = (byte)((v & 0x7f) | 0x80);
                 v >>= 7;
-            } while (v != 0 && Check.ALWAYS(i < 9));
+            } while (v != 0);
+            bufByte10[0] &= 0x7f;
+            Debug.Assert(n <= 9);
+            for (i = 0, j = n - 1; j >= 0; j--, i++)
+                p[offset + i] = bufByte10[j];
+            return n;
+        }
+
+        public static int PutVarint4(byte[] p, int v)
+        {
+            if ((v & ~0x7f) == 0) { p[0] = (byte)v; return 1; }
+            if ((v & ~0x3fff) == 0) { p[0] = (byte)((v >> 7) | 0x80); p[1] = (byte)(v & 0x7f); return 2; }
+            return PutVarint9(p, 0, v);
+        }
+
+        public static int PutVarint4(byte[] p, uint offset, int v)
+        {
+            if ((v & ~0x7f) == 0) { p[offset] = (byte)v; return 1; }
+            if ((v & ~0x3fff) == 0) { p[offset] = (byte)((v >> 7) | 0x80); p[offset + 1] = (byte)(v & 0x7f); return 2; }
+            return PutVarint9(p, offset, v);
+        }
+
+        public static int GetVarintLength(ulong v)
+        {
+            var i = 0;
+            do { i++; v >>= 7; }
+            while (v != 0 && Check.ALWAYS(i < 9));
             return i;
         }
 
-        // Read or write a four-byte big-endian integer value.
-        public static uint sqlite3Get4byte(byte[] p, int p_offset, int offset) { offset += p_offset; return (offset + 3 > p.Length) ? 0 : (uint)((p[0 + offset] << 24) | (p[1 + offset] << 16) | (p[2 + offset] << 8) | p[3 + offset]); }
-        public static uint sqlite3Get4byte(byte[] p, int offset) { return (offset + 3 > p.Length) ? 0 : (uint)((p[0 + offset] << 24) | (p[1 + offset] << 16) | (p[2 + offset] << 8) | p[3 + offset]); }
-        public static uint sqlite3Get4byte(byte[] p, uint offset) { return (offset + 3 > p.Length) ? 0 : (uint)((p[0 + offset] << 24) | (p[1 + offset] << 16) | (p[2 + offset] << 8) | p[3 + offset]); }
-        public static uint sqlite3Get4byte(byte[] p) { return (uint)((p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3]); }
-        public static void sqlite3Put4byte(byte[] p, int v)
+        public static uint Get4(byte[] p, int p_offset, int offset) { offset += p_offset; return (offset + 3 > p.Length) ? 0 : (uint)((p[0 + offset] << 24) | (p[1 + offset] << 16) | (p[2 + offset] << 8) | p[3 + offset]); }
+        public static uint Get4(byte[] p, int offset) { return (offset + 3 > p.Length) ? 0 : (uint)((p[0 + offset] << 24) | (p[1 + offset] << 16) | (p[2 + offset] << 8) | p[3 + offset]); }
+        public static uint Get4(byte[] p, uint offset) { return (offset + 3 > p.Length) ? 0 : (uint)((p[0 + offset] << 24) | (p[1 + offset] << 16) | (p[2 + offset] << 8) | p[3 + offset]); }
+        public static uint Get4(byte[] p) { return (uint)((p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3]); }
+        public static void Put4(byte[] p, int v)
         {
             p[0] = (byte)(v >> 24 & 0xFF);
             p[1] = (byte)(v >> 16 & 0xFF);
             p[2] = (byte)(v >> 8 & 0xFF);
             p[3] = (byte)(v & 0xFF);
         }
-        public static void sqlite3Put4byte(byte[] p, int offset, int v)
-        {
-            p[0 + offset] = (byte)(v >> 24 & 0xFF);
-            p[1 + offset] = (byte)(v >> 16 & 0xFF);
-            p[2 + offset] = (byte)(v >> 8 & 0xFF);
-            p[3 + offset] = (byte)(v & 0xFF);
-        }
-        public static void sqlite3Put4byte(byte[] p, uint offset, uint v)
-        {
-            p[0 + offset] = (byte)(v >> 24 & 0xFF);
-            p[1 + offset] = (byte)(v >> 16 & 0xFF);
-            p[2 + offset] = (byte)(v >> 8 & 0xFF);
-            p[3 + offset] = (byte)(v & 0xFF);
-        }
-        public static void sqlite3Put4byte(byte[] p, int offset, ulong v)
-        {
-            p[0 + offset] = (byte)(v >> 24 & 0xFF);
-            p[1 + offset] = (byte)(v >> 16 & 0xFF);
-            p[2 + offset] = (byte)(v >> 8 & 0xFF);
-            p[3 + offset] = (byte)(v & 0xFF);
-        }
-        public static void sqlite3Put4byte(byte[] p, ulong v)
+        public static void Put4(byte[] p, uint v)
         {
             p[0] = (byte)(v >> 24 & 0xFF);
             p[1] = (byte)(v >> 16 & 0xFF);
             p[2] = (byte)(v >> 8 & 0xFF);
             p[3] = (byte)(v & 0xFF);
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-        // Write a 32-bit integer into a string buffer in big-endian byte order.
-        internal static void put32bits(string ac, int offset, int val)
+        public static void Put4(byte[] p, int offset, int v)
         {
-            var A = new byte[4];
-            A[0] = (byte)ac[offset + 0];
-            A[1] = (byte)ac[offset + 1];
-            A[2] = (byte)ac[offset + 2];
-            A[3] = (byte)ac[offset + 3];
-            sqlite3Put4byte(A, 0, val);
+            p[0 + offset] = (byte)(v >> 24 & 0xFF);
+            p[1 + offset] = (byte)(v >> 16 & 0xFF);
+            p[2 + offset] = (byte)(v >> 8 & 0xFF);
+            p[3 + offset] = (byte)(v & 0xFF);
         }
-        internal static void put32bits(byte[] ac, int offset, int val) { sqlite3Put4byte(ac, offset, (uint)val); }
-        internal static void put32bits(byte[] ac, uint val) { sqlite3Put4byte(ac, 0U, val); }
-        internal static void put32bits(byte[] ac, int offset, uint val) { sqlite3Put4byte(ac, offset, val); }
+        public static void Put4(byte[] p, uint offset, int v)
+        {
+            p[0 + offset] = (byte)(v >> 24 & 0xFF);
+            p[1 + offset] = (byte)(v >> 16 & 0xFF);
+            p[2 + offset] = (byte)(v >> 8 & 0xFF);
+            p[3 + offset] = (byte)(v & 0xFF);
+        }
+        public static void Put4(byte[] p, int offset, uint v)
+        {
+            p[0 + offset] = (byte)(v >> 24 & 0xFF);
+            p[1 + offset] = (byte)(v >> 16 & 0xFF);
+            p[2 + offset] = (byte)(v >> 8 & 0xFF);
+            p[3 + offset] = (byte)(v & 0xFF);
+        }
+        public static void Put4(byte[] p, uint offset, uint v)
+        {
+            p[0 + offset] = (byte)(v >> 24 & 0xFF);
+            p[1 + offset] = (byte)(v >> 16 & 0xFF);
+            p[2 + offset] = (byte)(v >> 8 & 0xFF);
+            p[3 + offset] = (byte)(v & 0xFF);
+        }
+        public static void Put4L(byte[] p, int offset, ulong v)
+        {
+            p[0 + offset] = (byte)(v >> 24 & 0xFF);
+            p[1 + offset] = (byte)(v >> 16 & 0xFF);
+            p[2 + offset] = (byte)(v >> 8 & 0xFF);
+            p[3 + offset] = (byte)(v & 0xFF);
+        }
+        public static void Put4L(byte[] p, ulong v)
+        {
+            p[0] = (byte)(v >> 24 & 0xFF);
+            p[1] = (byte)(v >> 16 & 0xFF);
+            p[2] = (byte)(v >> 8 & 0xFF);
+            p[3] = (byte)(v & 0xFF);
+        }
+        internal static void Put4(string p, int offset, int v)
+        {
+            var a = new byte[4];
+            a[0] = (byte)p[offset + 0];
+            a[1] = (byte)p[offset + 1];
+            a[2] = (byte)p[offset + 2];
+            a[3] = (byte)p[offset + 3];
+            Put4(a, 0, v);
+        }
+        internal static void Put4(string p, int offset, uint v)
+        {
+            var a = new byte[4];
+            a[0] = (byte)p[offset + 0];
+            a[1] = (byte)p[offset + 1];
+            a[2] = (byte)p[offset + 2];
+            a[3] = (byte)p[offset + 3];
+            Put4(a, 0, v);
+        }
 
-        internal static int get2byte(byte[] p, int offset) { return p[offset + 0] << 8 | p[offset + 1]; }
-        internal static int get2byteNotZero(byte[] X, int offset) { return (((((int)get2byte(X, offset)) - 1) & 0xffff) + 1); }
-        internal static void put2byte(byte[] pData, int Offset, uint v)
+        internal static int Get2(byte[] p, int offset) { return p[offset + 0] << 8 | p[offset + 1]; }
+        internal static int Get2nz(byte[] X, int offset) { return (((((int)Get2(X, offset)) - 1) & 0xffff) + 1); }
+        internal static void Put2(byte[] pData, int Offset, uint v)
         {
             pData[Offset + 0] = (byte)(v >> 8);
             pData[Offset + 1] = (byte)v;
         }
-        internal static void put2byte(byte[] pData, int Offset, int v)
+        internal static void Put2(byte[] pData, int Offset, int v)
         {
             pData[Offset + 0] = (byte)(v >> 8);
             pData[Offset + 1] = (byte)v;

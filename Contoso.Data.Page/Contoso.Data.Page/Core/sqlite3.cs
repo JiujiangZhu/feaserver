@@ -39,7 +39,7 @@ namespace Contoso.Core
             EnableTrigger = 0x40000000,
         }
 
-        public sqlite3_mutex mutex { get; set; }
+        public sqlite3_mutex Mutex { get; set; }
         public SQLITE flags { get; set; }
         public BusyHandler busyHandler { get; set; }
         public int nSavepoint { get; set; } // Number of non-transaction savepoints

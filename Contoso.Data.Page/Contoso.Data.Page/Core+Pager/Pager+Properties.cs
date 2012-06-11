@@ -74,13 +74,13 @@ namespace Contoso.Core
             this.pBusyHandlerArg = pBusyHandlerArg;
         }
 
-        internal SQLITE sqlite3PagerSetPagesize(ref uint pPageSize, int nReserve)
+        internal RC sqlite3PagerSetPagesize(ref uint pPageSize, int nReserve)
         {
             // It is not possible to do a full assert_pager_state() here, as this function may be called from within PagerOpen(), before the state
             // of the Pager object is internally consistent.
             // At one point this function returned an error if the pager was in PAGER_ERROR state. But since PAGER_ERROR state guarantees that
             // there is at least one outstanding page reference, this function is a no-op for that case anyhow.
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             var pageSize = pPageSize;
             Debug.Assert(pageSize == 0 || (pageSize >= 512 && pageSize <= SQLITE_MAX_PAGE_SIZE));
             if ((this.memDb == 0 || this.dbSize == 0) && this.pPCache.sqlite3PcacheRefCount() == 0 && pageSize != 0 && pageSize != (uint)this.pageSize)
@@ -88,7 +88,7 @@ namespace Contoso.Core
                 long nByte = 0;
                 if (this.eState > PAGER.OPEN && this.fd.isOpen)
                     rc = this.fd.xFileSize(ref nByte);
-                if (rc == SQLITE.OK)
+                if (rc == RC.OK)
                 {
                     pager_reset();
                     this.dbSize = (Pgno)(nByte / pageSize);
@@ -99,7 +99,7 @@ namespace Contoso.Core
                 }
             }
             pPageSize = (uint)this.pageSize;
-            if (rc == SQLITE.OK)
+            if (rc == RC.OK)
             {
                 if (nReserve < 0)
                     nReserve = this.nReserve;
@@ -241,19 +241,19 @@ namespace Contoso.Core
                         this.pVfs.xDelete(this.zJournal, 0);
                     else
                     {
-                        var rc = SQLITE.OK;
+                        var rc = RC.OK;
                         var state = this.eState;
                         Debug.Assert(state == PAGER.OPEN || state == PAGER.READER);
                         if (state == PAGER.OPEN)
                             rc = this.sqlite3PagerSharedLock();
                         if (this.eState == PAGER.READER)
                         {
-                            Debug.Assert(rc == SQLITE.OK);
+                            Debug.Assert(rc == RC.OK);
                             rc = this.pagerLockDb(VFSLOCK.RESERVED);
                         }
-                        if (rc == SQLITE.OK)
+                        if (rc == RC.OK)
                             this.pVfs.xDelete(this.zJournal, 0);
-                        if (rc == SQLITE.OK && state == PAGER.READER)
+                        if (rc == RC.OK && state == PAGER.READER)
                             this.pagerUnlockDb(VFSLOCK.SHARED);
                         else if (state == PAGER.OPEN)
                             this.pager_unlock();

@@ -26,24 +26,24 @@ namespace Contoso.Sys
         internal static int ROUNDDOWN8(int x) { return x & ~7; }
 
 #if DEBUG
-        internal static SQLITE SQLITE_CORRUPT_BKPT() { return sqlite3CorruptError(0); }
-        internal static SQLITE SQLITE_MISUSE_BKPT() { return sqlite3MisuseError(0); }
-        internal static SQLITE SQLITE_CANTOPEN_BKPT() { return sqlite3CantopenError(0); }
+        internal static RC SQLITE_CORRUPT_BKPT() { return sqlite3CorruptError(0); }
+        internal static RC SQLITE_MISUSE_BKPT() { return sqlite3MisuseError(0); }
+        internal static RC SQLITE_CANTOPEN_BKPT() { return sqlite3CantopenError(0); }
 
-        static SQLITE sqlite3CorruptError(int lineno)
+        static RC sqlite3CorruptError(int lineno)
         {
             //sqlite3_log(SQLITE_CORRUPT, "database corruption at line %d of [%.10s]", lineno, 20 + sqlite3_sourceid());
-            return SQLITE.CORRUPT;
+            return RC.CORRUPT;
         }
-        static SQLITE sqlite3MisuseError(int lineno)
+        static RC sqlite3MisuseError(int lineno)
         {
             //sqlite3_log(SQLITE_MISUSE, "misuse at line %d of [%.10s]", lineno, 20 + sqlite3_sourceid());
-            return SQLITE.MISUSE;
+            return RC.MISUSE;
         }
-        static SQLITE sqlite3CantopenError(int lineno)
+        static RC sqlite3CantopenError(int lineno)
         {
             //sqlite3_log(SQLITE_CANTOPEN, "cannot open file at line %d of [%.10s]", lineno, 20 + sqlite3_sourceid());
-            return SQLITE.CANTOPEN;
+            return RC.CANTOPEN;
         }
 
 #else

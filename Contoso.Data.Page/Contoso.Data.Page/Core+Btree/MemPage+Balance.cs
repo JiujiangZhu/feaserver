@@ -11,42 +11,42 @@ namespace Contoso.Core
         static int NB = (NN * 2 + 1);   // Total pages involved in the balance
 
 #if !SQLITE_OMIT_QUICKBALANCE
-        internal static SQLITE balance_quick(MemPage pParent, MemPage pPage, byte[] pSpace)
+        internal static RC balance_quick(MemPage parentPage, MemPage page, byte[] space)
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(pPage.pBt.mutex));
-            Debug.Assert(Pager.sqlite3PagerIswriteable(pParent.pDbPage));
-            Debug.Assert(pPage.nOverflow == 1);
+            Debug.Assert(MutexEx.Held(page.Shared.Mutex));
+            Debug.Assert(Pager.sqlite3PagerIswriteable(parentPage.DbPage));
+            Debug.Assert(page.NOverflows == 1);
             // This error condition is now caught prior to reaching this function
-            if (pPage.nCell <= 0)
+            if (page.Cells <= 0)
                 return SysEx.SQLITE_CORRUPT_BKPT();
             // Allocate a new page. This page will become the right-sibling of pPage. Make the parent page writable, so that the new divider cell
             // may be inserted. If both these operations are successful, proceed.
-            var pBt = pPage.pBt; // B-Tree Database
-            var pNew = new MemPage(); // Newly allocated page
+            var shared = page.Shared; // B-Tree Database
+            var newPage = new MemPage(); // Newly allocated page
             Pgno pgnoNew = 0; // Page number of pNew
-            var rc = pBt.allocateBtreePage(ref pNew, ref pgnoNew, 0, 0);
-            if (rc != SQLITE.OK)
+            var rc = shared.allocateBtreePage(ref newPage, ref pgnoNew, 0, 0);
+            if (rc != RC.OK)
                 return rc;
             var pOut = 4;
-            var pCell = pPage.aOvfl[0].pCell;
-            var szCell = new int[1] { pPage.cellSizePtr(pCell) };
-            Debug.Assert(Pager.sqlite3PagerIswriteable(pNew.pDbPage));
-            Debug.Assert(pPage.aData[0] == (Btree.PTF_INTKEY | Btree.PTF_LEAFDATA | Btree.PTF_LEAF));
-            pNew.zeroPage(Btree.PTF_INTKEY | Btree.PTF_LEAFDATA | Btree.PTF_LEAF);
-            pNew.assemblePage(1, pCell, szCell);
+            var pCell = page.Overflows[0].Cell;
+            var szCell = new int[1] { page.cellSizePtr(pCell) };
+            Debug.Assert(Pager.sqlite3PagerIswriteable(newPage.DbPage));
+            Debug.Assert(page.Data[0] == (Btree.PTF_INTKEY | Btree.PTF_LEAFDATA | Btree.PTF_LEAF));
+            newPage.zeroPage(Btree.PTF_INTKEY | Btree.PTF_LEAFDATA | Btree.PTF_LEAF);
+            newPage.assemblePage(1, pCell, szCell);
             // If this is an auto-vacuum database, update the pointer map with entries for the new page, and any pointer from the
             // cell on the page to an overflow page. If either of these operations fails, the return code is set, but the contents
             // of the parent page are still manipulated by thh code below. That is Ok, at this point the parent page is guaranteed to
             // be marked as dirty. Returning an error code will cause a rollback, undoing any changes made to the parent page.
 #if !SQLITE_OMIT_AUTOVACUUM
-            if (pBt.autoVacuum)
+            if (shared.AutoVacuum)
 #else
 if (false)
 #endif
             {
-                pBt.ptrmapPut(pgnoNew, PTRMAP.BTREE, pParent.pgno, ref rc);
-                if (szCell[0] > pNew.minLocal)
-                    pNew.ptrmapPutOvflPtr(pCell, ref rc);
+                shared.ptrmapPut(pgnoNew, PTRMAP.BTREE, parentPage.ID, ref rc);
+                if (szCell[0] > newPage.MinLocal)
+                    newPage.ptrmapPutOvflPtr(pCell, ref rc);
             }
             // Create a divider cell to insert into pParent. The divider cell consists of a 4-byte page number (the page number of pPage) and
             // a variable length key value (which must be the same value as the largest key on pPage).
@@ -54,134 +54,134 @@ if (false)
             // record-length (a variable length integer at most 32-bits in size) and the key value (a variable length integer, may have any value).
             // The first of the while(...) loops below skips over the record-length field. The second while(...) loop copies the key value from the
             // cell on pPage into the pSpace buffer.
-            var iCell = pPage.findCell(pPage.nCell - 1);
-            pCell = pPage.aData;
+            var iCell = page.FindCell(page.Cells - 1);
+            pCell = page.Data;
             var _pCell = iCell;
             var pStop = _pCell + 9;
             while (((pCell[_pCell++]) & 0x80) != 0 && _pCell < pStop) ;
             pStop = _pCell + 9;
-            while (((pSpace[pOut++] = pCell[_pCell++]) & 0x80) != 0 && _pCell < pStop) ;
+            while (((space[pOut++] = pCell[_pCell++]) & 0x80) != 0 && _pCell < pStop) ;
             // Insert the new divider cell into pParent.
-            pParent.insertCell(pParent.nCell, pSpace, pOut, null, pPage.pgno, ref rc);
+            parentPage.insertCell(parentPage.Cells, space, pOut, null, page.ID, ref rc);
             // Set the right-child pointer of pParent to point to the new page.
-            ConvertEx.sqlite3Put4byte(pParent.aData, pParent.hdrOffset + 8, pgnoNew);
+            ConvertEx.Put4L(parentPage.Data, parentPage.HeaderOffset + 8, pgnoNew);
             // Release the reference to the new page.
-            pNew.releasePage();
+            newPage.releasePage();
             return rc;
         }
 #endif
 
         internal void assemblePage(int nCell, byte[] apCell, int[] aSize)
         {
-            Debug.Assert(this.nOverflow == 0);
-            Debug.Assert(MutexEx.sqlite3_mutex_held(this.pBt.mutex));
-            Debug.Assert(nCell >= 0 && nCell <= (int)Btree.MX_CELL(this.pBt) && (int)Btree.MX_CELL(this.pBt) <= 10921);
-            Debug.Assert(Pager.sqlite3PagerIswriteable(this.pDbPage));
+            Debug.Assert(this.NOverflows == 0);
+            Debug.Assert(MutexEx.Held(this.Shared.Mutex));
+            Debug.Assert(nCell >= 0 && nCell <= (int)Btree.MX_CELL(this.Shared) && (int)Btree.MX_CELL(this.Shared) <= 10921);
+            Debug.Assert(Pager.sqlite3PagerIswriteable(this.DbPage));
             // Check that the page has just been zeroed by zeroPage()
-            Debug.Assert(this.nCell == 0);
+            Debug.Assert(this.Cells == 0);
             //
-            var data = this.aData; // Pointer to data for pPage
-            int hdr = this.hdrOffset; // Offset of header on pPage
-            var nUsable = (int)this.pBt.usableSize; // Usable size of page
-            Debug.Assert(ConvertEx.get2byteNotZero(data, hdr + 5) == nUsable);
-            var pCellptr = this.cellOffset + nCell * 2; // Address of next cell pointer
+            var data = this.Data; // Pointer to data for pPage
+            int hdr = this.HeaderOffset; // Offset of header on pPage
+            var nUsable = (int)this.Shared.UsableSize; // Usable size of page
+            Debug.Assert(ConvertEx.Get2nz(data, hdr + 5) == nUsable);
+            var pCellptr = this.CellOffset + nCell * 2; // Address of next cell pointer
             var cellbody = nUsable; // Address of next cell body
             for (var i = nCell - 1; i >= 0; i--)
             {
                 var sz = (ushort)aSize[i];
                 pCellptr -= 2;
                 cellbody -= sz;
-                ConvertEx.put2byte(data, pCellptr, cellbody);
+                ConvertEx.Put2(data, pCellptr, cellbody);
                 Buffer.BlockCopy(apCell, 0, data, cellbody, sz);
             }
-            ConvertEx.put2byte(data, hdr + 3, nCell);
-            ConvertEx.put2byte(data, hdr + 5, cellbody);
-            this.nFree -= (ushort)(nCell * 2 + nUsable - cellbody);
-            this.nCell = (ushort)nCell;
+            ConvertEx.Put2(data, hdr + 3, nCell);
+            ConvertEx.Put2(data, hdr + 5, cellbody);
+            this.FreeBytes -= (ushort)(nCell * 2 + nUsable - cellbody);
+            this.Cells = (ushort)nCell;
         }
         internal void assemblePage(int nCell, byte[][] apCell, ushort[] aSize, int offset)
         {
-            Debug.Assert(this.nOverflow == 0);
-            Debug.Assert(MutexEx.sqlite3_mutex_held(this.pBt.mutex));
-            Debug.Assert(nCell >= 0 && nCell <= Btree.MX_CELL(this.pBt) && Btree.MX_CELL(this.pBt) <= 5460);
-            Debug.Assert(Pager.sqlite3PagerIswriteable(this.pDbPage));
+            Debug.Assert(this.NOverflows == 0);
+            Debug.Assert(MutexEx.Held(this.Shared.Mutex));
+            Debug.Assert(nCell >= 0 && nCell <= Btree.MX_CELL(this.Shared) && Btree.MX_CELL(this.Shared) <= 5460);
+            Debug.Assert(Pager.sqlite3PagerIswriteable(this.DbPage));
             // Check that the page has just been zeroed by zeroPage()
-            Debug.Assert(this.nCell == 0);
+            Debug.Assert(this.Cells == 0);
             //
-            var data = this.aData; // Pointer to data for pPage
-            var hdr = this.hdrOffset; // Offset of header on pPage
-            var nUsable = (int)this.pBt.usableSize; // Usable size of page
-            Debug.Assert(ConvertEx.get2byte(data, hdr + 5) == nUsable);
-            var pCellptr = this.cellOffset + nCell * 2; // Address of next cell pointer
+            var data = this.Data; // Pointer to data for pPage
+            var hdr = this.HeaderOffset; // Offset of header on pPage
+            var nUsable = (int)this.Shared.UsableSize; // Usable size of page
+            Debug.Assert(ConvertEx.Get2(data, hdr + 5) == nUsable);
+            var pCellptr = this.CellOffset + nCell * 2; // Address of next cell pointer
             var cellbody = nUsable; // Address of next cell body
             for (var i = nCell - 1; i >= 0; i--)
             {
                 pCellptr -= 2;
                 cellbody -= aSize[i + offset];
-                ConvertEx.put2byte(data, pCellptr, cellbody);
+                ConvertEx.Put2(data, pCellptr, cellbody);
                 Buffer.BlockCopy(apCell[offset + i], 0, data, cellbody, aSize[i + offset]);
             }
-            ConvertEx.put2byte(data, hdr + 3, nCell);
-            ConvertEx.put2byte(data, hdr + 5, cellbody);
-            this.nFree -= (ushort)(nCell * 2 + nUsable - cellbody);
-            this.nCell = (ushort)nCell;
+            ConvertEx.Put2(data, hdr + 3, nCell);
+            ConvertEx.Put2(data, hdr + 5, cellbody);
+            this.FreeBytes -= (ushort)(nCell * 2 + nUsable - cellbody);
+            this.Cells = (ushort)nCell;
         }
         internal void assemblePage(int nCell, byte[] apCell, ushort[] aSize)
         {
-            Debug.Assert(this.nOverflow == 0);
-            Debug.Assert(MutexEx.sqlite3_mutex_held(this.pBt.mutex));
-            Debug.Assert(nCell >= 0 && nCell <= Btree.MX_CELL(this.pBt) && Btree.MX_CELL(this.pBt) <= 5460);
-            Debug.Assert(Pager.sqlite3PagerIswriteable(this.pDbPage));
+            Debug.Assert(this.NOverflows == 0);
+            Debug.Assert(MutexEx.Held(this.Shared.Mutex));
+            Debug.Assert(nCell >= 0 && nCell <= Btree.MX_CELL(this.Shared) && Btree.MX_CELL(this.Shared) <= 5460);
+            Debug.Assert(Pager.sqlite3PagerIswriteable(this.DbPage));
             // Check that the page has just been zeroed by zeroPage()
-            Debug.Assert(this.nCell == 0);
+            Debug.Assert(this.Cells == 0);
             //
-            var data = this.aData; // Pointer to data for pPage
-            var hdr = this.hdrOffset; // Offset of header on pPage
-            var nUsable = (int)this.pBt.usableSize; // Usable size of page
-            Debug.Assert(ConvertEx.get2byte(data, hdr + 5) == nUsable);
-            var pCellptr = this.cellOffset + nCell * 2; // Address of next cell pointer
+            var data = this.Data; // Pointer to data for pPage
+            var hdr = this.HeaderOffset; // Offset of header on pPage
+            var nUsable = (int)this.Shared.UsableSize; // Usable size of page
+            Debug.Assert(ConvertEx.Get2(data, hdr + 5) == nUsable);
+            var pCellptr = this.CellOffset + nCell * 2; // Address of next cell pointer
             var cellbody = nUsable; // Address of next cell body
             for (var i = nCell - 1; i >= 0; i--)
             {
                 pCellptr -= 2;
                 cellbody -= aSize[i];
-                ConvertEx.put2byte(data, pCellptr, cellbody);
+                ConvertEx.Put2(data, pCellptr, cellbody);
                 Buffer.BlockCopy(apCell, 0, data, cellbody, aSize[i]);
             }
-            ConvertEx.put2byte(data, hdr + 3, nCell);
-            ConvertEx.put2byte(data, hdr + 5, cellbody);
-            this.nFree -= (ushort)(nCell * 2 + nUsable - cellbody);
-            this.nCell = (ushort)nCell;
+            ConvertEx.Put2(data, hdr + 3, nCell);
+            ConvertEx.Put2(data, hdr + 5, cellbody);
+            this.FreeBytes -= (ushort)(nCell * 2 + nUsable - cellbody);
+            this.Cells = (ushort)nCell;
         }
 
-        internal static void copyNodeContent(MemPage pFrom, MemPage pTo, ref SQLITE pRC)
+        internal static void copyNodeContent(MemPage pFrom, MemPage pTo, ref RC pRC)
         {
-            if (pRC != SQLITE.OK)
+            if (pRC != RC.OK)
                 return;
-            var pBt = pFrom.pBt;
-            var aFrom = pFrom.aData;
-            var aTo = pTo.aData;
-            var iFromHdr = pFrom.hdrOffset;
-            var iToHdr = (pTo.pgno == 1 ? 100 : 0);
-            Debug.Assert(pFrom.isInit != 0);
-            Debug.Assert(pFrom.nFree >= iToHdr);
-            Debug.Assert(ConvertEx.get2byte(aFrom, iFromHdr + 5) <= (int)pBt.usableSize);
+            var pBt = pFrom.Shared;
+            var aFrom = pFrom.Data;
+            var aTo = pTo.Data;
+            var iFromHdr = pFrom.HeaderOffset;
+            var iToHdr = (pTo.ID == 1 ? 100 : 0);
+            Debug.Assert(pFrom.HasInit);
+            Debug.Assert(pFrom.FreeBytes >= iToHdr);
+            Debug.Assert(ConvertEx.Get2(aFrom, iFromHdr + 5) <= (int)pBt.UsableSize);
             // Copy the b-tree node content from page pFrom to page pTo.
-            var iData = (int)ConvertEx.get2byte(aFrom, iFromHdr + 5);
-            Buffer.BlockCopy(aFrom, iData, aTo, iData, (int)pBt.usableSize - iData);
-            Buffer.BlockCopy(aFrom, iFromHdr, aTo, iToHdr, pFrom.cellOffset + 2 * pFrom.nCell);
+            var iData = (int)ConvertEx.Get2(aFrom, iFromHdr + 5);
+            Buffer.BlockCopy(aFrom, iData, aTo, iData, (int)pBt.UsableSize - iData);
+            Buffer.BlockCopy(aFrom, iFromHdr, aTo, iToHdr, pFrom.CellOffset + 2 * pFrom.Cells);
             // Reinitialize page pTo so that the contents of the MemPage structure match the new data. The initialization of pTo can actually fail under
             // fairly obscure circumstances, even though it is a copy of initialized  page pFrom.
-            pTo.isInit = 0;
+            pTo.HasInit = false;
             var rc = pTo.btreeInitPage();
-            if (rc != SQLITE.OK)
+            if (rc != RC.OK)
             {
                 pRC = rc;
                 return;
             }
             // If this is an auto-vacuum database, update the pointer-map entries for any b-tree or overflow pages that pTo now contains the pointers to.
 #if !SQLITE_OMIT_AUTOVACUUM
-            if (pBt.autoVacuum)
+            if (pBt.AutoVacuum)
 #else
 if (false)
 #endif
@@ -190,7 +190,7 @@ if (false)
             }
         }
 
-        internal static SQLITE balance_nonroot(MemPage pParent, int iParentIdx, byte[] aOvflSpace, int isRoot)
+        internal static RC balance_nonroot(MemPage pParent, int iParentIdx, byte[] aOvflSpace, int isRoot)
         {
             var apOld = new MemPage[NB];    // pPage and up to two siblings
             var apCopy = new MemPage[NB];   // Private copies of apOld[] pages
@@ -212,16 +212,16 @@ if (false)
             //int szScratch;               // Size of scratch memory requested
             byte[][] apCell = null;                 // All cells begin balanced
             //
-            pBt = pParent.pBt;
-            Debug.Assert(MutexEx.sqlite3_mutex_held(pBt.mutex));
-            Debug.Assert(Pager.sqlite3PagerIswriteable(pParent.pDbPage));
+            pBt = pParent.Shared;
+            Debug.Assert(MutexEx.Held(pBt.Mutex));
+            Debug.Assert(Pager.sqlite3PagerIswriteable(pParent.DbPage));
 #if false
             Btree.TRACE("BALANCE: begin page %d child of %d\n", pPage.pgno, pParent.pgno);
 #endif
             // At this point pParent may have at most one overflow cell. And if this overflow cell is present, it must be the cell with
             // index iParentIdx. This scenario comes about when this function is called (indirectly) from sqlite3BtreeDelete().
-            Debug.Assert(pParent.nOverflow == 0 || pParent.nOverflow == 1);
-            Debug.Assert(pParent.nOverflow == 0 || pParent.aOvfl[0].idx == iParentIdx);
+            Debug.Assert(pParent.NOverflows == 0 || pParent.NOverflows == 1);
+            Debug.Assert(pParent.NOverflows == 0 || pParent.Overflows[0].Index == iParentIdx);
             // Find the sibling pages to balance. Also locate the cells in pParent that divide the siblings. An attempt is made to find NN siblings on
             // either side of pPage. More siblings are taken from one side, however, if there are fewer than NN siblings on the other side. If pParent
             // has NB or fewer children then all children of pParent are taken.
@@ -229,7 +229,7 @@ if (false)
             // overflow cells in the parent page, since if any existed they will have already been removed.
             int nOld; // Number of pages in apOld[]
             int nxDiv; // Next divider slot in pParent.aCell[]
-            var i = pParent.nOverflow + pParent.nCell;
+            var i = pParent.NOverflows + pParent.Cells;
             if (i < 2)
             {
                 nxDiv = 0;
@@ -246,28 +246,28 @@ if (false)
                     nxDiv = iParentIdx - 1;
                 i = 2;
             }
-            var pRight = ((i + nxDiv - pParent.nOverflow) == pParent.nCell ? pParent.hdrOffset + 8 : pParent.findCell(i + nxDiv - pParent.nOverflow)); // Location in parent of right-sibling pointer
-            var pgno = (Pgno)ConvertEx.sqlite3Get4byte(pParent.aData, pRight);
-            var rc = SQLITE.OK;
+            var pRight = ((i + nxDiv - pParent.NOverflows) == pParent.Cells ? pParent.HeaderOffset + 8 : pParent.FindCell(i + nxDiv - pParent.NOverflows)); // Location in parent of right-sibling pointer
+            var pgno = (Pgno)ConvertEx.Get4(pParent.Data, pRight);
+            var rc = RC.OK;
             while (true)
             {
                 rc = pBt.getAndInitPage(pgno, ref apOld[i]);
-                if (rc != SQLITE.OK)
+                if (rc != RC.OK)
                     goto balance_cleanup;
-                nMaxCells += 1 + apOld[i].nCell + apOld[i].nOverflow;
+                nMaxCells += 1 + apOld[i].Cells + apOld[i].NOverflows;
                 if (i-- == 0)
                     break;
-                if (i + nxDiv == pParent.aOvfl[0].idx && pParent.nOverflow != 0)
+                if (i + nxDiv == pParent.Overflows[0].Index && pParent.NOverflows != 0)
                 {
                     apDiv[i] = 0;
-                    pgno = ConvertEx.sqlite3Get4byte(pParent.aOvfl[0].pCell, apDiv[i]);
+                    pgno = ConvertEx.Get4(pParent.Overflows[0].Cell, apDiv[i]);
                     szNew[i] = pParent.cellSizePtr(apDiv[i]);
-                    pParent.nOverflow = 0;
+                    pParent.NOverflows = 0;
                 }
                 else
                 {
-                    apDiv[i] = pParent.findCell(i + nxDiv - pParent.nOverflow);
-                    pgno = ConvertEx.sqlite3Get4byte(pParent.aData, apDiv[i]);
+                    apDiv[i] = pParent.FindCell(i + nxDiv - pParent.NOverflows);
+                    pgno = ConvertEx.Get4(pParent.Data, apDiv[i]);
                     szNew[i] = pParent.cellSizePtr(apDiv[i]);
                     // Drop the cell from the parent page. apDiv[i] still points to the cell within the parent, even though it has been dropped.
                     // This is safe because dropping a cell only overwrites the first four bytes of it, and this function does not need the first
@@ -291,7 +291,7 @@ if (false)
                     //    apDiv[i] = &aOvflSpace[apDiv[i] - pParent.aData];
                     //  }
                     //}
-                    pParent.dropCell(i + nxDiv - pParent.nOverflow, szNew[i], ref rc);
+                    pParent.dropCell(i + nxDiv - pParent.NOverflows, szNew[i], ref rc);
                 }
             }
             // Make nMaxCells a multiple of 4 in order to preserve 8-byte alignment
@@ -307,21 +307,21 @@ if (false)
             // apCell[] include child pointers.  Either way, all cells in apCell[] are alike.
             // leafCorrection:  4 if pPage is a leaf.  0 if pPage is not a leaf.
             //       leafData:  1 if pPage holds key+data and pParent holds only keys.
-            leafCorrection = (ushort)(apOld[0].leaf * 4);
-            leafData = apOld[0].hasData;
+            leafCorrection = (ushort)(apOld[0].Leaf * 4);
+            leafData = apOld[0].HasData;
             int j;
             for (i = 0; i < nOld; i++)
             {
                 // Before doing anything else, take a copy of the i'th original sibling The rest of this function will use data from the copies rather
                 // that the original pages since the original pages will be in the process of being overwritten.
-                var pOld = apCopy[i] = apOld[i].Copy();
-                var limit = pOld.nCell + pOld.nOverflow;
-                if (pOld.nOverflow > 0 || true)
+                var pOld = apCopy[i] = apOld[i].Clone();
+                var limit = pOld.Cells + pOld.NOverflows;
+                if (pOld.NOverflows > 0 || true)
                 {
                     for (j = 0; j < limit; j++)
                     {
                         Debug.Assert(nCell < nMaxCells);
-                        var iFOFC = pOld.findOverflowCell(j);
+                        var iFOFC = pOld.FindOverflowCell(j);
                         szCell[nCell] = pOld.cellSizePtr(iFOFC);
                         // Copy the Data Locally
                         if (apCell[nCell] == null)
@@ -329,22 +329,22 @@ if (false)
                         else if (apCell[nCell].Length < szCell[nCell])
                             Array.Resize(ref apCell[nCell], szCell[nCell]);
                         if (iFOFC < 0)  // Overflow Cell
-                            Buffer.BlockCopy(pOld.aOvfl[-(iFOFC + 1)].pCell, 0, apCell[nCell], 0, szCell[nCell]);
+                            Buffer.BlockCopy(pOld.Overflows[-(iFOFC + 1)].Cell, 0, apCell[nCell], 0, szCell[nCell]);
                         else
-                            Buffer.BlockCopy(pOld.aData, iFOFC, apCell[nCell], 0, szCell[nCell]);
+                            Buffer.BlockCopy(pOld.Data, iFOFC, apCell[nCell], 0, szCell[nCell]);
                         nCell++;
                     }
                 }
                 else
                 {
-                    var aData = pOld.aData;
-                    var maskPage = pOld.maskPage;
-                    var cellOffset = pOld.cellOffset;
+                    var aData = pOld.Data;
+                    var maskPage = pOld.MaskPage;
+                    var cellOffset = pOld.CellOffset;
                     for (j = 0; j < limit; j++)
                     {
                         Debugger.Break();
                         Debug.Assert(nCell < nMaxCells);
-                        apCell[nCell] = findCellv2(aData, maskPage, cellOffset, j);
+                        apCell[nCell] = FindCellv2(aData, maskPage, cellOffset, j);
                         szCell[nCell] = pOld.cellSizePtr(apCell[nCell]);
                         nCell++;
                     }
@@ -355,19 +355,19 @@ if (false)
                     var pTemp = MallocEx.sqlite3Malloc(sz + leafCorrection);
                     Debug.Assert(nCell < nMaxCells);
                     szCell[nCell] = sz;
-                    Debug.Assert(sz <= pBt.maxLocal + 23);
-                    Buffer.BlockCopy(pParent.aData, apDiv[i], pTemp, 0, sz);
+                    Debug.Assert(sz <= pBt.MaxLocal + 23);
+                    Buffer.BlockCopy(pParent.Data, apDiv[i], pTemp, 0, sz);
                     if (apCell[nCell] == null || apCell[nCell].Length < sz)
                         Array.Resize(ref apCell[nCell], sz);
                     Buffer.BlockCopy(pTemp, leafCorrection, apCell[nCell], 0, sz);
                     Debug.Assert(leafCorrection == 0 || leafCorrection == 4);
                     szCell[nCell] = (ushort)(szCell[nCell] - leafCorrection);
-                    if (0 == pOld.leaf)
+                    if (0 == pOld.Leaf)
                     {
                         Debug.Assert(leafCorrection == 0);
-                        Debug.Assert(pOld.hdrOffset == 0);
+                        Debug.Assert(pOld.HeaderOffset == 0);
                         // The right pointer of the child page pOld becomes the left pointer of the divider cell
-                        Buffer.BlockCopy(pOld.aData, 8, apCell[nCell], 0, 4);//memcpy( apCell[nCell], ref pOld.aData[8], 4 );
+                        Buffer.BlockCopy(pOld.Data, 8, apCell[nCell], 0, 4);//memcpy( apCell[nCell], ref pOld.aData[8], 4 );
                     }
                     else
                     {
@@ -388,7 +388,7 @@ if (false)
             //   cntNew[i]: Index in apCell[] and szCell[] for the first cell to
             //              the right of the i-th sibling page.
             // usableSpace: Number of bytes of space available on each sibling.
-            usableSpace = (int)pBt.usableSize - 12 + leafCorrection;
+            usableSpace = (int)pBt.UsableSize - 12 + leafCorrection;
             int k;
             for (subtotal = k = i = 0; i < nCell; i++)
             {
@@ -438,15 +438,15 @@ if (false)
             }
             // Either we found one or more cells (cntnew[0])>0) or pPage is a virtual root page.  A virtual root page is when the real root
             // page is page 1 and we are the only child of that page.
-            Debug.Assert(cntNew[0] > 0 || (pParent.pgno == 1 && pParent.nCell == 0));
-            Btree.TRACE("BALANCE: old: %d %d %d  ", apOld[0].pgno, (nOld >= 2 ? apOld[1].pgno : 0), (nOld >= 3 ? apOld[2].pgno : 0));
+            Debug.Assert(cntNew[0] > 0 || (pParent.ID == 1 && pParent.Cells == 0));
+            Btree.TRACE("BALANCE: old: %d %d %d  ", apOld[0].ID, (nOld >= 2 ? apOld[1].ID : 0), (nOld >= 3 ? apOld[2].ID : 0));
             // Allocate k new pages.  Reuse old pages where possible.
-            if (apOld[0].pgno <= 1)
+            if (apOld[0].ID <= 1)
             {
                 rc = SysEx.SQLITE_CORRUPT_BKPT();
                 goto balance_cleanup;
             }
-            pageFlags = apOld[0].aData[0];
+            pageFlags = apOld[0].Data[0];
             for (i = 0; i < k; i++)
             {
                 var pNew = new MemPage();
@@ -454,9 +454,9 @@ if (false)
                 {
                     pNew = apNew[i] = apOld[i];
                     apOld[i] = null;
-                    rc = Pager.sqlite3PagerWrite(pNew.pDbPage);
+                    rc = Pager.sqlite3PagerWrite(pNew.DbPage);
                     nNew++;
-                    if (rc != SQLITE.OK)
+                    if (rc != RC.OK)
                         goto balance_cleanup;
                 }
                 else
@@ -470,13 +470,13 @@ if (false)
 
                     // Set the pointer-map entry for the new sibling page.
 #if !SQLITE_OMIT_AUTOVACUUM
-                    if (pBt.autoVacuum)
+                    if (pBt.AutoVacuum)
 #else
 if (false)
 #endif
                     {
-                        pBt.ptrmapPut(pNew.pgno, PTRMAP.BTREE, pParent.pgno, ref rc);
-                        if (rc != SQLITE.OK)
+                        pBt.ptrmapPut(pNew.ID, PTRMAP.BTREE, pParent.ID, ref rc);
+                        if (rc != RC.OK)
                             goto balance_cleanup;
                     }
                 }
@@ -485,7 +485,7 @@ if (false)
             while (i < nOld)
             {
                 apOld[i].freePage(ref rc);
-                if (rc != SQLITE.OK)
+                if (rc != RC.OK)
                     goto balance_cleanup;
                 apOld[i].releasePage();
                 apOld[i] = null;
@@ -499,13 +499,13 @@ if (false)
             // When NB==3, this one optimization makes the database about 25% faster for large insertions and deletions.
             for (i = 0; i < k - 1; i++)
             {
-                var minV = (int)apNew[i].pgno;
+                var minV = (int)apNew[i].ID;
                 var minI = i;
                 for (j = i + 1; j < k; j++)
-                    if (apNew[j].pgno < (uint)minV)
+                    if (apNew[j].ID < (uint)minV)
                     {
                         minI = j;
-                        minV = (int)apNew[j].pgno;
+                        minV = (int)apNew[j].ID;
                     }
                 if (minI > i)
                 {
@@ -514,13 +514,13 @@ if (false)
                     apNew[minI] = pT;
                 }
             }
-            Btree.TRACE("new: %d(%d) %d(%d) %d(%d) %d(%d) %d(%d)\n", apNew[0].pgno, szNew[0],
-                (nNew >= 2 ? apNew[1].pgno : 0), (nNew >= 2 ? szNew[1] : 0),
-                (nNew >= 3 ? apNew[2].pgno : 0), (nNew >= 3 ? szNew[2] : 0),
-                (nNew >= 4 ? apNew[3].pgno : 0), (nNew >= 4 ? szNew[3] : 0),
-                (nNew >= 5 ? apNew[4].pgno : 0), (nNew >= 5 ? szNew[4] : 0));
-            Debug.Assert(Pager.sqlite3PagerIswriteable(pParent.pDbPage));
-            ConvertEx.sqlite3Put4byte(pParent.aData, pRight, apNew[nNew - 1].pgno);
+            Btree.TRACE("new: %d(%d) %d(%d) %d(%d) %d(%d) %d(%d)\n", apNew[0].ID, szNew[0],
+                (nNew >= 2 ? apNew[1].ID : 0), (nNew >= 2 ? szNew[1] : 0),
+                (nNew >= 3 ? apNew[2].ID : 0), (nNew >= 3 ? szNew[2] : 0),
+                (nNew >= 4 ? apNew[3].ID : 0), (nNew >= 4 ? szNew[3] : 0),
+                (nNew >= 5 ? apNew[4].ID : 0), (nNew >= 5 ? szNew[4] : 0));
+            Debug.Assert(Pager.sqlite3PagerIswriteable(pParent.DbPage));
+            ConvertEx.Put4L(pParent.Data, pRight, apNew[nNew - 1].ID);
             // Evenly distribute the data in apCell[] across the new pages. Insert divider cells into pParent as necessary.
             j = 0;
             for (i = 0; i < nNew; i++)
@@ -530,8 +530,8 @@ if (false)
                 Debug.Assert(j < nMaxCells);
                 pNew.zeroPage(pageFlags);
                 pNew.assemblePage(cntNew[i] - j, apCell, szCell, j);
-                Debug.Assert(pNew.nCell > 0 || (nNew == 1 && cntNew[0] == 0));
-                Debug.Assert(pNew.nOverflow == 0);
+                Debug.Assert(pNew.Cells > 0 || (nNew == 1 && cntNew[0] == 0));
+                Debug.Assert(pNew.NOverflows == 0);
                 j = cntNew[i];
                 // If the sibling page assembled above was not the right-most sibling, insert a divider cell into the parent page.
                 Debug.Assert(i < nNew - 1 || j == nCell);
@@ -541,8 +541,8 @@ if (false)
                     var pCell = apCell[j];
                     var sz = szCell[j] + leafCorrection;
                     var pTemp = MallocEx.sqlite3Malloc(sz);
-                    if (pNew.leaf == 0)
-                        Buffer.BlockCopy(pCell, 0, pNew.aData, 8, 4);
+                    if (pNew.Leaf == 0)
+                        Buffer.BlockCopy(pCell, 0, pNew.Data, 8, 4);
                     else if (leafData != 0)
                     {
                         // If the tree is a leaf-data tree, and the siblings are leaves, then there is no divider cell in apCell[]. Instead, the divider
@@ -551,7 +551,7 @@ if (false)
                         j--;
                         pNew.btreeParseCellPtr(apCell[j], ref info);
                         pCell = pTemp;
-                        sz = 4 + ConvertEx.putVarint(pCell, 4, (ulong)info.nKey);
+                        sz = 4 + ConvertEx.PutVarint9L(pCell, 4, (ulong)info.nKey);
                         pTemp = null;
                     }
                     else
@@ -572,12 +572,12 @@ if (false)
                         }
                     }
                     iOvflSpace += sz;
-                    Debug.Assert(sz <= pBt.maxLocal + 23);
-                    Debug.Assert(iOvflSpace <= (int)pBt.pageSize);
-                    pParent.insertCell(nxDiv, pCell, sz, pTemp, pNew.pgno, ref rc);
-                    if (rc != SQLITE.OK)
+                    Debug.Assert(sz <= pBt.MaxLocal + 23);
+                    Debug.Assert(iOvflSpace <= (int)pBt.PageSize);
+                    pParent.insertCell(nxDiv, pCell, sz, pTemp, pNew.ID, ref rc);
+                    if (rc != RC.OK)
                         goto balance_cleanup;
-                    Debug.Assert(Pager.sqlite3PagerIswriteable(pParent.pDbPage));
+                    Debug.Assert(Pager.sqlite3PagerIswriteable(pParent.DbPage));
                     j++;
                     nxDiv++;
                 }
@@ -586,8 +586,8 @@ if (false)
             Debug.Assert(nOld > 0);
             Debug.Assert(nNew > 0);
             if ((pageFlags & Btree.PTF_LEAF) == 0)
-                Buffer.BlockCopy(apCopy[nOld - 1].aData, 8, apNew[nNew - 1].aData, 8, 4);
-            if (isRoot != 0 && pParent.nCell == 0 && pParent.hdrOffset <= apNew[0].nFree)
+                Buffer.BlockCopy(apCopy[nOld - 1].Data, 8, apNew[nNew - 1].Data, 8, 4);
+            if (isRoot != 0 && pParent.Cells == 0 && pParent.HeaderOffset <= apNew[0].FreeBytes)
             {
                 // The root page of the b-tree now contains no cells. The only sibling page is the right-child of the parent. Copy the contents of the
                 // child page into the parent, decreasing the overall height of the b-tree structure by one. This is described as the "balance-shallower"
@@ -597,13 +597,13 @@ if (false)
                 // The second Debug.Assert below verifies that the child page is defragmented (it must be, as it was just reconstructed using assemblePage()). This
                 // is important if the parent page happens to be page 1 of the database image.  */
                 Debug.Assert(nNew == 1);
-                Debug.Assert(apNew[0].nFree == (ConvertEx.get2byte(apNew[0].aData, 5) - apNew[0].cellOffset - apNew[0].nCell * 2));
+                Debug.Assert(apNew[0].FreeBytes == (ConvertEx.Get2(apNew[0].Data, 5) - apNew[0].CellOffset - apNew[0].Cells * 2));
                 copyNodeContent(apNew[0], pParent, ref rc);
                 apNew[0].freePage(ref rc);
             }
             else
 #if !SQLITE_OMIT_AUTOVACUUM
-                if (pBt.autoVacuum)
+                if (pBt.AutoVacuum)
 #else
 if (false)
 #endif
@@ -625,9 +625,9 @@ if (false)
                     // actually moved between pages.
                     var pNew = apNew[0];
                     var pOld = apCopy[0];
-                    var nOverflow = pOld.nOverflow;
-                    var iNextOld = pOld.nCell + nOverflow;
-                    var iOverflow = (nOverflow != 0 ? pOld.aOvfl[0].idx : -1);
+                    var nOverflow = pOld.NOverflows;
+                    var iNextOld = pOld.Cells + nOverflow;
+                    var iOverflow = (nOverflow != 0 ? pOld.Overflows[0].Index : -1);
                     j = 0; // Current 'old' sibling page
                     k = 0; // Current 'new' sibling page
                     for (i = 0; i < nCell; i++)
@@ -638,17 +638,17 @@ if (false)
                             // Cell i is the cell immediately following the last cell on old sibling page j. If the siblings are not leaf pages of an
                             // intkey b-tree, then cell i was a divider cell.
                             pOld = apCopy[++j];
-                            iNextOld = i + (0 == leafData ? 1 : 0) + pOld.nCell + pOld.nOverflow;
-                            if (pOld.nOverflow != 0)
+                            iNextOld = i + (0 == leafData ? 1 : 0) + pOld.Cells + pOld.NOverflows;
+                            if (pOld.NOverflows != 0)
                             {
-                                nOverflow = pOld.nOverflow;
-                                iOverflow = i + (0 == leafData ? 1 : 0) + pOld.aOvfl[0].idx;
+                                nOverflow = pOld.NOverflows;
+                                iOverflow = i + (0 == leafData ? 1 : 0) + pOld.Overflows[0].Index;
                             }
                             isDivider = 0 == leafData ? 1 : 0;
                         }
                         Debug.Assert(nOverflow > 0 || iOverflow < i);
-                        Debug.Assert(nOverflow < 2 || pOld.aOvfl[0].idx == pOld.aOvfl[1].idx - 1);
-                        Debug.Assert(nOverflow < 3 || pOld.aOvfl[1].idx == pOld.aOvfl[2].idx - 1);
+                        Debug.Assert(nOverflow < 2 || pOld.Overflows[0].Index == pOld.Overflows[1].Index - 1);
+                        Debug.Assert(nOverflow < 3 || pOld.Overflows[1].Index == pOld.Overflows[2].Index - 1);
                         if (i == iOverflow)
                         {
                             isDivider = 1;
@@ -667,19 +667,19 @@ if (false)
                         Debug.Assert(k < nNew);
                         // If the cell was originally divider cell (and is not now) or an overflow cell, or if the cell was located on a different sibling
                         // page before the balancing, then the pointer map entries associated with any child or overflow pages need to be updated.
-                        if (isDivider != 0 || pOld.pgno != pNew.pgno)
+                        if (isDivider != 0 || pOld.ID != pNew.ID)
                         {
                             if (leafCorrection == 0)
-                                pBt.ptrmapPut(ConvertEx.sqlite3Get4byte(apCell[i]), PTRMAP.BTREE, pNew.pgno, ref rc);
-                            if (szCell[i] > pNew.minLocal)
+                                pBt.ptrmapPut(ConvertEx.Get4(apCell[i]), PTRMAP.BTREE, pNew.ID, ref rc);
+                            if (szCell[i] > pNew.MinLocal)
                                 pNew.ptrmapPutOvflPtr(apCell[i], ref rc);
                         }
                     }
                     if (leafCorrection == 0)
                         for (i = 0; i < nNew; i++)
                         {
-                            var key = ConvertEx.sqlite3Get4byte(apNew[i].aData, 8);
-                            pBt.ptrmapPut(key, PTRMAP.BTREE, apNew[i].pgno, ref rc);
+                            var key = ConvertEx.Get4(apNew[i].Data, 8);
+                            pBt.ptrmapPut(key, PTRMAP.BTREE, apNew[i].ID, ref rc);
                         }
 #if false
 // The ptrmapCheckPages() contains Debug.Assert() statements that verify that all pointer map pages are set correctly. This is helpful while
@@ -688,7 +688,7 @@ ptrmapCheckPages(apNew, nNew);
 ptrmapCheckPages(pParent, 1);
 #endif
                 }
-            Debug.Assert(pParent.isInit != 0);
+            Debug.Assert(pParent.HasInit);
             Btree.TRACE("BALANCE: finished: old=%d new=%d cells=%d\n", nOld, nNew, nCell);
         // Cleanup before returning.
         balance_cleanup:
@@ -700,47 +700,47 @@ ptrmapCheckPages(pParent, 1);
             return rc;
         }
 
-        internal static SQLITE balance_deeper(MemPage pRoot, ref MemPage ppChild)
+        internal static RC balance_deeper(MemPage pRoot, ref MemPage ppChild)
         {
             MemPage pChild = null; // Pointer to a new child page
             Pgno pgnoChild = 0; // Page number of the new child page
-            var pBt = pRoot.pBt;
-            Debug.Assert(pRoot.nOverflow > 0);
-            Debug.Assert(MutexEx.sqlite3_mutex_held(pBt.mutex));
+            var pBt = pRoot.Shared;
+            Debug.Assert(pRoot.NOverflows > 0);
+            Debug.Assert(MutexEx.Held(pBt.Mutex));
             // Make pRoot, the root page of the b-tree, writable. Allocate a new page that will become the new right-child of pPage. Copy the contents
             // of the node stored on pRoot into the new child page.
-            var rc = Pager.sqlite3PagerWrite(pRoot.pDbPage);
-            if (rc == SQLITE.OK)
+            var rc = Pager.sqlite3PagerWrite(pRoot.DbPage);
+            if (rc == RC.OK)
             {
-                rc = pBt.allocateBtreePage(ref pChild, ref pgnoChild, pRoot.pgno, 0);
+                rc = pBt.allocateBtreePage(ref pChild, ref pgnoChild, pRoot.ID, 0);
                 copyNodeContent(pRoot, pChild, ref rc);
 #if !SQLITE_OMIT_AUTOVACUUM
-                if (pBt.autoVacuum)
+                if (pBt.AutoVacuum)
 #else
 if (false)
 #endif
                 {
-                    pBt.ptrmapPut(pgnoChild, PTRMAP.BTREE, pRoot.pgno, ref rc);
+                    pBt.ptrmapPut(pgnoChild, PTRMAP.BTREE, pRoot.ID, ref rc);
                 }
             }
-            if (rc != SQLITE.OK)
+            if (rc != RC.OK)
             {
                 ppChild = null;
                 pChild.releasePage();
                 return rc;
             }
-            Debug.Assert(Pager.sqlite3PagerIswriteable(pChild.pDbPage));
-            Debug.Assert(Pager.sqlite3PagerIswriteable(pRoot.pDbPage));
-            Debug.Assert(pChild.nCell == pRoot.nCell);
-            Btree.TRACE("BALANCE: copy root %d into %d\n", pRoot.pgno, pChild.pgno);
+            Debug.Assert(Pager.sqlite3PagerIswriteable(pChild.DbPage));
+            Debug.Assert(Pager.sqlite3PagerIswriteable(pRoot.DbPage));
+            Debug.Assert(pChild.Cells == pRoot.Cells);
+            Btree.TRACE("BALANCE: copy root %d into %d\n", pRoot.ID, pChild.ID);
             // Copy the overflow cells from pRoot to pChild
-            Array.Copy(pRoot.aOvfl, pChild.aOvfl, pRoot.nOverflow);
-            pChild.nOverflow = pRoot.nOverflow;
+            Array.Copy(pRoot.Overflows, pChild.Overflows, pRoot.NOverflows);
+            pChild.NOverflows = pRoot.NOverflows;
             // Zero the contents of pRoot. Then install pChild as the right-child.
-            pRoot.zeroPage(pChild.aData[0] & ~Btree.PTF_LEAF);
-            ConvertEx.sqlite3Put4byte(pRoot.aData, pRoot.hdrOffset + 8, pgnoChild);
+            pRoot.zeroPage(pChild.Data[0] & ~Btree.PTF_LEAF);
+            ConvertEx.Put4L(pRoot.Data, pRoot.HeaderOffset + 8, pgnoChild);
             ppChild = pChild;
-            return SQLITE.OK;
+            return RC.OK;
         }
     }
 }

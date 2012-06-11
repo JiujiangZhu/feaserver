@@ -7,13 +7,13 @@ namespace Contoso.Core
 {
     public partial class Pager
     {
-        internal SQLITE sqlite3PagerBegin(bool exFlag, int subjInMemory)
+        internal RC sqlite3PagerBegin(bool exFlag, int subjInMemory)
         {
             if (errCode != 0)
                 return errCode;
             Debug.Assert(eState >= PAGER.READER && eState < PAGER.ERROR);
             subjInMemory = (byte)subjInMemory;
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             if (Check.ALWAYS(eState == PAGER.READER))
             {
                 Debug.Assert(pInJournal == null);
@@ -23,7 +23,7 @@ namespace Contoso.Core
                     if (exclusiveMode && pWal.sqlite3WalExclusiveMode(-1))
                     {
                         rc = pagerLockDb(VFSLOCK.EXCLUSIVE);
-                        if (rc != SQLITE.OK)
+                        if (rc != RC.OK)
                             return rc;
                         pWal.sqlite3WalExclusiveMode(1);
                     }
@@ -36,10 +36,10 @@ namespace Contoso.Core
                     // Obtain a RESERVED lock on the database file. If the exFlag parameter is true, then immediately upgrade this to an EXCLUSIVE lock. The
                     // busy-handler callback can be used when upgrading to the EXCLUSIVE lock, but not when obtaining the RESERVED lock.
                     rc = pagerLockDb(VFSLOCK.RESERVED);
-                    if (rc == SQLITE.OK && exFlag)
+                    if (rc == RC.OK && exFlag)
                         rc = pager_wait_on_lock(VFSLOCK.EXCLUSIVE);
                 }
-                if (rc == SQLITE.OK)
+                if (rc == RC.OK)
                 {
                     // Change to WRITER_LOCKED state.
                     // WAL mode sets Pager.eState to PAGER_WRITER_LOCKED or CACHEMOD when it has an open transaction, but never to DBMOD or FINISHED.
@@ -51,17 +51,17 @@ namespace Contoso.Core
                     dbOrigSize = dbSize;
                     journalOff = 0;
                 }
-                Debug.Assert(rc == SQLITE.OK || eState == PAGER.READER);
-                Debug.Assert(rc != SQLITE.OK || eState == PAGER.WRITER_LOCKED);
+                Debug.Assert(rc == RC.OK || eState == PAGER.READER);
+                Debug.Assert(rc != RC.OK || eState == PAGER.WRITER_LOCKED);
                 Debug.Assert(assert_pager_state());
             }
             PAGERTRACE("TRANSACTION {0}", PAGERID(this));
             return rc;
         }
 
-        internal static SQLITE sqlite3PagerWrite(DbPage pDbPage)
+        internal static RC sqlite3PagerWrite(DbPage pDbPage)
         {
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             var pPg = pDbPage;
             var pPager = pPg.pPager;
             var nPagePerSector = (uint)(pPager.sectorSize / pPager.pageSize);
@@ -99,7 +99,7 @@ namespace Contoso.Core
                 Debug.Assert(nPage > 0);
                 Debug.Assert(pg1 <= pPg.pgno);
                 Debug.Assert((pg1 + nPage) > pPg.pgno);
-                for (var ii = 0; ii < nPage && rc == SQLITE.OK; ii++)
+                for (var ii = 0; ii < nPage && rc == RC.OK; ii++)
                 {
                     var pg = (Pgno)(pg1 + ii);
                     var pPage = new PgHdr();
@@ -108,7 +108,7 @@ namespace Contoso.Core
                         if (pg != ((VirtualFile.PENDING_BYTE / (pPager.pageSize)) + 1))
                         {
                             rc = pPager.sqlite3PagerGet(pg, ref pPage);
-                            if (rc == SQLITE.OK)
+                            if (rc == RC.OK)
                             {
                                 rc = pager_write(pPage);
                                 if ((pPage.flags & PgHdr.PGHDR.NEED_SYNC) != 0)
@@ -127,7 +127,7 @@ namespace Contoso.Core
                 // If the PGHDR_NEED_SYNC flag is set for any of the nPage pages starting at pg1, then it needs to be set for all of them. Because
                 // writing to any of these nPage pages may damage the others, the journal file must contain sync()ed copies of all of them
                 // before any of them can be written out to the database file.
-                if (rc == SQLITE.OK && needSync)
+                if (rc == RC.OK && needSync)
                 {
                     Debug.Assert(
 #if SQLITE_OMIT_MEMORYDB
@@ -174,10 +174,10 @@ namespace Contoso.Core
             assertTruncateConstraint();
         }
 
-        internal static SQLITE pagerStress(object p, PgHdr pPg)
+        internal static RC pagerStress(object p, PgHdr pPg)
         {
             var pPager = (Pager)p;
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             Debug.Assert(pPg.pPager == pPager);
             Debug.Assert((pPg.flags & PgHdr.PGHDR.DIRTY) != 0);
             // The doNotSyncSpill flag is set during times when doing a sync of journal (and adding a new header) is not allowed.  This occurs
@@ -187,18 +187,18 @@ namespace Contoso.Core
             // is impossible for sqlite3PCacheFetch() to be called with createFlag==1 while in the error state, hence it is impossible for this routine to
             // be called in the error state.  Nevertheless, we include a NEVER() test for the error state as a safeguard against future changes.
             if (Check.NEVER(pPager.errCode != 0))
-                return SQLITE.OK;
+                return RC.OK;
             if (pPager.doNotSpill != 0)
-                return SQLITE.OK;
+                return RC.OK;
             if (pPager.doNotSyncSpill != 0 && (pPg.flags & PgHdr.PGHDR.NEED_SYNC) != 0)
-                return SQLITE.OK;
+                return RC.OK;
             pPg.pDirty = null;
             if (pPager.pagerUseWal())
             {
                 // Write a single frame for this page to the log.
                 if (subjRequiresPage(pPg))
                     rc = subjournalPage(pPg);
-                if (rc == SQLITE.OK)
+                if (rc == RC.OK)
                     rc = pPager.pagerWalFrames(pPg, 0, 0, 0);
             }
             else
@@ -221,17 +221,17 @@ namespace Contoso.Core
                 // was when the transaction started, not as it was when "SAVEPOINT sp" was executed.
                 // The solution is to write the current data for page X into the sub-journal file now (if it is not already there), so that it will
                 // be restored to its current value when the "ROLLBACK TO sp" is executed.
-                if (Check.NEVER(rc == SQLITE.OK && pPg.pgno > pPager.dbSize && subjRequiresPage(pPg)))
+                if (Check.NEVER(rc == RC.OK && pPg.pgno > pPager.dbSize && subjRequiresPage(pPg)))
                     rc = subjournalPage(pPg);
                 // Write the contents of the page out to the database file.
-                if (rc == SQLITE.OK)
+                if (rc == RC.OK)
                 {
                     Debug.Assert((pPg.flags & PgHdr.PGHDR.NEED_SYNC) == 0);
                     rc = pPager.pager_write_pagelist(pPg);
                 }
             }
             // Mark the page as clean.
-            if (rc == SQLITE.OK)
+            if (rc == RC.OK)
             {
                 PAGERTRACE("STRESS {0} page {1}", PAGERID(pPager), pPg.pgno);
                 PCache.sqlite3PcacheMakeClean(pPg);

@@ -1,31 +1,31 @@
 ﻿using System.Diagnostics;
 using Contoso.Sys;
-using CURSOR = Contoso.Core.BtCursor.CURSOR;
+using CURSOR = Contoso.Core.BtreeCursor.CursorState;
 using Pgno = System.UInt32;
 
 namespace Contoso.Core
 {
     public partial class Btree
     {
-        internal SQLITE sqlite3BtreeCommitPhaseOne(string zMaster)
+        internal RC sqlite3BtreeCommitPhaseOne(string zMaster)
         {
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             if (this.inTrans == TRANS.WRITE)
             {
-                var pBt = this.pBt;
+                var pBt = this.Shared;
                 sqlite3BtreeEnter();
 #if !SQLITE_OMIT_AUTOVACUUM
-                if (pBt.autoVacuum)
+                if (pBt.AutoVacuum)
                 {
                     rc = MemPage.autoVacuumCommit(pBt);
-                    if (rc != SQLITE.OK)
+                    if (rc != RC.OK)
                     {
                         sqlite3BtreeLeave();
                         return rc;
                     }
                 }
 #endif
-                rc = pBt.pPager.sqlite3PagerCommitPhaseOne(zMaster, false);
+                rc = pBt.Pager.sqlite3PagerCommitPhaseOne(zMaster, false);
                 sqlite3BtreeLeave();
             }
             return rc;
@@ -33,10 +33,10 @@ namespace Contoso.Core
 
         internal void btreeEndTransaction()
         {
-            var pBt = this.pBt;
+            var pBt = this.Shared;
             Debug.Assert(sqlite3BtreeHoldsMutex());
             pBt.btreeClearHasContent();
-            if (this.inTrans > TRANS.NONE && this.db.activeVdbeCnt > 1)
+            if (this.inTrans > TRANS.NONE && this.DB.activeVdbeCnt > 1)
             {
                 // If there are other active statements that belong to this database handle, downgrade to a read-only transaction. The other statements
                 // may still be reading from the database.
@@ -50,9 +50,9 @@ namespace Contoso.Core
                 if (this.inTrans != TRANS.NONE)
                 {
                     clearAllSharedCacheTableLocks(this);
-                    pBt.nTransaction--;
-                    if (pBt.nTransaction == 0)
-                        pBt.inTransaction = TRANS.NONE;
+                    pBt.Transactions--;
+                    if (pBt.Transactions == 0)
+                        pBt.InTransaction = TRANS.NONE;
                 }
                 // Set the current transaction state to TRANS_NONE and unlock the pager if this call closed the only read or write transaction.
                 this.inTrans = TRANS.NONE;
@@ -61,36 +61,36 @@ namespace Contoso.Core
             btreeIntegrity();
         }
 
-        internal SQLITE sqlite3BtreeCommitPhaseTwo(int bCleanup)
+        internal RC sqlite3BtreeCommitPhaseTwo(int bCleanup)
         {
             if (this.inTrans == TRANS.NONE)
-                return SQLITE.OK;
+                return RC.OK;
             sqlite3BtreeEnter();
             btreeIntegrity();
             // If the handle has a write-transaction open, commit the shared-btrees transaction and set the shared state to TRANS_READ.
             if (this.inTrans == TRANS.WRITE)
             {
-                var pBt = this.pBt;
-                Debug.Assert(pBt.inTransaction == TRANS.WRITE);
-                Debug.Assert(pBt.nTransaction > 0);
-                var rc = pBt.pPager.sqlite3PagerCommitPhaseTwo();
-                if (rc != SQLITE.OK && bCleanup == 0)
+                var pBt = this.Shared;
+                Debug.Assert(pBt.InTransaction == TRANS.WRITE);
+                Debug.Assert(pBt.Transactions > 0);
+                var rc = pBt.Pager.sqlite3PagerCommitPhaseTwo();
+                if (rc != RC.OK && bCleanup == 0)
                 {
                     sqlite3BtreeLeave();
                     return rc;
                 }
-                pBt.inTransaction = TRANS.READ;
+                pBt.InTransaction = TRANS.READ;
             }
             btreeEndTransaction();
             sqlite3BtreeLeave();
-            return SQLITE.OK;
+            return RC.OK;
         }
 
-        internal SQLITE sqlite3BtreeCommit()
+        internal RC sqlite3BtreeCommit()
         {
             sqlite3BtreeEnter();
             var rc = sqlite3BtreeCommitPhaseOne(null);
-            if (rc == SQLITE.OK)
+            if (rc == RC.OK)
                 rc = sqlite3BtreeCommitPhaseTwo(0);
             sqlite3BtreeLeave();
             return rc;
@@ -99,24 +99,24 @@ namespace Contoso.Core
         internal void sqlite3BtreeTripAllCursors(int errCode)
         {
             sqlite3BtreeEnter();
-            for (var p = this.pBt.pCursor; p != null; p = p.pNext)
+            for (var p = this.Shared.Cursors; p != null; p = p.Next)
             {
-                p.sqlite3BtreeClearCursor();
-                p.eState = CURSOR.FAULT;
-                p.skipNext = errCode;
-                for (var i = 0; i <= p.iPage; i++)
+                p.Clear();
+                p.State = CURSOR.FAULT;
+                p.SkipNext = errCode;
+                for (var i = 0; i <= p.PageID; i++)
                 {
-                    p.apPage[i].releasePage();
-                    p.apPage[i] = null;
+                    p.Pages[i].releasePage();
+                    p.Pages[i] = null;
                 }
             }
             sqlite3BtreeLeave();
         }
 
-        internal SQLITE sqlite3BtreeRollback()
+        internal RC sqlite3BtreeRollback()
         {
             sqlite3BtreeEnter();
-            var pBt = this.pBt;
+            var pBt = this.Shared;
             var rc = pBt.saveAllCursors(0, null);
 #if !SQLITE_OMIT_SHARED_CACHE
 if( rc!=SQLITE_OK ){
@@ -133,23 +133,23 @@ sqlite3BtreeTripAllCursors(p, rc);
             btreeIntegrity();
             if (this.inTrans == TRANS.WRITE)
             {
-                Debug.Assert(pBt.inTransaction == TRANS.WRITE);
-                var rc2 = pBt.pPager.sqlite3PagerRollback();
-                if (rc2 != SQLITE.OK)
+                Debug.Assert(pBt.InTransaction == TRANS.WRITE);
+                var rc2 = pBt.Pager.sqlite3PagerRollback();
+                if (rc2 != RC.OK)
                     rc = rc2;
                 // The rollback may have destroyed the pPage1.aData value.  So call btreeGetPage() on page 1 again to make
                 // sure pPage1.aData is set correctly.
                 var pPage1 = new MemPage();
-                if (pBt.btreeGetPage(1, ref pPage1, 0) == SQLITE.OK)
+                if (pBt.btreeGetPage(1, ref pPage1, 0) == RC.OK)
                 {
-                    Pgno nPage = ConvertEx.sqlite3Get4byte(pPage1.aData, 28);
+                    Pgno nPage = ConvertEx.Get4(pPage1.Data, 28);
                     if (nPage == 0)
-                        pBt.pPager.sqlite3PagerPagecount(out nPage);
-                    pBt.nPage = nPage;
+                        pBt.Pager.sqlite3PagerPagecount(out nPage);
+                    pBt.Pages = nPage;
                     pPage1.releasePage();
                 }
                 Debug.Assert(pBt.countWriteCursors() == 0);
-                pBt.inTransaction = TRANS.READ;
+                pBt.InTransaction = TRANS.READ;
             }
 
             btreeEndTransaction();

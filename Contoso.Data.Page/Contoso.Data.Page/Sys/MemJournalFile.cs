@@ -31,9 +31,9 @@ namespace Contoso.Sys
 
         public override int iVersion { get { return 1; } }
 
-        public override SQLITE xClose() { xTruncate(0); return SQLITE.OK; }
+        public override RC xClose() { xTruncate(0); return RC.OK; }
 
-        public override SQLITE xRead(byte[] zBuf, int iAmt, long iOfst)
+        public override RC xRead(byte[] zBuf, int iAmt, long iOfst)
         {
             // SQLite never tries to read past the end of a rollback journal file 
             Debug.Assert(iOfst + iAmt <= endpoint.iOffset);
@@ -60,10 +60,10 @@ namespace Contoso.Sys
             } while (nRead >= 0 && (pChunk = pChunk.pNext) != null && nRead > 0);
             readpoint.iOffset = (int)(iOfst + iAmt);
             readpoint.pChunk = pChunk;
-            return SQLITE.OK;
+            return RC.OK;
         }
 
-        public override SQLITE xWrite(byte[] zBuf, int iAmt, long iOfst)
+        public override RC xWrite(byte[] zBuf, int iAmt, long iOfst)
         {
             SysEx.UNUSED_PARAMETER(iOfst);
             // An in-memory journal file should only ever be appended to. Random access writes are not required by sqlite.
@@ -79,7 +79,7 @@ namespace Contoso.Sys
                     // New chunk is required to extend the file.
                     var pNew = new FileChunk();
                     if (pNew == null)
-                        return SQLITE.IOERR_NOMEM;
+                        return RC.IOERR_NOMEM;
                     pNew.pNext = null;
                     if (pChunk != null) { Debug.Assert(pFirst != null); pChunk.pNext = pNew; }
                     else { Debug.Assert(pFirst == null); pFirst = pNew; }
@@ -90,10 +90,10 @@ namespace Contoso.Sys
                 iAmt -= iSpace;
                 endpoint.iOffset += iSpace;
             }
-            return SQLITE.OK;
+            return RC.OK;
         }
 
-        public override SQLITE xTruncate(long size)
+        public override RC xTruncate(long size)
         {
             SysEx.UNUSED_PARAMETER(size);
             Debug.Assert(size == 0);
@@ -107,23 +107,23 @@ namespace Contoso.Sys
             pFirst = null;
             endpoint = new FilePoint();
             readpoint = new FilePoint();
-            return SQLITE.OK;
+            return RC.OK;
         }
 
-        public override SQLITE xSync(SYNC NotUsed2) { SysEx.UNUSED_PARAMETER(NotUsed2); return SQLITE.OK; }
-        public override SQLITE xFileSize(ref long pSize) { pSize = endpoint.iOffset; return SQLITE.OK; }
+        public override RC xSync(SYNC NotUsed2) { SysEx.UNUSED_PARAMETER(NotUsed2); return RC.OK; }
+        public override RC xFileSize(ref long pSize) { pSize = endpoint.iOffset; return RC.OK; }
 
-        public override SQLITE xLock(LOCK locktype) { return SQLITE.OK; }
-        public override SQLITE xUnlock(LOCK locktype) { return SQLITE.OK; }
-        public override SQLITE xCheckReservedLock(ref int pResOut) { return SQLITE.OK; }
-        public override SQLITE xFileControl(FCNTL op, ref long pArg) { return SQLITE.NOTFOUND; }
+        public override RC xLock(LOCK locktype) { return RC.OK; }
+        public override RC xUnlock(LOCK locktype) { return RC.OK; }
+        public override RC xCheckReservedLock(ref int pResOut) { return RC.OK; }
+        public override RC xFileControl(FCNTL op, ref long pArg) { return RC.NOTFOUND; }
         public override int xSectorSize() { return (int)sectorSize; }
         public override IOCAP xDeviceCharacteristics() { return 0; }
         //
-        public override SQLITE xShmMap(int iPg, int pgsz, int pInt, out object pvolatile) { pvolatile = null; return SQLITE.OK; }
-        public override SQLITE xShmLock(int offset, int n, int flags) { return SQLITE.OK; }
+        public override RC xShmMap(int iPg, int pgsz, int pInt, out object pvolatile) { pvolatile = null; return RC.OK; }
+        public override RC xShmLock(int offset, int n, int flags) { return RC.OK; }
         public override void xShmBarrier() { }
-        public override SQLITE xShmUnmap(int deleteFlag) { return SQLITE.OK; }
+        public override RC xShmUnmap(int deleteFlag) { return RC.OK; }
 
         #endregion
 

@@ -31,9 +31,9 @@ namespace Contoso.Core
             pager_unlock();
         }
 
-        internal SQLITE pagerUnlockDb(VFSLOCK eLock)
+        internal RC pagerUnlockDb(VFSLOCK eLock)
         {
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             Debug.Assert(!this.exclusiveMode || this.eLock == eLock);
             Debug.Assert(eLock == VFSLOCK.NO || eLock == VFSLOCK.SHARED);
             Debug.Assert(eLock != VFSLOCK.NO || !this.pagerUseWal());
@@ -48,14 +48,14 @@ namespace Contoso.Core
             return rc;
         }
 
-        internal SQLITE pagerLockDb(VFSLOCK eLock)
+        internal RC pagerLockDb(VFSLOCK eLock)
         {
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             Debug.Assert(eLock == VFSLOCK.SHARED || eLock == VFSLOCK.RESERVED || eLock == VFSLOCK.EXCLUSIVE);
             if (this.eLock < eLock || this.eLock == VFSLOCK.UNKNOWN)
             {
                 rc = this.fd.xLock(eLock);
-                if (rc == SQLITE.OK && (this.eLock != VFSLOCK.UNKNOWN || eLock == VFSLOCK.EXCLUSIVE))
+                if (rc == RC.OK && (this.eLock != VFSLOCK.UNKNOWN || eLock == VFSLOCK.EXCLUSIVE))
                 {
                     this.eLock = eLock;
                     SysEx.IOTRACE("LOCK {0:x} {1}", this.GetHashCode(), eLock);
@@ -64,9 +64,9 @@ namespace Contoso.Core
             return rc;
         }
 
-        internal SQLITE sqlite3PagerExclusiveLock()
+        internal RC sqlite3PagerExclusiveLock()
         {
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             Debug.Assert(this.eState == PAGER.WRITER_CACHEMOD || this.eState == PAGER.WRITER_DBMOD || this.eState == PAGER.WRITER_LOCKED);
             Debug.Assert(assert_pager_state());
             if (!pagerUseWal())

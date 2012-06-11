@@ -13,7 +13,7 @@ namespace Contoso.Core
         public int szPage;          // Size of every page in this cache
         public int szExtra;         // Size of extra space for each page
         public bool bPurgeable;     // True if pages are on backing store
-        public Func<object, PgHdr, SQLITE> xStress;   // Call to try make a page clean
+        public Func<object, PgHdr, RC> xStress;   // Call to try make a page clean
         public object pStress;      // Argument to xStress
         public IPCache pCache;      // Pluggable cache module
         public PgHdr pPage1;        // Reference to page 1

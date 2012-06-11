@@ -6,55 +6,57 @@ namespace Contoso.Core
 {
     public partial class MemPage
     {
-        public struct _OvflCell
-        {   // Cells that will not fit on aData[]
-            public byte[] pCell;        // Pointers to the body of the overflow cell
-            public ushort idx;          // Insert this cell before idx-th non-overflow cell
-            public _OvflCell Copy()
+        // Cells that will not fit on aData[]
+        public struct Overflow
+        {
+            public byte[] Cell;     // Pointers to the body of the overflow cell
+            public ushort Index;    // Insert this cell before idx-th non-overflow cell
+            public Overflow Clone()
             {
-                var cp = new _OvflCell();
-                if (pCell != null)
+                var cp = new Overflow();
+                if (Cell != null)
                 {
-                    cp.pCell = MallocEx.sqlite3Malloc(pCell.Length);
-                    Buffer.BlockCopy(pCell, 0, cp.pCell, 0, pCell.Length);
+                    cp.Cell = MallocEx.sqlite3Malloc(Cell.Length);
+                    Buffer.BlockCopy(Cell, 0, cp.Cell, 0, Cell.Length);
                 }
-                cp.idx = idx;
+                cp.Index = Index;
                 return cp;
             }
         }
 
-        public byte isInit;             // True if previously initialized. MUST BE FIRST!
-        public byte nOverflow;          // Number of overflow cell bodies in aCell[]
-        public byte intKey;             // True if u8key flag is set
-        public byte leaf;               // 1 if leaf flag is set
-        public byte hasData;            // True if this page stores data
-        public byte hdrOffset;          // 100 for page 1.  0 otherwise
-        public byte childPtrSize;       // 0 if leaf==1.  4 if leaf==0
-        public ushort maxLocal;         // Copy of BtShared.maxLocal or BtShared.maxLeaf
-        public ushort minLocal;         // Copy of BtShared.minLocal or BtShared.minLeaf
-        public ushort cellOffset;       // Index in aData of first cell pou16er
-        public ushort nFree;            // Number of free bytes on the page
-        public ushort nCell;            // Number of cells on this page, local and ovfl
-        public ushort maskPage;         // Mask for page offset
-        public _OvflCell[] aOvfl = new _OvflCell[5];
-        public BtShared pBt;            // Pointer to BtShared that this page is part of
-        public byte[] aData;            // Pointer to disk image of the page data
-        public DbPage pDbPage;          // Pager page handle
-        public Pgno pgno;               // Page number for this page
+        public bool HasInit;            // True if previously initialized. MUST BE FIRST!
+        public byte NOverflows;          // Number of overflow cell bodies in aCell[]
+        public bool HasIntKey;          // True if u8key flag is set
+        public byte Leaf;               // 1 if leaf flag is set
+        public byte HasData;            // True if this page stores data
+        public byte HeaderOffset;       // 100 for page 1.  0 otherwise
+        public byte ChildPtrSize;       // 0 if leaf==1.  4 if leaf==0
+        public ushort MaxLocal;         // Copy of BtShared.maxLocal or BtShared.maxLeaf
+        public ushort MinLocal;         // Copy of BtShared.minLocal or BtShared.minLeaf
+        public ushort CellOffset;       // Index in aData of first cell pou16er
+        public ushort FreeBytes;        // Number of free bytes on the page
+        public ushort Cells;            // Number of cells on this page, local and ovfl
+        public ushort MaskPage;         // Mask for page offset
+        public Overflow[] Overflows = new Overflow[5];
+        public BtShared Shared;         // Pointer to BtShared that this page is part of
+        public byte[] Data;             // Pointer to disk image of the page data
+        public DbPage DbPage;           // Pager page handle
+        // was:pgno
+        public Pgno ID;                 // Page number for this page
 
-        public MemPage Copy()
+        public MemPage Clone()
         {
             var cp = (MemPage)MemberwiseClone();
-            if (aOvfl != null)
+            if (Overflows != null)
             {
-                cp.aOvfl = new _OvflCell[aOvfl.Length];
-                for (var i = 0; i < aOvfl.Length; i++)
-                    cp.aOvfl[i] = aOvfl[i].Copy();
+                cp.Overflows = new Overflow[Overflows.Length];
+                for (var i = 0; i < Overflows.Length; i++)
+                    cp.Overflows[i] = Overflows[i].Clone();
             }
-            if (aData != null)
+            if (Data != null)
             {
-                cp.aData = MallocEx.sqlite3Malloc(aData.Length);
-                Buffer.BlockCopy(aData, 0, cp.aData, 0, aData.Length);
+                cp.Data = MallocEx.sqlite3Malloc(Data.Length);
+                Buffer.BlockCopy(Data, 0, cp.Data, 0, Data.Length);
             }
             return cp;
         }
@@ -68,7 +70,7 @@ namespace Contoso.Core
             BTREE = 5,
         }
 
-        internal static uint PENDING_BYTE_PAGE(BtShared pBt) { return (uint)Pager.PAGER_MJ_PGNO(pBt.pPager); }
+        internal static uint PENDING_BYTE_PAGE(BtShared pBt) { return (uint)Pager.PAGER_MJ_PGNO(pBt.Pager); }
         internal static Pgno PTRMAP_PAGENO(BtShared pBt, Pgno pgno) { return pBt.ptrmapPageno(pgno); }
         internal static uint PTRMAP_PTROFFSET(uint pgptrmap, uint pgno) { return (5 * (pgno - pgptrmap - 1)); }
         internal static bool PTRMAP_ISPAGE(BtShared pBt, uint pgno) { return (PTRMAP_PAGENO((pBt), (pgno)) == (pgno)); }

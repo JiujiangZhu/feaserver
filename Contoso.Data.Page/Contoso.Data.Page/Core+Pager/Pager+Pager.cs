@@ -9,9 +9,9 @@ namespace Contoso.Core
 {
     public partial class Pager
     {
-        internal SQLITE pager_open_journal()
+        internal RC pager_open_journal()
         {
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             var pVfs = this.pVfs;
             Debug.Assert(this.eState == PAGER.WRITER_LOCKED);
             Debug.Assert(assert_pager_state());
@@ -37,11 +37,11 @@ namespace Contoso.Core
                         rc = FileEx.sqlite3OsOpen(pVfs, this.zJournal, this.jfd, flags, ref int0);
 #endif
                     }
-                    Debug.Assert(rc != SQLITE.OK || this.jfd.isOpen);
+                    Debug.Assert(rc != RC.OK || this.jfd.isOpen);
                 }
 
                 // Write the first journal header to the journal file and open the sub-journal if necessary.
-                if (rc == SQLITE.OK)
+                if (rc == RC.OK)
                 {
                     // TODO: Check if all of these are really required.
                     this.nRec = 0;
@@ -51,7 +51,7 @@ namespace Contoso.Core
                     rc = writeJournalHdr();
                 }
             }
-            if (rc != SQLITE.OK)
+            if (rc != RC.OK)
             {
                 Bitvec.sqlite3BitvecDestroy(ref this.pInJournal);
                 this.pInJournal = null;
@@ -109,7 +109,7 @@ namespace Contoso.Core
                 // If the pager is in the ERROR state and the call to unlock the database file fails, set the current lock to UNKNOWN_LOCK. See the comment
                 // above the #define for UNKNOWN_LOCK for an explanation of why this is necessary.
                 var rc = pagerUnlockDb(VFSLOCK.NO);
-                if (rc != SQLITE.OK && this.eState == PAGER.ERROR)
+                if (rc != RC.OK && this.eState == PAGER.ERROR)
                     this.eLock = VFSLOCK.UNKNOWN;
                 // The pager state may be changed from PAGER_ERROR to PAGER_OPEN here without clearing the error code. This is intentional - the error
                 // code is cleared and the cache reset in the block below.
@@ -131,25 +131,25 @@ namespace Contoso.Core
                 pager_reset();
                 this.changeCountDone = this.tempFile;
                 this.eState = PAGER.OPEN;
-                this.errCode = SQLITE.OK;
+                this.errCode = RC.OK;
             }
             this.journalOff = 0;
             this.journalHdr = 0;
             this.setMaster = 0;
         }
 
-        internal SQLITE pager_error(SQLITE rc)
+        internal RC pager_error(RC rc)
         {
-            var rc2 = (SQLITE)((int)rc & 0xff);
-            Debug.Assert(rc == SQLITE.OK ||
+            var rc2 = (RC)((int)rc & 0xff);
+            Debug.Assert(rc == RC.OK ||
 #if SQLITE_OMIT_MEMORYDB
 0==MEMDB
 #else
  0 == this.memDb
 #endif
 );
-            Debug.Assert(this.errCode == SQLITE.FULL || this.errCode == SQLITE.OK || ((int)this.errCode & 0xff) == (int)SQLITE.IOERR);
-            if (rc2 == SQLITE.FULL || rc2 == SQLITE.IOERR)
+            Debug.Assert(this.errCode == RC.FULL || this.errCode == RC.OK || ((int)this.errCode & 0xff) == (int)RC.IOERR);
+            if (rc2 == RC.FULL || rc2 == RC.IOERR)
             {
                 this.errCode = rc;
                 this.eState = PAGER.ERROR;
@@ -157,7 +157,7 @@ namespace Contoso.Core
             return rc;
         }
 
-        internal SQLITE pager_end_transaction(int hasMaster)
+        internal RC pager_end_transaction(int hasMaster)
         {
             // Do nothing if the pager does not have an open write transaction or at least a RESERVED lock. This function may be called when there
             // is no write-transaction active but a RESERVED or greater lock is held under two circumstances:
@@ -167,10 +167,10 @@ namespace Contoso.Core
             Debug.Assert(assert_pager_state());
             Debug.Assert(this.eState != PAGER.ERROR);
             if (this.eState < PAGER.WRITER_LOCKED && this.eLock < VFSLOCK.RESERVED)
-                return SQLITE.OK;
+                return RC.OK;
             releaseAllSavepoints();
             Debug.Assert(this.jfd.isOpen || this.pInJournal == null);
-            var rc = SQLITE.OK; // Error code from journal finalization operation
+            var rc = RC.OK; // Error code from journal finalization operation
             if (this.jfd.isOpen)
             {
                 Debug.Assert(!pagerUseWal());
@@ -182,7 +182,7 @@ namespace Contoso.Core
                 }
                 else if (this.journalMode == JOURNALMODE.TRUNCATE)
                 {
-                    rc = (this.journalOff == 0 ? SQLITE.OK : this.jfd.xTruncate(0));
+                    rc = (this.journalOff == 0 ? RC.OK : this.jfd.xTruncate(0));
                     this.journalOff = 0;
                 }
                 else if (this.journalMode == JOURNALMODE.PERSIST || (this.exclusiveMode && this.journalMode != JOURNALMODE.WAL))
@@ -217,13 +217,13 @@ namespace Contoso.Core
             this.nRec = 0;
             this.pPCache.sqlite3PcacheCleanAll();
             this.pPCache.sqlite3PcacheTruncate(this.dbSize);
-            var rc2 = SQLITE.OK;    // Error code from db file unlock operation
+            var rc2 = RC.OK;    // Error code from db file unlock operation
             if (pagerUseWal())
             {
                 // Drop the WAL write-lock, if any. Also, if the connection was in locking_mode=exclusive mode but is no longer, drop the EXCLUSIVE 
                 // lock held on the database file.
                 rc2 = this.pWal.sqlite3WalEndWriteTransaction();
-                Debug.Assert(rc2 == SQLITE.OK);
+                Debug.Assert(rc2 == RC.OK);
             }
             if (!this.exclusiveMode && (!pagerUseWal() || this.pWal.sqlite3WalExclusiveMode(0)))
             {
@@ -232,7 +232,7 @@ namespace Contoso.Core
             }
             this.eState = PAGER.READER;
             this.setMaster = 0;
-            return (rc == SQLITE.OK ? rc2 : rc);
+            return (rc == RC.OK ? rc2 : rc);
         }
 
         internal uint pager_cksum(byte[] aData)
@@ -247,7 +247,7 @@ namespace Contoso.Core
             return cksum;
         }
 
-        internal SQLITE pager_playback_one_page(ref long pOffset, Bitvec pDone, int isMainJrnl, int isSavepnt)
+        internal RC pager_playback_one_page(ref long pOffset, Bitvec pDone, int isMainJrnl, int isSavepnt)
         {
             Debug.Assert((isMainJrnl & ~1) == 0);       // isMainJrnl is 0 or 1
             Debug.Assert((isSavepnt & ~1) == 0);        // isSavepnt is 0 or 1
@@ -265,10 +265,10 @@ namespace Contoso.Core
             var jfd = (isMainJrnl != 0 ? this.jfd : this.sjfd); // The file descriptor for the journal file
             Pgno pgno = 0;  // The page number of a page in journal
             var rc = jfd.read32bits(pOffset, ref pgno);
-            if (rc != SQLITE.OK)
+            if (rc != RC.OK)
                 return rc;
             rc = jfd.xRead(aData, this.pageSize, pOffset + 4);
-            if (rc != SQLITE.OK)
+            if (rc != RC.OK)
                 return rc;
             pOffset += this.pageSize + 4 + isMainJrnl * 4;
             // Sanity checking on the page.  This is more important that I originally thought.  If a power failure occurs while the journal is being written,
@@ -276,21 +276,21 @@ namespace Contoso.Core
             if (pgno == 0 || pgno == PAGER_MJ_PGNO(this))
             {
                 Debug.Assert(0 == isSavepnt);
-                return SQLITE.DONE;
+                return RC.DONE;
             }
             if (pgno > this.dbSize || pDone.sqlite3BitvecTest(pgno) != 0)
-                return SQLITE.OK;
+                return RC.OK;
             uint cksum = 0;         // Checksum used for sanity checking
             if (isMainJrnl != 0)
             {
                 rc = jfd.read32bits((pOffset) - 4, ref cksum);
-                if (rc != SQLITE.OK)
+                if (rc != RC.OK)
                     return rc;
                 if (0 == isSavepnt && pager_cksum(aData) != cksum)
-                    return SQLITE.DONE;
+                    return RC.DONE;
             }
             // If this page has already been played by before during the current rollback, then don't bother to play it back again.
-            if (pDone != null && (rc = pDone.sqlite3BitvecSet(pgno)) != SQLITE.OK)
+            if (pDone != null && (rc = pDone.sqlite3BitvecSet(pgno)) != RC.OK)
                 return rc;
             // When playing back page 1, restore the nReserve setting
             if (pgno == 1 && this.nReserve != aData[20])
@@ -323,10 +323,10 @@ namespace Contoso.Core
                 if (this.pBackup != null)
                 {
                     if (CODEC1(this, aData, pgno, codec_ctx.DECRYPT))
-                        rc = SQLITE.NOMEM;
+                        rc = RC.NOMEM;
                     this.pBackup.sqlite3BackupUpdate(pgno, aData);
                     if (CODEC2(this, aData, pgno, codec_ctx.ENCRYPT_READ_CTX, ref aData))
-                        rc = SQLITE.NOMEM;
+                        rc = RC.NOMEM;
                 }
             }
             else if (0 == isMainJrnl && pPg == null)
@@ -344,7 +344,7 @@ namespace Contoso.Core
                 rc = this.sqlite3PagerAcquire(pgno, ref pPg, 1);
                 Debug.Assert(this.doNotSpill == 1);
                 this.doNotSpill--;
-                if (rc != SQLITE.OK)
+                if (rc != RC.OK)
                     return rc;
                 pPg.flags &= ~PgHdr.PGHDR.NEED_READ;
                 PCache.sqlite3PcacheMakeDirty(pPg);
@@ -377,13 +377,13 @@ namespace Contoso.Core
                     Buffer.BlockCopy(pData, 24, this.dbFileVers, 0, this.dbFileVers.Length);
                 // Decode the page just read from disk
                 if (CODEC1(this, pData, pPg.pgno, codec_ctx.DECRYPT))
-                    rc = SQLITE.NOMEM;
+                    rc = RC.NOMEM;
                 PCache.sqlite3PcacheRelease(pPg);
             }
             return rc;
         }
 
-        internal SQLITE pager_delmaster(string zMaster)
+        internal RC pager_delmaster(string zMaster)
         {
             //string zMasterJournal = null; /* Contents of master journal file */
             //long nMasterJournal;           /* Size of master journal file */
@@ -396,7 +396,7 @@ namespace Contoso.Core
             var pVfs = this.pVfs;
             VFSOPEN iDummy = 0;
             var rc = FileEx.sqlite3OsOpen(pVfs, zMaster, pMaster, VFSOPEN.READONLY | VFSOPEN.MASTER_JOURNAL, ref iDummy);
-            if (rc != SQLITE.OK)
+            if (rc != RC.OK)
                 goto delmaster_out;
             Debugger.Break();
             //TODO --
@@ -455,11 +455,11 @@ namespace Contoso.Core
             return rc;
         }
 
-        internal SQLITE pager_truncate(Pgno nPage)
+        internal RC pager_truncate(Pgno nPage)
         {
             Debug.Assert(this.eState != PAGER.ERROR);
             Debug.Assert(this.eState != PAGER.READER);
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             if (this.fd.isOpen && (this.eState >= PAGER.WRITER_DBMOD || this.eState == PAGER.OPEN))
             {
                 var szPage = this.pageSize;
@@ -468,7 +468,7 @@ namespace Contoso.Core
                 long currentSize = 0;
                 rc = this.fd.xFileSize(ref currentSize);
                 var newSize = szPage * nPage;
-                if (rc == SQLITE.OK && currentSize != newSize)
+                if (rc == RC.OK && currentSize != newSize)
                 {
                     if (currentSize > newSize)
                         rc = this.fd.xTruncate(newSize);
@@ -478,14 +478,14 @@ namespace Contoso.Core
                         Array.Clear(pTmp, 0, szPage);
                         rc = this.fd.xWrite(pTmp, szPage, newSize - szPage);
                     }
-                    if (rc == SQLITE.OK)
+                    if (rc == RC.OK)
                         this.dbSize = nPage;
                 }
             }
             return rc;
         }
 
-        internal SQLITE pager_playback(int isHot)
+        internal RC pager_playback(int isHot)
         {
             var pVfs = this.pVfs;
             // Figure out how many records are in the journal.  Abort early if the journal is empty.
@@ -494,7 +494,7 @@ namespace Contoso.Core
             var res = 1;             // Value returned by sqlite3OsAccess()
             var zMaster = new byte[this.pVfs.mxPathname + 1]; // Name of master journal file if any
             var rc = this.jfd.xFileSize(ref szJ);
-            if (rc != SQLITE.OK)
+            if (rc != RC.OK)
                 goto end_playback;
             // Read the master journal name from the journal, if it is present. If a master journal file name is specified, but the file is not
             // present on disk, then the journal is not hot and does not need to be played back.
@@ -502,10 +502,10 @@ namespace Contoso.Core
             // (pPager.pageSize >= pPager.pVfs.mxPathname+1). Using os_unix.c, mxPathname is 512, which is the same as the minimum allowable value
             // for pageSize.
             rc = readMasterJournal(this.jfd, zMaster, (uint)this.pVfs.mxPathname + 1);
-            if (rc == SQLITE.OK && zMaster[0] != 0)
+            if (rc == RC.OK && zMaster[0] != 0)
                 rc = pVfs.xAccess(Encoding.UTF8.GetString(zMaster, 0, zMaster.Length), VirtualFileSystem.ACCESS.EXISTS, out res);
             zMaster = null;
-            if (rc != SQLITE.OK || res == 0)
+            if (rc != RC.OK || res == 0)
                 goto end_playback;
             this.journalOff = 0;
             // This loop terminates either when a readJournalHdr() or pager_playback_one_page() call returns SQLITE_DONE or an IO error occurs.
@@ -517,10 +517,10 @@ namespace Contoso.Core
                 // Read the next journal header from the journal file.  If there are not enough bytes left in the journal file for a complete header, or
                 // it is corrupted, then a process must have failed while writing it. This indicates nothing more needs to be rolled back.
                 rc = readJournalHdr(isHot, szJ, out nRec, out mxPg);
-                if (rc != SQLITE.OK)
+                if (rc != RC.OK)
                 {
-                    if (rc == SQLITE.DONE)
-                        rc = SQLITE.OK;
+                    if (rc == RC.DONE)
+                        rc = RC.OK;
                     goto end_playback;
                 }
                 // If nRec is 0xffffffff, then this journal was created by a process working in no-sync mode. This means that the rest of the journal
@@ -543,7 +543,7 @@ namespace Contoso.Core
                 if (this.journalOff == JOURNAL_HDR_SZ(this))
                 {
                     rc = pager_truncate(mxPg);
-                    if (rc != SQLITE.OK)
+                    if (rc != RC.OK)
                         goto end_playback;
                     this.dbSize = mxPg;
                 }
@@ -556,20 +556,20 @@ namespace Contoso.Core
                         needPagerReset = 0;
                     }
                     rc = pager_playback_one_page(ref this.journalOff, null, 1, 0);
-                    if (rc != SQLITE.OK)
+                    if (rc != RC.OK)
                     {
-                        if (rc == SQLITE.DONE)
+                        if (rc == RC.DONE)
                         {
-                            rc = SQLITE.OK;
+                            rc = RC.OK;
                             this.journalOff = szJ;
                             break;
                         }
-                        else if (rc == SQLITE.IOERR_SHORT_READ)
+                        else if (rc == RC.IOERR_SHORT_READ)
                         {
                             // If the journal has been truncated, simply stop reading and processing the journal. This might happen if the journal was
                             // not completely written and synced prior to a crash.  In that case, the database should have never been written in the
                             // first place so it is OK to simply abandon the rollback.
-                            rc = SQLITE.OK;
+                            rc = RC.OK;
                             goto end_playback;
                         }
                         else
@@ -583,22 +583,22 @@ namespace Contoso.Core
             // Following a rollback, the database file should be back in its original state prior to the start of the transaction, so invoke the
             // SQLITE_FCNTL_DB_UNCHANGED file-control method to disable the assertion that the transaction counter was modified.
             long iDummy = 0;
-            Debug.Assert(!this.fd.isOpen || this.fd.xFileControl(VirtualFile.FCNTL.DB_UNCHANGED, ref iDummy) >= SQLITE.OK);
+            Debug.Assert(!this.fd.isOpen || this.fd.xFileControl(VirtualFile.FCNTL.DB_UNCHANGED, ref iDummy) >= RC.OK);
             // If this playback is happening automatically as a result of an IO or malloc error that occurred after the change-counter was updated but
             // before the transaction was committed, then the change-counter modification may just have been reverted. If this happens in exclusive
             // mode, then subsequent transactions performed by the connection will not update the change-counter at all. This may lead to cache inconsistency
             // problems for other processes at some point in the future. So, just in case this has happened, clear the changeCountDone flag now.
             this.changeCountDone = this.tempFile;
-            if (rc == SQLITE.OK)
+            if (rc == RC.OK)
             {
                 zMaster = new byte[this.pVfs.mxPathname + 1];
                 rc = readMasterJournal(this.jfd, zMaster, (uint)this.pVfs.mxPathname + 1);
             }
-            if (rc == SQLITE.OK && (this.eState >= PAGER.WRITER_DBMOD || this.eState == PAGER.OPEN))
+            if (rc == RC.OK && (this.eState >= PAGER.WRITER_DBMOD || this.eState == PAGER.OPEN))
                 rc = sqlite3PagerSync();
-            if (rc == SQLITE.OK)
+            if (rc == RC.OK)
                 rc = pager_end_transaction(zMaster[0] != '\0' ? 1 : 0);
-            if (rc == SQLITE.OK && zMaster[0] != '\0' && res != 0)
+            if (rc == RC.OK && zMaster[0] != '\0' && res != 0)
                 // If there was a master journal and this routine will return success, see if it is possible to delete the master journal.
                 rc = pager_delmaster(Encoding.UTF8.GetString(zMaster, 0, zMaster.Length));
             // The Pager.sectorSize variable may have been updated while rolling back a journal created by a process with a different sector size
@@ -610,29 +610,29 @@ namespace Contoso.Core
         internal static void pager_write_changecounter(PgHdr pPg)
         {
             // Increment the value just read and write it back to byte 24.
-            uint change_counter = ConvertEx.sqlite3Get4byte(pPg.pPager.dbFileVers, 0) + 1;
-            ConvertEx.put32bits(pPg.pData, 24, change_counter);
+            uint change_counter = ConvertEx.Get4(pPg.pPager.dbFileVers, 0) + 1;
+            ConvertEx.Put4(pPg.pData, 24, change_counter);
             // Also store the SQLite version number in bytes 96..99 and in bytes 92..95 store the change counter for which the version number
             // is valid.
-            ConvertEx.put32bits(pPg.pData, 92, change_counter);
-            ConvertEx.put32bits(pPg.pData, 96, SysEx.SQLITE_VERSION_NUMBER);
+            ConvertEx.Put4(pPg.pData, 92, change_counter);
+            ConvertEx.Put4(pPg.pData, 96, SysEx.SQLITE_VERSION_NUMBER);
         }
 
-        internal SQLITE pager_wait_on_lock(VFSLOCK locktype)
+        internal RC pager_wait_on_lock(VFSLOCK locktype)
         {
             // Check that this is either a no-op (because the requested lock is already held, or one of the transistions that the busy-handler
             // may be invoked during, according to the comment above sqlite3PagerSetBusyhandler().
             Debug.Assert((this.eLock >= locktype) || (this.eLock == VFSLOCK.NO && locktype == VFSLOCK.SHARED) || (this.eLock == VFSLOCK.RESERVED && locktype == VFSLOCK.EXCLUSIVE));
-            SQLITE rc;
+            RC rc;
             do
                 rc = pagerLockDb(locktype);
-            while (rc == SQLITE.BUSY && this.xBusyHandler(this.pBusyHandlerArg) != 0);
+            while (rc == RC.BUSY && this.xBusyHandler(this.pBusyHandlerArg) != 0);
             return rc;
         }
 
-        internal SQLITE pager_write_pagelist(PgHdr pList)
+        internal RC pager_write_pagelist(PgHdr pList)
         {
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             // This function is only called for rollback pagers in WRITER_DBMOD state. 
             Debug.Assert(!pagerUseWal());
             Debug.Assert(this.eState == PAGER.WRITER_DBMOD);
@@ -641,18 +641,18 @@ namespace Contoso.Core
             // is taken, as pager_wait_on_lock() is a no-op for temp-files.
             if (!this.fd.isOpen)
             {
-                Debug.Assert(this.tempFile && rc == SQLITE.OK);
+                Debug.Assert(this.tempFile && rc == RC.OK);
                 rc = pagerOpentemp(ref this.fd, this.vfsFlags);
             }
             // Before the first write, give the VFS a hint of what the final file size will be.
-            Debug.Assert(rc != SQLITE.OK || this.fd.isOpen);
-            if (rc == SQLITE.OK && this.dbSize > this.dbHintSize)
+            Debug.Assert(rc != RC.OK || this.fd.isOpen);
+            if (rc == RC.OK && this.dbSize > this.dbHintSize)
             {
                 long szFile = this.pageSize * (long)this.dbSize;
                 this.fd.xFileControl(VirtualFile.FCNTL.SIZE_HINT, ref szFile);
                 this.dbHintSize = this.dbSize;
             }
-            while (rc == SQLITE.OK && pList)
+            while (rc == RC.OK && pList)
             {
                 var pgno = pList.pgno;
                 // If there are dirty pages in the page cache with page numbers greater than Pager.dbSize, this means sqlite3PagerTruncateImage() was called to
@@ -666,7 +666,7 @@ namespace Contoso.Core
                     // Encode the database
                     byte[] pData = null; // Data to write
                     if (CODEC2(this, pList.pData, pgno, codec_ctx.ENCRYPT_WRITE_CTX, ref pData))
-                        return SQLITE.NOMEM;
+                        return RC.NOMEM;
                     // Write out the page data.
                     long offset = (pList.pgno - 1) * (long)this.pageSize;   // Offset to write
                     rc = this.fd.xWrite(pData, this.pageSize, offset);
@@ -690,11 +690,11 @@ namespace Contoso.Core
             return rc;
         }
 
-        internal static SQLITE pager_write(PgHdr pPg)
+        internal static RC pager_write(PgHdr pPg)
         {
             var pData = pPg.pData;
             var pPager = pPg.pPager;
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             // This routine is not called unless a write-transaction has already been started. The journal file may or may not be open at this point.
             // It is never called in the ERROR state.
             Debug.Assert(pPager.eState == PAGER.WRITER_LOCKED || pPager.eState == PAGER.WRITER_CACHEMOD || pPager.eState == PAGER.WRITER_DBMOD);
@@ -704,7 +704,7 @@ namespace Contoso.Core
                 return pPager.errCode;
             // Higher-level routines never call this function if database is not writable.  But check anyway, just for robustness.
             if (Check.NEVER(pPager.readOnly))
-                return SQLITE.PERM;
+                return RC.PERM;
 #if SQLITE_CHECK_PAGES
 CHECK_PAGE(pPg);
 #endif
@@ -716,7 +716,7 @@ CHECK_PAGE(pPg);
             if (pPager.eState == PAGER.WRITER_LOCKED)
             {
                 rc = pPager.pager_open_journal();
-                if (rc != SQLITE.OK)
+                if (rc != RC.OK)
                     return rc;
             }
             Debug.Assert(pPager.eState >= PAGER.WRITER_CACHEMOD);
@@ -740,20 +740,20 @@ CHECK_PAGE(pPg);
                         Debug.Assert(pPager.journalHdr <= pPager.journalOff);
                         byte[] pData2 = null;
                         if (CODEC2(pPager, pData, pPg.pgno, codec_ctx.ENCRYPT_READ_CTX, ref pData2))
-                            return SQLITE.NOMEM;
+                            return RC.NOMEM;
                         var cksum = pPager.pager_cksum(pData2);
                         // Even if an IO or diskfull error occurred while journalling the page in the block above, set the need-sync flag for the page.
                         // Otherwise, when the transaction is rolled back, the logic in playback_one_page() will think that the page needs to be restored
                         // in the database file. And if an IO error occurs while doing so, then corruption may follow.
                         pPg.flags |= PgHdr.PGHDR.NEED_SYNC;
                         rc = pPager.jfd.write32bits(iOff, pPg.pgno);
-                        if (rc != SQLITE.OK)
+                        if (rc != RC.OK)
                             return rc;
                         rc = pPager.jfd.xWrite(pData2, pPager.pageSize, iOff + 4);
-                        if (rc != SQLITE.OK)
+                        if (rc != RC.OK)
                             return rc;
                         rc = pPager.jfd.write32bits(iOff + pPager.pageSize + 4, cksum);
-                        if (rc != SQLITE.OK)
+                        if (rc != RC.OK)
                             return rc;
                         SysEx.IOTRACE("JOUT {0:x} {1} {2,ll} {3}", pPager.GetHashCode(), pPg.pgno, pPager.journalOff, pPager.pageSize);
                         PAGERTRACE("JOURNAL {0} page {1} needSync={2} hash({3,08:x})", PAGERID(pPager), pPg.pgno, (pPg.flags & PgHdr.PGHDR.NEED_SYNC) != 0 ? 1 : 0, pager_pagehash(pPg));
@@ -761,11 +761,11 @@ CHECK_PAGE(pPg);
                         pPager.nRec++;
                         Debug.Assert(pPager.pInJournal != null);
                         rc = pPager.pInJournal.sqlite3BitvecSet(pPg.pgno);
-                        Debug.Assert(rc == SQLITE.OK || rc == SQLITE.NOMEM);
+                        Debug.Assert(rc == RC.OK || rc == RC.NOMEM);
                         rc |= pPager.addToSavepointBitvecs(pPg.pgno);
-                        if (rc != SQLITE.OK)
+                        if (rc != RC.OK)
                         {
-                            Debug.Assert(rc == SQLITE.NOMEM);
+                            Debug.Assert(rc == RC.NOMEM);
                             return rc;
                         }
                     }
@@ -787,9 +787,9 @@ CHECK_PAGE(pPg);
             return rc;
         }
 
-        internal SQLITE pager_incr_changecounter(bool isDirectMode)
+        internal RC pager_incr_changecounter(bool isDirectMode)
         {
-            var rc = SQLITE.OK;
+            var rc = RC.OK;
             Debug.Assert(this.eState == PAGER.WRITER_CACHEMOD || this.eState == PAGER.WRITER_DBMOD);
             Debug.Assert(assert_pager_state());
             // Declare and initialize constant integer 'isDirect'. If the atomic-write optimization is enabled in this build, then isDirect
@@ -809,12 +809,12 @@ CHECK_PAGE(pPg);
                 Debug.Assert(!this.tempFile && this.fd.isOpen);
                 // Open page 1 of the file for writing.
                 rc = sqlite3PagerGet(1, ref pPgHdr);
-                Debug.Assert(pPgHdr == null || rc == SQLITE.OK);
+                Debug.Assert(pPgHdr == null || rc == RC.OK);
                 // If page one was fetched successfully, and this function is not operating in direct-mode, make page 1 writable.  When not in 
                 // direct mode, page 1 is always held in cache and hence the PagerGet() above is always successful - hence the ALWAYS on rc==SQLITE.OK.
-                if (!DIRECT_MODE && Check.ALWAYS(rc == SQLITE.OK))
+                if (!DIRECT_MODE && Check.ALWAYS(rc == RC.OK))
                     rc = sqlite3PagerWrite(pPgHdr);
-                if (rc == SQLITE.OK)
+                if (rc == RC.OK)
                 {
                     // Actually do the update of the change counter
                     pager_write_changecounter(pPgHdr);
@@ -824,10 +824,10 @@ CHECK_PAGE(pPg);
                         byte[] zBuf = null;
                         Debug.Assert(this.dbFileSize > 0);
                         if (CODEC2(this, pPgHdr.pData, 1, codec_ctx.ENCRYPT_WRITE_CTX, ref zBuf))
-                            return rc = SQLITE.NOMEM;
-                        if (rc == SQLITE.OK)
+                            return rc = RC.NOMEM;
+                        if (rc == RC.OK)
                             rc = this.fd.xWrite(zBuf, this.pageSize, 0);
-                        if (rc == SQLITE.OK)
+                        if (rc == RC.OK)
                             this.changeCountDone = true;
                     }
                     else

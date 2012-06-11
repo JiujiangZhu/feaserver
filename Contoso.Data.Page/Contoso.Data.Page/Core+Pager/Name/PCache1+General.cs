@@ -7,9 +7,9 @@ namespace Contoso.Core.Name
 {
     public partial class PCache1
     {
-        internal SQLITE pcache1ResizeHash()
+        internal RC pcache1ResizeHash()
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(pGroup.mutex));
+            Debug.Assert(MutexEx.Held(pGroup.mutex));
             var nNew = nHash * 2;
             if (nNew < 256)
                 nNew = 256;
@@ -37,7 +37,7 @@ namespace Contoso.Core.Name
                 apHash = apNew;
                 nHash = nNew;
             }
-            return (apHash != null ? SQLITE.OK : SQLITE.NOMEM);
+            return (apHash != null ? RC.OK : RC.NOMEM);
         }
 
         internal static void pcache1PinPage(PgHdr1 pPage)
@@ -46,7 +46,7 @@ namespace Contoso.Core.Name
                 return;
             var pCache = pPage.pCache;
             var pGroup = pCache.pGroup;
-            Debug.Assert(MutexEx.sqlite3_mutex_held(pGroup.mutex));
+            Debug.Assert(MutexEx.Held(pGroup.mutex));
             if (pPage.pLruNext != null || pPage == pGroup.pLruTail)
             {
                 if (pPage.pLruPrev != null)
@@ -66,7 +66,7 @@ namespace Contoso.Core.Name
         internal static void pcache1RemoveFromHash(PgHdr1 pPage)
         {
             var pCache = pPage.pCache;
-            Debug.Assert(MutexEx.sqlite3_mutex_held(pCache.pGroup.mutex));
+            Debug.Assert(MutexEx.Held(pCache.pGroup.mutex));
             var h = (int)(pPage.iKey % pCache.nHash);
             PgHdr1 pPrev = null;
             PgHdr1 pp;
@@ -80,7 +80,7 @@ namespace Contoso.Core.Name
 
         internal static void pcache1EnforceMaxPage(PGroup pGroup)
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(pGroup.mutex));
+            Debug.Assert(MutexEx.Held(pGroup.mutex));
             while (pGroup.nCurrentPage > pGroup.nMaxPage && pGroup.pLruTail != null)
             {
                 PgHdr1 p = pGroup.pLruTail;
@@ -96,7 +96,7 @@ namespace Contoso.Core.Name
 #if !DEBUG
             uint nPage = 0;
 #endif
-            Debug.Assert(MutexEx.sqlite3_mutex_held(pGroup.mutex));
+            Debug.Assert(MutexEx.Held(pGroup.mutex));
             for (uint h = 0; h < nHash; h++)
             {
                 var pp = apHash[h];

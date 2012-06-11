@@ -11,11 +11,11 @@ namespace Contoso.Core
             sqlite3_vfs_register(new VirtualFileSystem(), 1);
         }
 
-        internal static SQLITE sqlite3OsOpen(VirtualFileSystem pVfs, string zPath, VirtualFile pFile, VirtualFileSystem.OPEN flags, ref VirtualFileSystem.OPEN pFlagsOut)
+        internal static RC sqlite3OsOpen(VirtualFileSystem pVfs, string zPath, VirtualFile pFile, VirtualFileSystem.OPEN flags, ref VirtualFileSystem.OPEN pFlagsOut)
         {
             // 0x87f3f is a mask of SQLITE_OPEN_ flags that are valid to be passed down into the VFS layer.  Some SQLITE_OPEN_ flags (for example,
             // SQLITE_OPEN_FULLMUTEX or SQLITE_OPEN_SHAREDCACHE) are blocked before reaching the VFS.
-            var rc = pVfs.xOpen(zPath, pFile, (VirtualFileSystem.OPEN)((int)flags & 0x87f3f), out pFlagsOut); Debug.Assert(rc == SQLITE.OK || !pFile.isOpen); return rc;
+            var rc = pVfs.xOpen(zPath, pFile, (VirtualFileSystem.OPEN)((int)flags & 0x87f3f), out pFlagsOut); Debug.Assert(rc == RC.OK || !pFile.isOpen); return rc;
         }
         //internal static SQLITE sqlite3OsDelete(VirtualFileSystem pVfs, string zPath, int dirSync) { return pVfs.xDelete(zPath, dirSync); }
         //internal static SQLITE sqlite3OsAccess(VirtualFileSystem pVfs, string zPath, VirtualFileSystem.ACCESS flags, ref int pResOut) { return pVfs.xAccess(zPath, flags, out pResOut); }
@@ -45,14 +45,14 @@ namespace Contoso.Core
         //    return rc;
         //}
 
-        internal static SQLITE sqlite3OsOpenMalloc(ref VirtualFileSystem pVfs, string zFile, ref VirtualFile ppFile, VirtualFileSystem.OPEN flags, ref VirtualFileSystem.OPEN pOutFlags)
+        internal static RC sqlite3OsOpenMalloc(ref VirtualFileSystem pVfs, string zFile, ref VirtualFile ppFile, VirtualFileSystem.OPEN flags, ref VirtualFileSystem.OPEN pOutFlags)
         {
-            var rc = SQLITE.NOMEM;
+            var rc = RC.NOMEM;
             var pFile = new VirtualFile();
             if (pFile != null)
             {
                 rc = sqlite3OsOpen(pVfs, zFile, pFile, flags, ref pOutFlags);
-                if (rc != SQLITE.OK)
+                if (rc != RC.OK)
                     pFile = null;
                 else
                     ppFile = pFile;
@@ -87,7 +87,7 @@ namespace Contoso.Core
 
         internal static void vfsUnlink(VirtualFileSystem pVfs)
         {
-            Debug.Assert(MutexEx.sqlite3_mutex_held(MutexEx.sqlite3MutexAlloc(MutexEx.MUTEX.STATIC_MASTER)));
+            Debug.Assert(MutexEx.Held(MutexEx.sqlite3MutexAlloc(MutexEx.MUTEX.STATIC_MASTER)));
             if (pVfs == null) { /* No-op */ }
             else if (vfsList == pVfs)
                 vfsList = pVfs.pNext;
@@ -101,7 +101,7 @@ namespace Contoso.Core
             }
         }
 
-        public static SQLITE sqlite3_vfs_register(VirtualFileSystem pVfs, int makeDflt)
+        public static RC sqlite3_vfs_register(VirtualFileSystem pVfs, int makeDflt)
         {
             //#if !SQLITE_OMIT_AUTOINIT
             //            var rc = sqlite3_initialize();
@@ -123,10 +123,10 @@ namespace Contoso.Core
             }
             Debug.Assert(vfsList != null);
             MutexEx.sqlite3_mutex_leave(mutex);
-            return SQLITE.OK;
+            return RC.OK;
         }
 
-        internal static SQLITE sqlite3_vfs_unregister(VirtualFileSystem pVfs)
+        internal static RC sqlite3_vfs_unregister(VirtualFileSystem pVfs)
         {
 #if SQLITE_THREADSAFE
             var mutex = MutexEx.sqlite3MutexAlloc(MutexEx.MUTEX.STATIC_MASTER);
@@ -134,7 +134,7 @@ namespace Contoso.Core
             MutexEx.sqlite3_mutex_enter(mutex);
             vfsUnlink(pVfs);
             MutexEx.sqlite3_mutex_leave(mutex);
-            return SQLITE.OK;
+            return RC.OK;
         }
     }
 }
