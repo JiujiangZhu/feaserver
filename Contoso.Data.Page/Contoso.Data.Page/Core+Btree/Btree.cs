@@ -101,6 +101,12 @@ namespace Contoso.Core
         internal const byte PTF_LEAFDATA = 0x04;
         internal const byte PTF_LEAF = 0x08;
 
+#if TRACE
+        internal static bool sqlite3BtreeTrace = true;  // True to enable tracing
+        internal static void TRACE(string x, params object[] args) { if (sqlite3BtreeTrace)Console.WriteLine(string.Format(x, args)); }
+#else
+        internal static void TRACE(string x, params object[] args) { }
+#endif
 
         // HOOKS
 #if !SQLITE_OMIT_SHARED_CACHE

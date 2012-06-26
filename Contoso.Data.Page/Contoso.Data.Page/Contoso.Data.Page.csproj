@@ -44,13 +44,15 @@
     <Compile Include="Core+Btree\Btree+BtreeLock.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Core+Btree\Btree+Commit.cs" />
     <Compile Include="Core+Btree\Btree.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Core+Btree\BtShared.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Core+Btree\Btree+Public.cs" />
+    <Compile Include="Core+Btree\Btree+Properties.cs" />
+    <Compile Include="Core+Btree\BtreeCursor+Properties.cs" />
     <Compile Include="Core+Btree\MemPage+CellInfo.cs">
       <SubType>Code</SubType>
     </Compile>
