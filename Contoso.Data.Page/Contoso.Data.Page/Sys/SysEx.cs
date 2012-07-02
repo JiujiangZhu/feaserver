@@ -72,5 +72,8 @@ namespace Contoso.Sys
         }
 
         public static bool IsRunningMediumTrust() { return false; }
+
+        public static T getGLOBAL<T>(T v) { return v; }
+        public static void setGLOBAL<T>(T v, T value) { v = value; }
     }
 }

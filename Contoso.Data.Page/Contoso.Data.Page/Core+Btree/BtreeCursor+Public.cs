@@ -158,7 +158,7 @@ namespace Contoso.Core
         }
 
         // was:sqlite3BtreeMovetoUnpacked
-        public RC MoveToUnpacked(Btree.UnpackedRecord idxKey, long intKey, int biasRight, ref int pRes)
+        public RC MoveToUnpacked(Btree.UnpackedRecord idxKey, long intKey, bool biasRight, ref int pRes)
         {
             Debug.Assert(HoldsMutex());
             Debug.Assert(MutexEx.Held(Tree.DB.Mutex));
@@ -192,7 +192,6 @@ namespace Contoso.Core
             Debug.Assert(Pages[0].HasIntKey || idxKey != null);
             for (; ; )
             {
-
                 var page = Pages[PageID];
                 // pPage.nCell must be greater than zero. If this is the root-page the cursor would have been INVALID above and this for(;;) loop
                 // not run. If this is not the root-page, then the moveToChild() routine would have already detected db corruption. Similarly, pPage must
@@ -202,7 +201,7 @@ namespace Contoso.Core
                 var lwr = 0;
                 var upr = page.Cells - 1;
                 int idx;
-                PagesIndexs[PageID] = (ushort)(biasRight != 0 ? (idx = upr) : (idx = (upr + lwr) / 2));
+                PagesIndexs[PageID] = (ushort)(biasRight ? (idx = upr) : (idx = (upr + lwr) / 2));
                 int c;
                 for (; ; )
                 {

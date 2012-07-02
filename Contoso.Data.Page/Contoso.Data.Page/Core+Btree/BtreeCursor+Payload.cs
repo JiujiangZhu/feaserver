@@ -69,7 +69,6 @@ namespace Contoso.Core
                     var nOvfl = (Info.nPayload - Info.nLocal + ovflSize - 1) / ovflSize;
                     OverflowIDs = new Pgno[nOvfl];
                 }
-
                 // If the overflow page-list cache has been allocated and the entry for the first required overflow page is valid, skip directly to it.
                 if (OverflowIDs != null && OverflowIDs[offset / ovflSize] != 0)
                 {

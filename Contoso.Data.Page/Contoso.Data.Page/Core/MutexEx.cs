@@ -5,7 +5,10 @@ namespace Contoso.Core
 {
     public class MutexEx
     {
-        static int mutexIsInit = 0;
+        public static bool WantsCoreMutex { get; set; }
+
+        private static int mutexIsInit = 0;
+        public static bool SQLITE_THREADSAFE;
 
         public enum MUTEX
         {
@@ -43,5 +46,6 @@ namespace Contoso.Core
         internal static void sqlite3_mutex_leave(sqlite3_mutex sqlite3_mutex) { }
         internal static bool Held(sqlite3_mutex sqlite3_mutex) { return true; }
         internal static bool sqlite3_mutex_notheld(sqlite3_mutex sqlite3_mutex) { return true; }
+        internal static void sqlite3_mutex_free(sqlite3_mutex mutex) { }
     }
 }

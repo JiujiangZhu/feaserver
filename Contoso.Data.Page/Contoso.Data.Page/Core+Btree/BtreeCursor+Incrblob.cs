@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using Contoso.Sys;
 using TRANS = Contoso.Core.Btree.TRANS;
+using LOCK = Contoso.Core.Btree.BtreeLock.LOCK;
 
 namespace Contoso.Core
 {
@@ -28,8 +29,8 @@ namespace Contoso.Core
             if (!Writeable)
                 return RC.READONLY;
             Debug.Assert(!Shared.ReadOnly && Shared.InTransaction == TRANS.WRITE);
-            Debug.Assert(Btree.hasSharedCacheTableLock(Tree, RootID, 0, 2));
-            Debug.Assert(!Btree.hasReadConflicts(Tree, RootID));
+            Debug.Assert(Tree.hasSharedCacheTableLock(RootID, false, LOCK.WRITE));
+            Debug.Assert(!Tree.hasReadConflicts(RootID));
             Debug.Assert(Pages[PageID].HasIntKey);
             return AccessPayload(offset, amt, z, true);
         }

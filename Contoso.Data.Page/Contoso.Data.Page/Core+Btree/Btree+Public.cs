@@ -7,17 +7,17 @@ using Pgno = System.UInt32;
 using PTRMAP = Contoso.Core.MemPage.PTRMAP;
 using SAVEPOINT = Contoso.Core.Pager.SAVEPOINT;
 using VFSOPEN = Contoso.Sys.VirtualFileSystem.OPEN;
+using MUTEX = Contoso.Core.MutexEx.MUTEX;
+using LOCK = Contoso.Core.Btree.BtreeLock.LOCK;
 
 namespace Contoso.Core
 {
     public partial class Btree
     {
         // was:sqlite3BtreeOpen
-        public static RC Open(VirtualFileSystem pVfs, string zFilename, sqlite3 db, ref Btree ppBtree, OPEN flags, VFSOPEN vfsFlags)
+        public static RC Open(VirtualFileSystem pVfs, string zFilename, sqlite3 db, ref Btree rTree, OPEN flags, VFSOPEN vfsFlags)
         {
-            BtShared pBt = null;          // Shared part of btree structure
-            Btree p;                      // Handle to return
-            sqlite3_mutex mutexOpen = null;  // Prevents a race condition.
+            Btree p;                      // Handle to return   
             var rc = RC.OK;
             byte nReserve;                   // Byte of unused space on each page
             var zDbHeader = new byte[100]; // Database header content
@@ -44,70 +44,59 @@ namespace Contoso.Core
             if ((vfsFlags & VFSOPEN.MAIN_DB) != 0 && (isMemdb || isTempDb))
                 vfsFlags = (vfsFlags & ~VFSOPEN.MAIN_DB) | VFSOPEN.TEMP_DB;
             p = new Btree();
-            p.inTrans = TRANS.NONE;
+            p.InTransaction = TRANS.NONE;
             p.DB = db;
 #if !SQLITE_OMIT_SHARED_CACHE
-            p.Locks.pBtree = p;
-            p.Locks.iTable = 1;
+            p.Locks.Tree = p;
+            p.Locks.TableID = 1;
 #endif
+            BtShared shared = null;          // Shared part of btree structure
+            sqlite3_mutex mutexOpen = null;  // Prevents a race condition.
 #if !SQLITE_OMIT_SHARED_CACHE && !SQLITE_OMIT_DISKIO
             // If this Btree is a candidate for shared cache, try to find an existing BtShared object that we can share with
             if (!isMemdb && !isTempDb)
             {
-                if (vfsFlags & SQLITE_OPEN_SHAREDCACHE)
+                if ((vfsFlags & VFSOPEN.SHAREDCACHE) != 0)
                 {
-                    int nFullPathname = pVfs.mxPathname + 1;
-                    string zFullPathname = MallocEx.sqlite3Malloc(nFullPathname);
-                    sqlite3_mutex mutexShared;
-                    p.sharable = true;
-                    if (zFullPathname == null)
-                    {
-                        p = null;
-                        return RC.NOMEM;
-                    }
-                    sqlite3OsFullPathname(pVfs, zFilename, nFullPathname, zFullPathname);
-                    mutexOpen = sqlite3MutexAlloc(SQLITE_MUTEX_STATIC_OPEN);
+                    p.Sharable = true;
+                    string zPathname;
+                    rc = pVfs.xFullPathname(zFilename, out zPathname);
+                    mutexOpen = MutexEx.sqlite3MutexAlloc(MUTEX.STATIC_OPEN);
                     MutexEx.sqlite3_mutex_enter(mutexOpen);
-                    mutexShared = sqlite3MutexAlloc(SQLITE_MUTEX_STATIC_MASTER);
+                    var mutexShared = MutexEx.sqlite3MutexAlloc(MUTEX.STATIC_MASTER);
                     MutexEx.sqlite3_mutex_enter(mutexShared);
-                    for (pBt = GLOBAL(BtShared, sqlite3SharedCacheList); pBt != null; pBt = pBt.Next)
+                    for (shared = SysEx.getGLOBAL<BtShared>(s_sqlite3SharedCacheList); shared != null; shared = shared.Next)
                     {
-                        Debug.Assert(pBt.nRef > 0);
-                        if (0 == strcmp(zFullPathname, sqlite3PagerFilename(pBt.Pager))
-                        && sqlite3PagerVfs(pBt.Pager) == pVfs)
+                        Debug.Assert(shared.nRef > 0);
+                        if (string.Equals(zPathname, shared.Pager.sqlite3PagerFilename()) && shared.Pager.sqlite3PagerVfs() == pVfs)
                         {
-                            int iDb;
-                            for (iDb = db.nDb - 1; iDb >= 0; iDb--)
+                            for (var iDb = db.DBs - 1; iDb >= 0; iDb--)
                             {
-                                Btree pExisting = db.aDb[iDb].pBt;
-                                if (pExisting && pExisting.Shared == pBt)
+                                var existingTree = db.AllocDBs[iDb].Tree;
+                                if (existingTree != null && existingTree.Shared == shared)
                                 {
                                     MutexEx.sqlite3_mutex_leave(mutexShared);
                                     MutexEx.sqlite3_mutex_leave(mutexOpen);
-                                    zFullPathname = null;//sqlite3_free(ref zFullPathname);
-                                    p = null;//sqlite3_free(ref p);
+                                    p = null;
                                     return RC.CONSTRAINT;
                                 }
                             }
-                            p.Shared = pBt;
-                            pBt.nRef++;
+                            p.Shared = shared;
+                            shared.nRef++;
                             break;
                         }
                     }
                     MutexEx.sqlite3_mutex_leave(mutexShared);
-                    zFullPathname = null;//sqlite3_free(ref zFullPathname);
                 }
 #if DEBUG
                 else
-                {
                     // In debug mode, we mark all persistent databases as sharable even when they are not.  This exercises the locking code and
                     // gives more opportunity for asserts(sqlite3_mutex_held()) statements to find locking problems.
-                    p.sharable = true;
-                }
+                    p.Sharable = true;
 #endif
             }
 #endif
-            if (pBt == null)
+            if (shared == null)
             {
                 // The following asserts make sure that structures used by the btree are the right size.  This is to guard against size changes that result
                 // when compiling on a different architecture.
@@ -116,33 +105,33 @@ namespace Contoso.Core
                 Debug.Assert(sizeof(uint) == 4);
                 Debug.Assert(sizeof(ushort) == 2);
                 Debug.Assert(sizeof(Pgno) == 4);
-                pBt = new BtShared();
-                rc = Pager.sqlite3PagerOpen(pVfs, out pBt.Pager, zFilename, EXTRA_SIZE, (Pager.PAGEROPEN)flags, vfsFlags, pageReinit);
+                shared = new BtShared();
+                rc = Pager.sqlite3PagerOpen(pVfs, out shared.Pager, zFilename, EXTRA_SIZE, (Pager.PAGEROPEN)flags, vfsFlags, pageReinit);
                 if (rc == RC.OK)
-                    rc = pBt.Pager.sqlite3PagerReadFileheader(zDbHeader.Length, zDbHeader);
+                    rc = shared.Pager.sqlite3PagerReadFileheader(zDbHeader.Length, zDbHeader);
                 if (rc != RC.OK)
                     goto btree_open_out;
-                pBt.OpenFlags = flags;
-                pBt.DB = db;
-                pBt.Pager.sqlite3PagerSetBusyhandler(btreeInvokeBusyHandler, pBt);
-                p.Shared = pBt;
-                pBt.Cursors = null;
-                pBt.Page1 = null;
-                pBt.ReadOnly = pBt.Pager.sqlite3PagerIsreadonly();
+                shared.OpenFlags = flags;
+                shared.DB = db;
+                shared.Pager.sqlite3PagerSetBusyhandler(btreeInvokeBusyHandler, shared);
+                p.Shared = shared;
+                shared.Cursors = null;
+                shared.Page1 = null;
+                shared.ReadOnly = shared.Pager.sqlite3PagerIsreadonly();
 #if SQLITE_SECURE_DELETE
 pBt.secureDelete = true;
 #endif
-                pBt.PageSize = (uint)((zDbHeader[16] << 8) | (zDbHeader[17] << 16)); if (pBt.PageSize < 512 || pBt.PageSize > Pager.SQLITE_MAX_PAGE_SIZE || ((pBt.PageSize - 1) & pBt.PageSize) != 0)
+                shared.PageSize = (uint)((zDbHeader[16] << 8) | (zDbHeader[17] << 16)); if (shared.PageSize < 512 || shared.PageSize > Pager.SQLITE_MAX_PAGE_SIZE || ((shared.PageSize - 1) & shared.PageSize) != 0)
                 {
-                    pBt.PageSize = 0;
+                    shared.PageSize = 0;
 #if !SQLITE_OMIT_AUTOVACUUM
                     // If the magic name ":memory:" will create an in-memory database, then leave the autoVacuum mode at 0 (do not auto-vacuum), even if
                     // SQLITE_DEFAULT_AUTOVACUUM is true. On the other hand, if SQLITE_OMIT_MEMORYDB has been defined, then ":memory:" is just a
                     // regular file-name. In this case the auto-vacuum applies as per normal.
                     if (zFilename != string.Empty && !isMemdb)
                     {
-                        pBt.AutoVacuum = (AUTOVACUUM.DEFAULT != AUTOVACUUM.NONE);
-                        pBt.IncrVacuum = (AUTOVACUUM.DEFAULT == AUTOVACUUM.INCR);
+                        shared.AutoVacuum = (AUTOVACUUM.DEFAULT != AUTOVACUUM.NONE);
+                        shared.IncrVacuum = (AUTOVACUUM.DEFAULT == AUTOVACUUM.INCR);
                     }
 #endif
                     nReserve = 0;
@@ -150,89 +139,71 @@ pBt.secureDelete = true;
                 else
                 {
                     nReserve = zDbHeader[20];
-                    pBt.PageSizeFixed = true;
+                    shared.PageSizeFixed = true;
 #if !SQLITE_OMIT_AUTOVACUUM
-                    pBt.AutoVacuum = ConvertEx.Get4(zDbHeader, 36 + 4 * 4) != 0;
-                    pBt.IncrVacuum = ConvertEx.Get4(zDbHeader, 36 + 7 * 4) != 0;
+                    shared.AutoVacuum = ConvertEx.Get4(zDbHeader, 36 + 4 * 4) != 0;
+                    shared.IncrVacuum = ConvertEx.Get4(zDbHeader, 36 + 7 * 4) != 0;
 #endif
                 }
-                rc = pBt.Pager.sqlite3PagerSetPagesize(ref pBt.PageSize, nReserve);
+                rc = shared.Pager.sqlite3PagerSetPagesize(ref shared.PageSize, nReserve);
                 if (rc != RC.OK)
                     goto btree_open_out;
-                pBt.UsableSize = (ushort)(pBt.PageSize - nReserve);
-                Debug.Assert((pBt.PageSize & 7) == 0);  // 8-byte alignment of pageSize
+                shared.UsableSize = (ushort)(shared.PageSize - nReserve);
+                Debug.Assert((shared.PageSize & 7) == 0);  // 8-byte alignment of pageSize
 #if !SQLITE_OMIT_SHARED_CACHE && !SQLITE_OMIT_DISKIO
                 // Add the new BtShared object to the linked list sharable BtShareds.
-                if (p.sharable)
+                if (p.Sharable)
                 {
                     sqlite3_mutex mutexShared;
-                    pBt.nRef = 1;
-                    mutexShared = sqlite3MutexAlloc(SQLITE_MUTEX_STATIC_MASTER);
-                    if (SQLITE_THREADSAFE && sqlite3GlobalConfig.bCoreMutex)
-                    {
-                        pBt.mutex = sqlite3MutexAlloc(SQLITE_MUTEX_FAST);
-                        if (pBt.mutex == null)
-                        {
-                            rc = SQLITE_NOMEM;
-                            db.mallocFailed = 0;
-                            goto btree_open_out;
-                        }
-                    }
-                    sqlite3_mutex_enter(mutexShared);
-                    pBt.pNext = GLOBAL(BtShared, sqlite3SharedCacheList);
-                    GLOBAL(BtShared, sqlite3SharedCacheList) = pBt;
-                    sqlite3_mutex_leave(mutexShared);
+                    shared.nRef = 1;
+                    mutexShared = MutexEx.sqlite3MutexAlloc(MUTEX.STATIC_MASTER);
+                    if (MutexEx.SQLITE_THREADSAFE && MutexEx.WantsCoreMutex)
+                        shared.Mutex = MutexEx.sqlite3MutexAlloc(MUTEX.FAST);
+                    MutexEx.sqlite3_mutex_enter(mutexShared);
+                    shared.Next = SysEx.getGLOBAL<BtShared>(s_sqlite3SharedCacheList);
+                    SysEx.setGLOBAL<BtShared>(s_sqlite3SharedCacheList, shared);
+                    MutexEx.sqlite3_mutex_leave(mutexShared);
                 }
 #endif
             }
 #if !SQLITE_OMIT_SHARED_CACHE && !SQLITE_OMIT_DISKIO
-            /* If the new Btree uses a sharable pBtShared, then link the new
-** Btree into the list of all sharable Btrees for the same connection.
-** The list is kept in ascending order by pBt address.
-*/
-            if (p.sharable)
-            {
-                int i;
-                Btree pSib;
-                for (i = 0; i < db.nDb; i++)
-                {
-                    if ((pSib = db.aDb[i].pBt) != null && pSib.sharable)
+            // If the new Btree uses a sharable pBtShared, then link the new Btree into the list of all sharable Btrees for the same connection.
+            // The list is kept in ascending order by pBt address.
+            Btree existingTree2;
+            if (p.Sharable)
+                for (var i = 0; i < db.DBs; i++)
+                    if ((existingTree2 = db.AllocDBs[i].Tree) != null && existingTree2.Sharable)
                     {
-                        while (pSib.pPrev) { pSib = pSib.pPrev; }
-                        if (p.pBt < pSib.pBt)
+                        while (existingTree2.Prev != null) { existingTree2 = existingTree2.Prev; }
+                        if (p.Shared.Version < existingTree2.Shared.Version)
                         {
-                            p.pNext = pSib;
-                            p.pPrev = 0;
-                            pSib.pPrev = p;
+                            p.Next = existingTree2;
+                            p.Prev = null;
+                            existingTree2.Prev = p;
                         }
                         else
                         {
-                            while (pSib.pNext && pSib.pNext.pBt < p.pBt)
-                            {
-                                pSib = pSib.pNext;
-                            }
-                            p.pNext = pSib.pNext;
-                            p.pPrev = pSib;
-                            if (p.pNext)
-                            {
-                                p.pNext.pPrev = p;
-                            }
-                            pSib.pNext = p;
+                            while (existingTree2.Next != null && existingTree2.Next.Shared.Version < p.Shared.Version)
+                                existingTree2 = existingTree2.Next;
+                            p.Next = existingTree2.Next;
+                            p.Prev = existingTree2;
+                            if (p.Next != null)
+                                p.Next.Prev = p;
+                            existingTree2.Next = p;
                         }
                         break;
                     }
-                }
-            }
 #endif
-            ppBtree = p;
+            rTree = p;
+        //
         btree_open_out:
             if (rc != RC.OK)
             {
-                if (pBt != null && pBt.Pager != null)
-                    pBt.Pager.sqlite3PagerClose();
-                pBt = null;
+                if (shared != null && shared.Pager != null)
+                    shared.Pager.sqlite3PagerClose();
+                shared = null;
                 p = null;
-                ppBtree = null;
+                rTree = null;
             }
             else
             {
@@ -255,37 +226,37 @@ pBt.secureDelete = true;
             // Close all cursors opened via this handle.
             Debug.Assert(MutexEx.Held(p.DB.Mutex));
             p.sqlite3BtreeEnter();
-            var pBt = p.Shared;
-            var pCur = pBt.Cursors;
-            while (pCur != null)
+            var shared = p.Shared;
+            var cursor = shared.Cursors;
+            while (cursor != null)
             {
-                var pTmp = pCur;
-                pCur = pCur.Next;
-                if (pTmp.Tree == p)
-                    pTmp.Close();
+                var lastCursor = cursor;
+                cursor = cursor.Next;
+                if (lastCursor.Tree == p)
+                    lastCursor.Close();
             }
             // Rollback any active transaction and free the handle structure. The call to sqlite3BtreeRollback() drops any table-locks held by this handle.
             p.Rollback();
             p.sqlite3BtreeLeave();
             // If there are still other outstanding references to the shared-btree structure, return now. The remainder of this procedure cleans up the shared-btree.
-            Debug.Assert(p.wantToLock == 0 && !p.locked);
-            if (!p.sharable || pBt.removeFromSharingList())
+            Debug.Assert(p.WantToLock == 0 && !p.Locked);
+            if (!p.Sharable || shared.removeFromSharingList())
             {
                 // The pBt is no longer on the sharing list, so we can access it without having to hold the mutex.
                 // Clean out and delete the BtShared object.
-                Debug.Assert(null == pBt.Cursors);
-                pBt.Pager.sqlite3PagerClose();
-                if (pBt.xFreeSchema != null && pBt.Schema != null)
-                    pBt.xFreeSchema(pBt.Schema);
-                pBt.Schema = null;// sqlite3DbFree(0, pBt->pSchema);
+                Debug.Assert(shared.Cursors == null);
+                shared.Pager.sqlite3PagerClose();
+                if (shared.xFreeSchema != null && shared.Schema != null)
+                    shared.xFreeSchema(shared.Schema);
+                shared.Schema = null;// sqlite3DbFree(0, pBt->pSchema);
                 //freeTempSpace(pBt);
-                pBt = null; //sqlite3_free(ref pBt);
+                shared = null; //sqlite3_free(ref pBt);
             }
 #if !SQLITE_OMIT_SHARED_CACHE
-            Debug.Assert(p.wantToLock == null);
-            Debug.Assert(p.locked == null);
-            if (p.pPrev != null) p.pPrev.pNext = p.pNext;
-            if (p.pNext != null) p.pNext.pPrev = p.pPrev;
+            Debug.Assert(p.WantToLock == 0);
+            Debug.Assert(p.Locked == false);
+            if (p.Prev != null) p.Prev.Next = p.Next;
+            if (p.Next != null) p.Next.Prev = p.Prev;
 #endif
             return RC.OK;
         }
@@ -303,109 +274,101 @@ pBt.secureDelete = true;
         }
 
         // was:sqlite3BtreeBeginTrans
-        public RC BeginTrans(int wrflag)
+        public RC BeginTrans(byte wrflag)
         {
-            var pBt = this.Shared;
+            var shared = this.Shared;
             var rc = RC.OK;
             sqlite3BtreeEnter();
             btreeIntegrity();
             // If the btree is already in a write-transaction, or it is already in a read-transaction and a read-transaction is requested, this is a no-op.
-            if (this.inTrans == TRANS.WRITE || (this.inTrans == TRANS.READ && 0 == wrflag))
+            if (this.InTransaction == TRANS.WRITE || (this.InTransaction == TRANS.READ && wrflag == 0))
                 goto trans_begun;
             // Write transactions are not possible on a read-only database
-            if (pBt.ReadOnly && wrflag != 0)
+            if (shared.ReadOnly && wrflag != 0)
             {
                 rc = RC.READONLY;
                 goto trans_begun;
             }
 #if !SQLITE_OMIT_SHARED_CACHE
-            /* If another database handle has already opened a write transaction
-** on this shared-btree structure and a second write transaction is
-** requested, return SQLITE_LOCKED.
-*/
-            if ((wrflag && pBt.inTransaction == TRANS_WRITE) || pBt.isPending)
-            {
-                sqlite3 pBlock = pBt.pWriter.db;
-            }
+            // If another database handle has already opened a write transaction on this shared-btree structure and a second write transaction is
+            // requested, return SQLITE_LOCKED.
+            sqlite3 sharedDB = null;
+            if ((wrflag != 0 && shared.InTransaction == TRANS.WRITE) || shared.IsPending)
+                sharedDB = shared.Writer.DB;
             else if (wrflag > 1)
-            {
-                BtLock pIter;
-                for (pIter = pBt.pLock; pIter; pIter = pIter.pNext)
-                {
-                    if (pIter.pBtree != p)
+                for (var @lock = shared.Locks; @lock != null; @lock = @lock.Next)
+                    if (@lock.Tree != this)
                     {
-                        pBlock = pIter.pBtree.db;
+                        sharedDB = @lock.Tree.DB;
                         break;
                     }
-                }
-            }
-            if (pBlock)
+            if (sharedDB != null)
             {
-                sqlite3ConnectionBlocked(p.db, pBlock);
-                rc = SQLITE_LOCKED_SHAREDCACHE;
+                sqlite3.sqlite3ConnectionBlocked(this.DB, sharedDB);
+                rc = RC.LOCKED_SHAREDCACHE;
                 goto trans_begun;
             }
 #endif
             // Any read-only or read-write transaction implies a read-lock on page 1. So if some other shared-cache client already has a write-lock
             // on page 1, the transaction cannot be opened. */
-            rc = querySharedCacheTableLock(this, MASTER_ROOT, BtreeLock.LOCK.READ);
+            rc = querySharedCacheTableLock(MASTER_ROOT, LOCK.READ);
             if (rc != RC.OK)
                 goto trans_begun;
-            pBt.InitiallyEmpty = pBt.Pages == 0;
+            shared.InitiallyEmpty = shared.Pages == 0;
             do
             {
                 // Call lockBtree() until either pBt.pPage1 is populated or lockBtree() returns something other than SQLITE_OK. lockBtree()
                 // may return SQLITE_OK but leave pBt.pPage1 set to 0 if after reading page 1 it discovers that the page-size of the database
                 // file is not pBt.pageSize. In this case lockBtree() will update pBt.pageSize to the page-size of the file on disk.
-                while (pBt.Page1 == null && (rc = pBt.lockBtree()) == RC.OK) ;
+                while (shared.Page1 == null && (rc = shared.lockBtree()) == RC.OK) ;
                 if (rc == RC.OK && wrflag != 0)
                 {
-                    if (pBt.ReadOnly)
+                    if (shared.ReadOnly)
                         rc = RC.READONLY;
                     else
                     {
-                        rc = pBt.Pager.sqlite3PagerBegin(wrflag > 1, this.DB.sqlite3TempInMemory() ? 1 : 0);
+                        rc = shared.Pager.sqlite3PagerBegin(wrflag > 1, this.DB.sqlite3TempInMemory() ? 1 : 0);
                         if (rc == RC.OK)
-                            rc = pBt.newDatabase();
+                            rc = shared.newDatabase();
                     }
                 }
                 if (rc != RC.OK)
-                    pBt.unlockBtreeIfUnused();
-            } while (((int)rc & 0xFF) == (int)RC.BUSY && pBt.InTransaction == TRANS.NONE && btreeInvokeBusyHandler(pBt) != 0);
+                    shared.unlockBtreeIfUnused();
+            } while (((int)rc & 0xFF) == (int)RC.BUSY && shared.InTransaction == TRANS.NONE && btreeInvokeBusyHandler(shared) != 0);
             if (rc == RC.OK)
             {
-                if (this.inTrans == TRANS.NONE)
+                if (this.InTransaction == TRANS.NONE)
                 {
-                    pBt.Transactions++;
+                    shared.Transactions++;
 #if !SQLITE_OMIT_SHARED_CACHE
-                    if (p.sharable)
+                    if (Sharable)
                     {
-                        Debug.Assert(p.locks.pBtree == p && p.locks.iTable == 1);
-                        p.locks.eLock = LOCK.READ;
-                        p.locks.pNext = pBt.pLock;
-                        pBt.pLock = &p.Locks;
+                        Debug.Assert(Locks.Tree == this && Locks.TableID == 1);
+                        Locks.Lock = LOCK.READ;
+                        Locks.Next = shared.Locks;
+                        shared.Locks = Locks;
                     }
 #endif
                 }
-                this.inTrans = (wrflag != 0 ? TRANS.WRITE : TRANS.READ);
-                if (this.inTrans > pBt.InTransaction)
-                    pBt.InTransaction = this.inTrans;
+                this.InTransaction = (wrflag != 0 ? TRANS.WRITE : TRANS.READ);
+                if (this.InTransaction > shared.InTransaction)
+                    shared.InTransaction = this.InTransaction;
                 if (wrflag != 0)
                 {
-                    var pPage1 = pBt.Page1;
+                    var pPage1 = shared.Page1;
 #if !SQLITE_OMIT_SHARED_CACHE
-                    Debug.Assert(!pBt.pWriter);
-                    pBt.pWriter = p;
-                    pBt.isExclusive = (u8)(wrflag > 1);
+                    Debug.Assert(shared.Writer == null);
+                    shared.Writer = this;
+                    shared.IsExclusive = (wrflag > 1);
 #endif
                     // If the db-size header field is incorrect (as it may be if an old client has been writing the database file), update it now. Doing
                     // this sooner rather than later means the database size can safely  re-read the database size from page 1 if a savepoint or transaction
                     // rollback occurs within the transaction.
-                    if (pBt.Pages != ConvertEx.Get4(pPage1.Data, 28))
+                    if (shared.Pages != ConvertEx.Get4(pPage1.Data, 28))
                     {
                         rc = Pager.sqlite3PagerWrite(pPage1.DbPage);
                         if (rc == RC.OK)
-                            ConvertEx.Put4(pPage1.Data, 28, pBt.Pages);
+                            ConvertEx.Put4(pPage1.Data, 28, shared.Pages);
                     }
                 }
             }
@@ -413,7 +376,7 @@ pBt.secureDelete = true;
             if (rc == RC.OK && wrflag != 0)
                 // This call makes sure that the pager has the correct number of open savepoints. If the second parameter is greater than 0 and
                 // the sub-journal is not already open, then it will be opened here.
-                rc = pBt.Pager.sqlite3PagerOpenSavepoint(this.DB.nSavepoint);
+                rc = shared.Pager.sqlite3PagerOpenSavepoint(this.DB.nSavepoint);
             btreeIntegrity();
             sqlite3BtreeLeave();
             return rc;
@@ -423,7 +386,7 @@ pBt.secureDelete = true;
         public RC BeginStmt(int iStatement)
         {
             sqlite3BtreeEnter();
-            Debug.Assert(this.inTrans == TRANS.WRITE);
+            Debug.Assert(this.InTransaction == TRANS.WRITE);
             var pBt = this.Shared;
             Debug.Assert(!pBt.ReadOnly);
             Debug.Assert(iStatement > 0);
@@ -440,7 +403,7 @@ pBt.secureDelete = true;
         public RC Savepoint(SAVEPOINT op, int iSavepoint)
         {
             var rc = RC.OK;
-            if (this != null && this.inTrans == TRANS.WRITE)
+            if (this != null && this.InTransaction == TRANS.WRITE)
             {
                 Debug.Assert(op == SAVEPOINT.RELEASE || op == SAVEPOINT.ROLLBACK);
                 Debug.Assert(iSavepoint >= 0 || (iSavepoint == -1 && op == SAVEPOINT.ROLLBACK));
@@ -484,7 +447,7 @@ pBt.secureDelete = true;
         {
             var pBt = this.Shared;
             sqlite3BtreeEnter();
-            Debug.Assert(this.inTrans == TRANS.WRITE);
+            Debug.Assert(this.InTransaction == TRANS.WRITE);
             // Invalidate all incrblob cursors open on table iTable (assuming iTable is the root of a table b-tree - if it is not, the following call is a no-op).
             invalidateIncrblobCursors(this, 0, true);
             var rc = pBt.saveAllCursors((Pgno)iTable, null);
@@ -508,8 +471,8 @@ pBt.secureDelete = true;
         {
             var pBt = this.Shared;
             sqlite3BtreeEnter();
-            Debug.Assert(this.inTrans > TRANS.NONE);
-            Debug.Assert(querySharedCacheTableLock(this, MASTER_ROOT, BtreeLock.LOCK.READ) == RC.OK);
+            Debug.Assert(this.InTransaction > TRANS.NONE);
+            Debug.Assert(querySharedCacheTableLock(MASTER_ROOT, BtreeLock.LOCK.READ) == RC.OK);
             Debug.Assert(pBt.Page1 != null);
             Debug.Assert(idx >= 0 && idx <= 15);
             pMeta = ConvertEx.Get4(pBt.Page1.Data, 36 + idx * 4);
@@ -526,7 +489,7 @@ pBt.secureDelete = true;
             var pBt = this.Shared;
             Debug.Assert(idx >= 1 && idx <= 15);
             sqlite3BtreeEnter();
-            Debug.Assert(this.inTrans == TRANS.WRITE);
+            Debug.Assert(this.InTransaction == TRANS.WRITE);
             Debug.Assert(pBt.Page1 != null);
             var pP1 = pBt.Page1.Data;
             var rc = Pager.sqlite3PagerWrite(pBt.Page1.DbPage);
@@ -566,15 +529,15 @@ return rc;
         // was:sqlite3BtreeSchema
         public ISchema GetSchema(int nBytes, Func<ISchema> xNew, Action<ISchema> xFree)
         {
-            var pBt = this.Shared;
+            var shared = this.Shared;
             sqlite3BtreeEnter();
-            if (pBt.Schema == null && nBytes != 0)
+            if (shared.Schema == null && nBytes != 0)
             {
-                pBt.Schema = xNew();
-                pBt.xFreeSchema = xFree;
+                shared.Schema = xNew();
+                shared.xFreeSchema = xFree;
             }
             sqlite3BtreeLeave();
-            return pBt.Schema;
+            return shared.Schema;
         }
 
         // was:sqlite3BtreeSchemaLocked
@@ -582,35 +545,26 @@ return rc;
         {
             Debug.Assert(MutexEx.Held(this.DB.Mutex));
             sqlite3BtreeEnter();
-            var rc = querySharedCacheTableLock(this, MASTER_ROOT, BtreeLock.LOCK.READ);
+            var rc = querySharedCacheTableLock(MASTER_ROOT, LOCK.READ);
             Debug.Assert(rc == RC.OK || rc == RC.LOCKED_SHAREDCACHE);
             sqlite3BtreeLeave();
             return rc;
         }
 
 #if !SQLITE_OMIT_SHARED_CACHE
-        /*
-** Obtain a lock on the table whose root page is iTab.  The
-** lock is a write lock if isWritelock is true or a read lock
-** if it is false.
-*/
-        int sqlite3BtreeLockTable(Btree p, int iTab, byte isWriteLock)
+        // was:sqlite3BtreeLockTable
+        public RC LockTable(Pgno tableID, bool isWriteLock)
         {
-            int rc = SQLITE_OK;
-            Debug.Assert(p.inTrans != TRANS_NONE);
-            if (p.sharable)
+            var rc = RC.OK;
+            Debug.Assert(InTransaction != TRANS.NONE);
+            if (Sharable)
             {
-                u8 lockType = READ_LOCK + isWriteLock;
-                Debug.Assert(READ_LOCK + 1 == WRITE_LOCK);
-                Debug.Assert(isWriteLock == null || isWriteLock == 1);
-
-                sqlite3BtreeEnter(p);
-                rc = querySharedCacheTableLock(p, iTab, lockType);
-                if (rc == SQLITE_OK)
-                {
-                    rc = setSharedCacheTableLock(p, iTab, lockType);
-                }
-                sqlite3BtreeLeave(p);
+                var lockType = (isWriteLock ? LOCK.READ : LOCK.WRITE);
+                sqlite3BtreeEnter();
+                rc = querySharedCacheTableLock(tableID, lockType);
+                if (rc == RC.OK)
+                    rc = setSharedCacheTableLock(tableID, lockType);
+                sqlite3BtreeLeave();
             }
             return rc;
         }
@@ -620,14 +574,14 @@ return rc;
         public RC CommitPhaseOne(string zMaster)
         {
             var rc = RC.OK;
-            if (this.inTrans == TRANS.WRITE)
+            if (this.InTransaction == TRANS.WRITE)
             {
-                var pBt = this.Shared;
+                var shared = this.Shared;
                 sqlite3BtreeEnter();
 #if !SQLITE_OMIT_AUTOVACUUM
-                if (pBt.AutoVacuum)
+                if (shared.AutoVacuum)
                 {
-                    rc = MemPage.autoVacuumCommit(pBt);
+                    rc = MemPage.autoVacuumCommit(shared);
                     if (rc != RC.OK)
                     {
                         sqlite3BtreeLeave();
@@ -635,7 +589,7 @@ return rc;
                     }
                 }
 #endif
-                rc = pBt.Pager.sqlite3PagerCommitPhaseOne(zMaster, false);
+                rc = shared.Pager.sqlite3PagerCommitPhaseOne(zMaster, false);
                 sqlite3BtreeLeave();
             }
             return rc;
@@ -644,23 +598,23 @@ return rc;
         // was:sqlite3BtreeCommitPhaseTwo
         public RC CommitPhaseTwo(int bCleanup)
         {
-            if (this.inTrans == TRANS.NONE)
+            if (this.InTransaction == TRANS.NONE)
                 return RC.OK;
             sqlite3BtreeEnter();
             btreeIntegrity();
             // If the handle has a write-transaction open, commit the shared-btrees transaction and set the shared state to TRANS_READ.
-            if (this.inTrans == TRANS.WRITE)
+            if (this.InTransaction == TRANS.WRITE)
             {
-                var pBt = this.Shared;
-                Debug.Assert(pBt.InTransaction == TRANS.WRITE);
-                Debug.Assert(pBt.Transactions > 0);
-                var rc = pBt.Pager.sqlite3PagerCommitPhaseTwo();
+                var shared = this.Shared;
+                Debug.Assert(shared.InTransaction == TRANS.WRITE);
+                Debug.Assert(shared.Transactions > 0);
+                var rc = shared.Pager.sqlite3PagerCommitPhaseTwo();
                 if (rc != RC.OK && bCleanup == 0)
                 {
                     sqlite3BtreeLeave();
                     return rc;
                 }
-                pBt.InTransaction = TRANS.READ;
+                shared.InTransaction = TRANS.READ;
             }
             btreeEndTransaction();
             sqlite3BtreeLeave();
@@ -679,18 +633,18 @@ return rc;
         }
 
         // was:sqlite3BtreeTripAllCursors
-        public void TripAllCursors(int errCode)
+        public void TripAllCursors(RC errCode)
         {
             sqlite3BtreeEnter();
-            for (var p = this.Shared.Cursors; p != null; p = p.Next)
+            for (var cursor = this.Shared.Cursors; cursor != null; cursor = cursor.Next)
             {
-                p.Clear();
-                p.State = CURSOR.FAULT;
-                p.SkipNext = errCode;
-                for (var i = 0; i <= p.PageID; i++)
+                cursor.Clear();
+                cursor.State = CURSOR.FAULT;
+                cursor.SkipNext = errCode;
+                for (var i = 0; i <= cursor.PageID; i++)
                 {
-                    p.Pages[i].releasePage();
-                    p.Pages[i] = null;
+                    cursor.Pages[i].releasePage();
+                    cursor.Pages[i] = null;
                 }
             }
             sqlite3BtreeLeave();
@@ -700,46 +654,39 @@ return rc;
         public RC Rollback()
         {
             sqlite3BtreeEnter();
-            var pBt = this.Shared;
-            var rc = pBt.saveAllCursors(0, null);
+            var shared = this.Shared;
+            var rc = shared.saveAllCursors(0, null);
 #if !SQLITE_OMIT_SHARED_CACHE
-if( rc!=SQLITE_OK ){
-/* This is a horrible situation. An IO or malloc() error occurred whilst
-** trying to save cursor positions. If this is an automatic rollback (as
-** the result of a constraint, malloc() failure or IO error) then
-** the cache may be internally inconsistent (not contain valid trees) so
-** we cannot simply return the error to the caller. Instead, abort
-** all queries that may be using any of the cursors that failed to save.
-*/
-sqlite3BtreeTripAllCursors(p, rc);
-}
+            if (rc != RC.OK)
+                // This is a horrible situation. An IO or malloc() error occurred whilst trying to save cursor positions. If this is an automatic rollback (as
+                // the result of a constraint, malloc() failure or IO error) then the cache may be internally inconsistent (not contain valid trees) so
+                // we cannot simply return the error to the caller. Instead, abort all queries that may be using any of the cursors that failed to save.
+                TripAllCursors(rc);
 #endif
             btreeIntegrity();
-            if (this.inTrans == TRANS.WRITE)
+            if (this.InTransaction == TRANS.WRITE)
             {
-                Debug.Assert(pBt.InTransaction == TRANS.WRITE);
-                var rc2 = pBt.Pager.sqlite3PagerRollback();
+                Debug.Assert(shared.InTransaction == TRANS.WRITE);
+                var rc2 = shared.Pager.sqlite3PagerRollback();
                 if (rc2 != RC.OK)
                     rc = rc2;
                 // The rollback may have destroyed the pPage1.aData value.  So call btreeGetPage() on page 1 again to make
                 // sure pPage1.aData is set correctly.
                 var pPage1 = new MemPage();
-                if (pBt.btreeGetPage(1, ref pPage1, 0) == RC.OK)
+                if (shared.btreeGetPage(1, ref pPage1, 0) == RC.OK)
                 {
                     Pgno nPage = ConvertEx.Get4(pPage1.Data, 28);
                     if (nPage == 0)
-                        pBt.Pager.sqlite3PagerPagecount(out nPage);
-                    pBt.Pages = nPage;
+                        shared.Pager.sqlite3PagerPagecount(out nPage);
+                    shared.Pages = nPage;
                     pPage1.releasePage();
                 }
-                Debug.Assert(pBt.countWriteCursors() == 0);
-                pBt.InTransaction = TRANS.READ;
+                Debug.Assert(shared.countWriteCursors() == 0);
+                shared.InTransaction = TRANS.READ;
             }
-
             btreeEndTransaction();
             sqlite3BtreeLeave();
             return rc;
         }
-
     }
 }

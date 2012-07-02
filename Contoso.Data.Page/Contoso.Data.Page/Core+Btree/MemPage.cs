@@ -1,6 +1,8 @@
 ﻿using System;
 using DbPage = Contoso.Core.PgHdr;
 using Pgno = System.UInt32;
+using System.Diagnostics;
+using Contoso.Sys;
 
 namespace Contoso.Core
 {
@@ -74,5 +76,18 @@ namespace Contoso.Core
         internal static Pgno PTRMAP_PAGENO(BtShared pBt, Pgno pgno) { return pBt.ptrmapPageno(pgno); }
         internal static uint PTRMAP_PTROFFSET(uint pgptrmap, uint pgno) { return (5 * (pgno - pgptrmap - 1)); }
         internal static bool PTRMAP_ISPAGE(BtShared pBt, uint pgno) { return (PTRMAP_PAGENO((pBt), (pgno)) == (pgno)); }
+
+#if DEBUG
+        internal static void assertParentIndex(MemPage pParent, int iIdx, Pgno iChild)
+        {
+            Debug.Assert(iIdx <= pParent.Cells);
+            if (iIdx == pParent.Cells)
+                Debug.Assert(ConvertEx.Get4(pParent.Data, pParent.HeaderOffset + 8) == iChild);
+            else
+                Debug.Assert(ConvertEx.Get4(pParent.Data, pParent.FindCell(iIdx)) == iChild);
+        }
+#else
+        internal static void assertParentIndex(MemPage pParent, int iIdx, Pgno iChild) { }
+#endif
     }
 }

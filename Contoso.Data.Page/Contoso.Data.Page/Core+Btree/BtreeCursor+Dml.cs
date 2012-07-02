@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using Contoso.Sys;
 using TRANS = Contoso.Core.Btree.TRANS;
+using LOCK = Contoso.Core.Btree.BtreeLock.LOCK;
 
 namespace Contoso.Core
 {
@@ -86,7 +87,7 @@ namespace Contoso.Core
         }
 
         // was:sqlite3BtreeInsert
-        public RC Insert(byte[] key, long nKey, byte[] data, int nData, int nZero, int appendBias, int seekResult)
+        public RC Insert(byte[] key, long nKey, byte[] data, int nData, int nZero, bool appendBiasRight, int seekResult)
         {
             var loc = seekResult; // -1: before desired location  +1: after
             var szNew = 0;
@@ -102,7 +103,7 @@ namespace Contoso.Core
             }
             Debug.Assert(HoldsMutex());
             Debug.Assert(this.Writeable && pBt.InTransaction == TRANS.WRITE && !pBt.ReadOnly);
-            Debug.Assert(Btree.hasSharedCacheTableLock(p, this.RootID, this.KeyInfo != null ? 1 : 0, 2));
+            Debug.Assert(p.hasSharedCacheTableLock(this.RootID, (this.KeyInfo != null), LOCK.WRITE));
             // Assert that the caller has been consistent. If this cursor was opened expecting an index b-tree, then the caller should be inserting blob
             // keys with no associated data. If the cursor was opened expecting an intkey table, the caller should be inserting integer keys with a
             // blob of associated data.
@@ -121,7 +122,7 @@ namespace Contoso.Core
                 return rc;
             if (loc == 0)
             {
-                rc = BtreeMoveTo(key, nKey, appendBias, ref loc);
+                rc = BtreeMoveTo(key, nKey, appendBiasRight, ref loc);
                 if (rc != RC.OK)
                     return rc;
             }
@@ -206,8 +207,8 @@ namespace Contoso.Core
             Debug.Assert(pBt.InTransaction == TRANS.WRITE);
             Debug.Assert(!pBt.ReadOnly);
             Debug.Assert(this.Writeable);
-            Debug.Assert(Btree.hasSharedCacheTableLock(p, this.RootID, (this.KeyInfo != null ? 1 : 0), 2));
-            Debug.Assert(!Btree.hasReadConflicts(p, this.RootID));
+            Debug.Assert(p.hasSharedCacheTableLock(this.RootID, (this.KeyInfo != null), LOCK.WRITE));
+            Debug.Assert(!p.hasReadConflicts(this.RootID));
             if (Check.NEVER(this.PagesIndexs[this.PageID] >= this.Pages[this.PageID].Cells) || Check.NEVER(this.State != CursorState.VALID))
                 return RC.ERROR;
             // If this is a delete operation to remove a row from a table b-tree, invalidate any incrblob cursors open on the row being deleted.

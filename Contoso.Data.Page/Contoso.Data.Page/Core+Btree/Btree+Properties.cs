@@ -36,7 +36,7 @@ namespace Contoso.Core
         public bool IsInTrans()
         {
             Debug.Assert(this == null || MutexEx.Held(this.DB.Mutex));
-            return (this != null && (this.inTrans == TRANS.WRITE));
+            return (this != null && (this.InTransaction == TRANS.WRITE));
         }
 
         // was:sqlite3BtreeLastPage
@@ -175,7 +175,7 @@ return BTREE.AUTOVACUUM_NONE;
         public bool IsInReadTrans()
         {
             Debug.Assert(MutexEx.Held(this.DB.Mutex));
-            return (this.inTrans != TRANS.NONE);
+            return (this.InTransaction != TRANS.NONE);
         }
 
         // was:sqlite3BtreeIsInBackup
@@ -189,7 +189,7 @@ return BTREE.AUTOVACUUM_NONE;
         public RC SetVersion(int iVersion)
         {
             var pBt = this.Shared;
-            Debug.Assert(this.inTrans == TRANS.NONE);
+            Debug.Assert(this.InTransaction == TRANS.NONE);
             Debug.Assert(iVersion == 1 || iVersion == 2);
             // If setting the version fields to 1, do not automatically open the WAL connection, even if the version fields are currently set to 2.
             pBt.DoNotUseWal = iVersion == 1;

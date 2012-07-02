@@ -7,6 +7,7 @@ using Pgno = System.UInt32;
 using PTRMAP = Contoso.Core.MemPage.PTRMAP;
 using SAVEPOINT = Contoso.Core.Pager.SAVEPOINT;
 using VFSOPEN = Contoso.Sys.VirtualFileSystem.OPEN;
+using LOCK = Contoso.Core.Btree.BtreeLock.LOCK;
 
 namespace Contoso.Core
 {
@@ -18,26 +19,26 @@ namespace Contoso.Core
             var pBt = this.Shared;
             Debug.Assert(sqlite3BtreeHoldsMutex());
             pBt.btreeClearHasContent();
-            if (this.inTrans > TRANS.NONE && this.DB.activeVdbeCnt > 1)
+            if (this.InTransaction > TRANS.NONE && this.DB.activeVdbeCnt > 1)
             {
                 // If there are other active statements that belong to this database handle, downgrade to a read-only transaction. The other statements
                 // may still be reading from the database.
-                downgradeAllSharedCacheTableLocks(this);
-                this.inTrans = TRANS.READ;
+                downgradeAllSharedCacheTableLocks();
+                this.InTransaction = TRANS.READ;
             }
             else
             {
                 // If the handle had any kind of transaction open, decrement the transaction count of the shared btree. If the transaction count
                 // reaches 0, set the shared state to TRANS_NONE. The unlockBtreeIfUnused() call below will unlock the pager.  */
-                if (this.inTrans != TRANS.NONE)
+                if (this.InTransaction != TRANS.NONE)
                 {
-                    clearAllSharedCacheTableLocks(this);
+                    clearAllSharedCacheTableLocks();
                     pBt.Transactions--;
                     if (pBt.Transactions == 0)
                         pBt.InTransaction = TRANS.NONE;
                 }
                 // Set the current transaction state to TRANS_NONE and unlock the pager if this call closed the only read or write transaction.
-                this.inTrans = TRANS.NONE;
+                this.InTransaction = TRANS.NONE;
                 pBt.unlockBtreeIfUnused();
             }
             btreeIntegrity();
@@ -72,11 +73,11 @@ namespace Contoso.Core
             Debug.Assert(sqlite3BtreeHoldsMutex());
             // The following Debug.Assert statements verify that if this is a sharable b-tree database, the connection is holding the required table locks,
             // and that no other connection has any open cursor that conflicts with this lock.
-            Debug.Assert(hasSharedCacheTableLock(this, (uint)iTable, pKeyInfo != null ? 1 : 0, wrFlag ? 1 : 2));
-            Debug.Assert(!wrFlag || !hasReadConflicts(this, (uint)iTable));
+            Debug.Assert(hasSharedCacheTableLock((uint)iTable, (pKeyInfo != null), (wrFlag ? LOCK.READ : LOCK.WRITE)));
+            Debug.Assert(!wrFlag || !hasReadConflicts((uint)iTable));
             // Assert that the caller has opened the required transaction.
-            Debug.Assert(this.inTrans > TRANS.NONE);
-            Debug.Assert(!wrFlag || this.inTrans == TRANS.WRITE);
+            Debug.Assert(this.InTransaction > TRANS.NONE);
+            Debug.Assert(!wrFlag || this.InTransaction == TRANS.WRITE);
             var pBt = this.Shared;                 // Shared b-tree handle
             Debug.Assert(pBt.Page1 != null && pBt.Page1.Data != null);
             if (Check.NEVER(wrFlag && pBt.ReadOnly))
@@ -210,7 +211,7 @@ namespace Contoso.Core
             MemPage pPage = null;
             var pBt = this.Shared;
             Debug.Assert(sqlite3BtreeHoldsMutex());
-            Debug.Assert(this.inTrans == TRANS.WRITE);
+            Debug.Assert(this.InTransaction == TRANS.WRITE);
             // It is illegal to drop a table if any cursors are open on the database. This is because in auto-vacuum mode the backend may
             // need to move another root-page to fill a gap left by the deleted root page. If an open cursor was using this page a problem would occur.
             // This error is caught long before control reaches this point.
