@@ -8,6 +8,38 @@ namespace Contoso.Core
     public partial class MemPage
     {
 #if !SQLITE_OMIT_AUTOVACUUM
+        internal void ptrmapPutOvflPtr(int pCell, ref RC pRC)
+        {
+            if (pRC != 0)
+                return;
+            var info = new CellInfo();
+            Debug.Assert(pCell != 0);
+            btreeParseCellPtr(pCell, ref info);
+            Debug.Assert((info.nData + (this.HasIntKey ? 0 : info.nKey)) == info.nPayload);
+            if (info.iOverflow != 0)
+            {
+                Pgno ovfl = ConvertEx.Get4(this.Data, pCell, info.iOverflow);
+                this.Shared.ptrmapPut(ovfl, PTRMAP.OVERFLOW1, this.ID, ref pRC);
+            }
+        }
+
+        internal void ptrmapPutOvflPtr(byte[] pCell, ref RC pRC)
+        {
+            if (pRC != 0)
+                return;
+            var info = new CellInfo();
+            Debug.Assert(pCell != null);
+            btreeParseCellPtr(pCell, ref info);
+            Debug.Assert((info.nData + (this.HasIntKey ? 0 : info.nKey)) == info.nPayload);
+            if (info.iOverflow != 0)
+            {
+                Pgno ovfl = ConvertEx.Get4(pCell, info.iOverflow);
+                this.Shared.ptrmapPut(ovfl, PTRMAP.OVERFLOW1, this.ID, ref pRC);
+            }
+        }
+#endif
+
+#if !SQLITE_OMIT_AUTOVACUUM
         internal RC setChildPtrmaps()
         {
             var hasInitLast = HasInit;
@@ -232,7 +264,7 @@ namespace Contoso.Core
         {
             var pBt = p.Shared;
             p.sqlite3BtreeEnter();
-            Debug.Assert(pBt.InTransaction == TRANS.WRITE && p.inTrans == TRANS.WRITE);
+            Debug.Assert(pBt.InTransaction == TRANS.WRITE && p.InTransaction == TRANS.WRITE);
             RC rc;
             if (!pBt.AutoVacuum)
                 rc = RC.DONE;

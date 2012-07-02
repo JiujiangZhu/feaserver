@@ -1,5 +1,6 @@
 ﻿using Pgno = System.UInt32;
 using System.Diagnostics;
+using Contoso.Sys;
 
 namespace Contoso.Core
 {
@@ -26,7 +27,7 @@ namespace Contoso.Core
         public MemPage.CellInfo Info = new MemPage.CellInfo();      // A parse of the cell we are pointing at
         public byte[] Key;                 // Saved key that was cursor's last known position
         public long NKey;                   // Size of pKey, or last integer key
-        public int SkipNext;                // Prev() is noop if negative. Next() is noop if positive
+        public RC SkipNext;                // Prev() is noop if negative. Next() is noop if positive
         public bool Writeable;              // True if writable
         public bool AtLast;                 // VdbeCursor pointing to the last entry
         public bool ValidNKey;              // True if info.nKey is valid
@@ -62,11 +63,7 @@ namespace Contoso.Core
             PageID = 0;
         }
 
-        private BtreeCursor Clone()
-        {
-            var cp = (BtreeCursor)MemberwiseClone();
-            return cp;
-        }
+        private BtreeCursor Clone() { return (BtreeCursor)MemberwiseClone(); }
 
 #if DEBUG
         // was:cursorHoldsMutex
@@ -76,31 +73,6 @@ namespace Contoso.Core
         internal bool HoldsMutex() { return true; }
 #endif
 
-#if DEBUG
-        // was:assertCellInfo
-        private void AssertCellInfo()
-        {
-            var id = PageID;
-            var info = new MemPage.CellInfo();
-            Pages[id].ParseCell(PagesIndexs[id], ref info);
-            Debug.Assert(info.GetHashCode() == Info.GetHashCode() || info.Equals(Info));
-        }
-#else
-        // was:assertCellInfo
-        private void AssertCellInfo() { }
-#endif
 
-        // was:getCellInfo
-        private void GetCellInfo()
-        {
-            if (Info.nSize == 0)
-            {
-                var id = PageID;
-                Pages[id].ParseCell(PagesIndexs[id], ref Info);
-                ValidNKey = true;
-            }
-            else
-                AssertCellInfo();
-        }
     }
 }

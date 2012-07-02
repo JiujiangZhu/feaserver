@@ -4,6 +4,8 @@ namespace Contoso.Core
 {
     public class sqlite3
     {
+        private const int SQLITE_MAX_ATTACHED = 10;
+
         public class BusyHandler
         {
             public Func<object, int, int> xFunc;  // The busy callback
@@ -39,6 +41,17 @@ namespace Contoso.Core
             EnableTrigger = 0x40000000,
         }
 
+        public class Db
+        {
+            public string Name;         // Name of this database
+            public Btree Tree;          // The B Tree structure for this database file
+            public byte InTransaction;  // 0: not writable.  1: Transaction.  2: Checkpoint
+            public byte SafetyLevel;    // How aggressive at syncing data to disk 
+            public ISchema Schema;      // Pointer to database schema (possibly shared)
+        }
+
+        public Db[] AllocDBs = new Db[SQLITE_MAX_ATTACHED];
+        public int DBs { get; set; }
         public sqlite3_mutex Mutex { get; set; }
         public SQLITE flags { get; set; }
         public BusyHandler busyHandler { get; set; }

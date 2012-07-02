@@ -41,7 +41,7 @@ namespace Contoso.Core
         }
 
         // was:btreeMoveto
-        private RC BtreeMoveTo(byte[] key, long nKey, int bias, ref int pRes)
+        private RC BtreeMoveTo(byte[] key, long nKey, bool biasRight, ref int pRes)
         {
             Btree.UnpackedRecord pIdxKey; // Unpacked index key
             var aSpace = new Btree.UnpackedRecord();
@@ -52,7 +52,7 @@ namespace Contoso.Core
             }
             else
                 pIdxKey = null;
-            var rc = MoveToUnpacked(pIdxKey, nKey, bias != 0 ? 1 : 0, ref pRes);
+            var rc = MoveToUnpacked(pIdxKey, nKey, biasRight, ref pRes);
             if (key != null)
                 Btree._vdbe.sqlite3VdbeDeleteUnpackedRecord(pIdxKey);
             return rc;
@@ -64,9 +64,9 @@ namespace Contoso.Core
             Debug.Assert(HoldsMutex());
             Debug.Assert(State >= CursorState.REQUIRESEEK);
             if (State == CursorState.FAULT)
-                return (RC)SkipNext;
+                return SkipNext;
             State = CursorState.INVALID;
-            var rc = BtreeMoveTo(Key, NKey, 0, ref SkipNext);
+            RC rc; { int skipNextAsInt = (int)SkipNext; rc = BtreeMoveTo(Key, NKey, false, ref skipNextAsInt); SkipNext = (RC)skipNextAsInt; }
             if (rc == RC.OK)
             {
                 Key = null;

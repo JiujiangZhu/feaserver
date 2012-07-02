@@ -7,11 +7,11 @@ namespace Contoso.Core
 {
     public partial class Btree
     {
-        const int SQLITE_DEFAULT_CACHE_SIZE = 2000;
-        const string SQLITE_FILE_HEADER = "SQLite format 3\0";
+        private const int SQLITE_DEFAULT_CACHE_SIZE = 2000;
+        private const string SQLITE_FILE_HEADER = "SQLite format 3\0";
         internal static byte[] zMagicHeader = Encoding.UTF8.GetBytes(SQLITE_FILE_HEADER);
-        const int MASTER_ROOT = 1;
-        const int EXTRA_SIZE = 0;
+        private const int MASTER_ROOT = 1;
+        private const int EXTRA_SIZE = 0;
         internal static IVdbe _vdbe;
 
         public enum TRANS : byte
@@ -80,17 +80,17 @@ namespace Contoso.Core
             public Mem[] aMem;          // Values
         }
 
-        public sqlite3 DB;        // The database connection holding this Btree 
-        public BtShared Shared;      // Sharable content of this Btree 
-        public TRANS inTrans;     // TRANS_NONE, TRANS_READ or TRANS_WRITE 
-        public bool sharable;     // True if we can share pBt with another db 
-        public bool locked;       // True if db currently has pBt locked 
-        public int wantToLock;    // Number of nested calls to sqlite3BtreeEnter() 
-        public int nBackup;       // Number of backup operations reading this btree 
-        public Btree pNext;       // List of other sharable Btrees from the same db 
-        public Btree pPrev;       // Back pointer of the same list 
+        public sqlite3 DB;          // The database connection holding this Btree 
+        public BtShared Shared;     // Sharable content of this Btree 
+        public TRANS InTransaction; // TRANS_NONE, TRANS_READ or TRANS_WRITE 
+        public bool Sharable;       // True if we can share pBt with another db 
+        public bool Locked;         // True if db currently has pBt locked 
+        public int WantToLock;      // Number of nested calls to sqlite3BtreeEnter() 
+        public int nBackup;         // Number of backup operations reading this btree 
+        public Btree Next;          // List of other sharable Btrees from the same db 
+        public Btree Prev;          // Back pointer of the same list 
 #if !SQLITE_OMIT_SHARED_CACHE
-        public BtreeLock Locks;              // Object used to lock page 1 
+        public BtreeLock Locks;     // Object used to lock page 1 
 #endif
 
         internal static int MX_CELL_SIZE(BtShared pBt) { return (int)(pBt.PageSize - 8); }
@@ -123,7 +123,7 @@ namespace Contoso.Core
         //void sqlite3BtreeEnterCursor(BtCursor);
         //void sqlite3BtreeLeaveCursor(BtCursor);
         //void sqlite3BtreeLeaveAll(sqlite3);
-#if !DEBUG
+#if DEBUG
         // These routines are used inside Debug.Assert() statements only.
         internal bool sqlite3BtreeHoldsMutex() { return true; }
         internal static bool sqlite3BtreeHoldsAllMutexes(sqlite3 x) { return true; }
@@ -143,7 +143,7 @@ namespace Contoso.Core
         internal void btreeIntegrity()
         {
             Debug.Assert(Shared.InTransaction != TRANS.NONE || Shared.Transactions == 0);
-            Debug.Assert(Shared.InTransaction >= inTrans);
+            Debug.Assert(Shared.InTransaction >= InTransaction);
         }
 #else
         internal void btreeIntegrity() { }

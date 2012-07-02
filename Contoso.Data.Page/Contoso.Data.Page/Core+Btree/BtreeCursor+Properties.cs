@@ -9,7 +9,10 @@ namespace Contoso.Core
     public partial class BtreeCursor
     {
         // was:sqlite3BtreeCursorSize
-        public int sqlite3BtreeCursorSize() { return -1; }
+        public int CursorSize
+        {
+            get { return -1; }
+        }
 
         // was:sqlite3BtreeGetCachedRowid/sqlite3BtreeSetCachedRowid
         public long CachedRowID
@@ -17,19 +20,25 @@ namespace Contoso.Core
             get { return _cachedRowID; }
             set
             {
-                for (var p = Shared.Cursors; p != null; p = p.Next)
-                    if (p.RootID == RootID)
-                        p._cachedRowID = value;
+                for (var cursor = Shared.Cursors; cursor != null; cursor = cursor.Next)
+                    if (cursor.RootID == RootID)
+                        cursor._cachedRowID = value;
                 Debug.Assert(_cachedRowID == value);
             }
         }
 
 #if DEBUG
         // was:sqlite3BtreeCursorIsValid
-        public bool IsValid { get { return this != null && this.State == CursorState.VALID; } }
+        public bool IsValid
+        {
+            get { return this != null && this.State == CursorState.VALID; }
+        }
 #else
         // was:sqlite3BtreeCursorIsValid
-        public bool IsValid { get { return true; } }
+        public bool IsValid 
+        { 
+            get { return true; } 
+        }
 #endif
 
         // was:sqlite3BtreeKeySize
@@ -50,6 +59,33 @@ namespace Contoso.Core
             Debug.Assert(State == CursorState.VALID);
             GetCellInfo();
             return Info.nData;
+        }
+
+#if DEBUG
+        // was:assertCellInfo
+        private void AssertCellInfo()
+        {
+            var id = PageID;
+            var info = new MemPage.CellInfo();
+            Pages[id].ParseCell(PagesIndexs[id], ref info);
+            Debug.Assert(info.GetHashCode() == Info.GetHashCode() || info.Equals(Info));
+        }
+#else
+        // was:assertCellInfo
+        private void AssertCellInfo() { }
+#endif
+
+        // was:getCellInfo
+        private void GetCellInfo()
+        {
+            if (Info.nSize == 0)
+            {
+                var id = PageID;
+                Pages[id].ParseCell(PagesIndexs[id], ref Info);
+                ValidNKey = true;
+            }
+            else
+                AssertCellInfo();
         }
     }
 }

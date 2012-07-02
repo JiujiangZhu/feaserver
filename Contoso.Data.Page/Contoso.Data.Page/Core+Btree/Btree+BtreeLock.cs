@@ -14,7 +14,7 @@ namespace Contoso.Core
             }
 
             public Btree Tree;          // Btree handle holding this lock
-            public Pgno TablePageID;    // Root page of table
+            public Pgno TableID;    // Root page of table
             public LOCK Lock;         // READ_LOCK or WRITE_LOCK
             public BtreeLock Next;      // Next in BtShared.pLock list
         }

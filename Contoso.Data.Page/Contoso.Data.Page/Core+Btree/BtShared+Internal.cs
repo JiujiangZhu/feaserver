@@ -4,6 +4,7 @@ using Contoso.Core.Name;
 using Contoso.Sys;
 using CURSOR = Contoso.Core.BtreeCursor.CursorState;
 using DbPage = Contoso.Core.PgHdr;
+using MUTEX = Contoso.Core.MutexEx.MUTEX;
 using Pgno = System.UInt32;
 using PTRMAP = Contoso.Core.MemPage.PTRMAP;
 using TRANS = Contoso.Core.Btree.TRANS;
@@ -12,48 +13,6 @@ namespace Contoso.Core
 {
     public partial class BtShared
     {
-        #region Properties
-
-        internal RC btreeSetHasContent(Pgno pgno)
-        {
-            var rc = RC.OK;
-            if (this.HasContent == null)
-            {
-                Debug.Assert(pgno <= this.Pages);
-                this.HasContent = new Bitvec(this.Pages);
-            }
-            if (rc == RC.OK && pgno <= this.HasContent.sqlite3BitvecSize())
-                rc = this.HasContent.sqlite3BitvecSet(pgno);
-            return rc;
-        }
-
-        internal bool btreeGetHasContent(Pgno pgno)
-        {
-            var p = this.HasContent;
-            return (p != null && (pgno > p.sqlite3BitvecSize() || p.sqlite3BitvecTest(pgno) != 0));
-        }
-
-        internal void btreeClearHasContent()
-        {
-            Bitvec.sqlite3BitvecDestroy(ref this.HasContent);
-            this.HasContent = null;
-        }
-
-#if DEBUG
-        internal int countWriteCursors()
-        {
-            var r = 0;
-            for (var pCur = this.Cursors; pCur != null; pCur = pCur.Next)
-                if (pCur.Writeable && pCur.State != CURSOR.FAULT)
-                    r++;
-            return r;
-        }
-#else
-        internal int countWriteCursors() { return -1; }
-#endif
-
-        #endregion
-
         internal RC saveAllCursors(Pgno iRoot, BtreeCursor pExcept)
         {
             Debug.Assert(MutexEx.Held(this.Mutex));
@@ -82,9 +41,9 @@ namespace Contoso.Core
             return ret;
         }
 
-        internal void ptrmapPut(Pgno key, PTRMAP eType, Pgno parent, ref RC pRC)
+        internal void ptrmapPut(Pgno key, PTRMAP eType, Pgno parent, ref RC rRC)
         {
-            if (pRC != 0)
+            if (rRC != RC.OK)
                 return;
             Debug.Assert(MutexEx.Held(this.Mutex));
             // The master-journal page number must never be used as a pointer map page
@@ -92,7 +51,7 @@ namespace Contoso.Core
             Debug.Assert(this.AutoVacuum);
             if (key == 0)
             {
-                pRC = SysEx.SQLITE_CORRUPT_BKPT();
+                rRC = SysEx.SQLITE_CORRUPT_BKPT();
                 return;
             }
             var iPtrmap = MemPage.PTRMAP_PAGENO(this, key);
@@ -100,13 +59,13 @@ namespace Contoso.Core
             var rc = this.Pager.sqlite3PagerGet(iPtrmap, ref pDbPage);
             if (rc != RC.OK)
             {
-                pRC = rc;
+                rRC = rc;
                 return;
             }
             var offset = (int)MemPage.PTRMAP_PTROFFSET(iPtrmap, key);
             if (offset < 0)
             {
-                pRC = SysEx.SQLITE_CORRUPT_BKPT();
+                rRC = SysEx.SQLITE_CORRUPT_BKPT();
                 goto ptrmap_exit;
             }
             Debug.Assert(offset <= (int)this.UsableSize - 5);
@@ -114,7 +73,7 @@ namespace Contoso.Core
             if (eType != (PTRMAP)pPtrmap[offset] || ConvertEx.Get4(pPtrmap, offset + 1) != parent)
             {
                 Btree.TRACE("PTRMAP_UPDATE: {0}->({1},{2})", key, eType, parent);
-                pRC = rc = Pager.sqlite3PagerWrite(pDbPage);
+                rRC = rc = Pager.sqlite3PagerWrite(pDbPage);
                 if (rc == RC.OK)
                 {
                     pPtrmap[offset] = (byte)eType;
@@ -160,25 +119,25 @@ namespace Contoso.Core
         {
 #if !SQLITE_OMIT_SHARED_CACHE
             sqlite3_mutex pMaster;
-            BtShared pList;
+            BtShared list;
             bool removed = false;
             Debug.Assert(MutexEx.sqlite3_mutex_notheld(Mutex));
-            pMaster = MutexEx.sqlite3MutexAlloc(SQLITE_MUTEX_STATIC_MASTER);
+            pMaster = MutexEx.sqlite3MutexAlloc(MUTEX.STATIC_MASTER);
             MutexEx.sqlite3_mutex_enter(pMaster);
             nRef--;
             if (nRef <= 0)
             {
-                if (GLOBAL(BtShared, sqlite3SharedCacheList) == this)
-                    GLOBAL(BtShared, sqlite3SharedCacheList) = pNext;
+                if (SysEx.getGLOBAL<BtShared>(Btree.s_sqlite3SharedCacheList) == this)
+                    SysEx.setGLOBAL<BtShared>(Btree.s_sqlite3SharedCacheList, Next);
                 else
                 {
-                    pList = GLOBAL(BtShared, sqlite3SharedCacheList);
-                    while (Check.ALWAYS(pList) && pList.pNext != this)
-                        pList = pList.pNext;
-                    if (Check.ALWAYS(pList))
-                        pList.pNext = pNext;
+                    list = SysEx.getGLOBAL<BtShared>(Btree.s_sqlite3SharedCacheList);
+                    while (Check.ALWAYS(list) && list.Next != this)
+                        list = list.Next;
+                    if (Check.ALWAYS(list))
+                        list.Next = Next;
                 }
-                if (SQLITE_THREADSAFE)
+                if (MutexEx.SQLITE_THREADSAFE)
                     MutexEx.sqlite3_mutex_free(Mutex);
                 removed = true;
             }
