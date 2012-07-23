@@ -1,0 +1,69 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{35E5EAD8-2E49-4732-BE87-9FD19955E473}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Contoso.Core</RootNamespace>
+    <AssemblyName>Contoso.Core</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;IOTRACE SQLITE_THREADSAFE SQLITE_HAS_CODEC SQLITE_OMIT_WAL</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Collections\Bitvec.cs" />
+    <Compile Include="Security\cipher_ctx.cs" />
+    <Compile Include="IO\FileEx+Vfs.cs" />
+    <Compile Include="IO\FileEx.cs" />
+    <Compile Include="Collections\HashEx.cs" />
+    <Compile Include="MallocEx.cs" />
+    <Compile Include="Threading\MutexEx.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ArrayEx.cs" />
+    <Compile Include="Check.cs" />
+    <Compile Include="ConvertEx.cs" />
+    <Compile Include="IO\MemJournalFile.cs" />
+    <Compile Include="RC.cs" />
+    <Compile Include="Threading\sqlite3_mutex.cs" />
+    <Compile Include="StringEx.cs" />
+    <Compile Include="SysEx.cs" />
+    <Compile Include="UtilEx.cs" />
+    <Compile Include="IO\VirtualFile+Locking.cs" />
+    <Compile Include="IO\VirtualFile+Stream.cs" />
+    <Compile Include="IO\VirtualFile+Wal.cs" />
+    <Compile Include="IO\VirtualFile.cs" />
+    <Compile Include="IO\VirtualFileSystem.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

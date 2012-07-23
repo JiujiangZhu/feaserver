@@ -1,0 +1,109 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{60A0794B-3ED6-46D5-AF69-54C8FE17A7C6}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Contoso.Data.Page</RootNamespace>
+    <AssemblyName>Contoso.Data.Page</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;IOTRACE NO_TCL SQLITE_ASCII SQLITE_DISABLE_LFS SQLITE_HAS_CODEC SQLITE_MEM_POOL SQLITE_MUTEX_W32 SQLITE_THREADSAFE SQLITE_OMIT_AUTHORIZATION SQLITE_OMIT_GET_TABLE SQLITE_OMIT_LOOKASIDE SQLITE_OMIT_UTF16 SQLITE_OMIT_WAL VDBE_PROFILE_OFF</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <PlatformTarget>x86</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Core\codec_ctx.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core+Pager\Name\PCache1+Allocation.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core+Pager\Name\PCache1+General.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core+Pager\Name\PCache1+Interface.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core+Pager\Pager+Aquire.cs" />
+    <Compile Include="Core+Pager\Pager+Commit.cs" />
+    <Compile Include="Core+Pager\Pager+Debug.cs" />
+    <Compile Include="Core+Pager\Pager+File.cs" />
+    <Compile Include="Core+Pager\Pager+Journal.cs" />
+    <Compile Include="Core+Pager\Pager+Lock.cs" />
+    <Compile Include="Core+Pager\Pager+Pager.cs" />
+    <Compile Include="Core+Pager\Pager+Properties.cs" />
+    <Compile Include="Core+Pager\Pager+Savepoint.cs" />
+    <Compile Include="Core+Pager\Pager+Stream.cs" />
+    <Compile Include="Core+Pager\Pager+Wal.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core+Pager\PCache+LinkedList.cs" />
+    <Compile Include="Core+Pager\Wal.cs" />
+    <Compile Include="Core+Pager\PCache+General.cs" />
+    <Compile Include="Core+Pager\PagerSavepoint.cs" />
+    <Compile Include="Core+Pager\Pager.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core+Pager\PCache.cs" />
+    <Compile Include="Core+Pager\Name\PCache1.cs" />
+    <Compile Include="Core+Pager\Name\PCacheGlobal.cs" />
+    <Compile Include="Core+Pager\Name\PgFreeslot.cs" />
+    <Compile Include="Core+Pager\PgHdr.cs" />
+    <Compile Include="Core+Pager\Name\PgHdr1.cs" />
+    <Compile Include="Core+Pager\Name\PGroup.cs" />
+    <Compile Include="Core\CollSeq.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core\IBackup.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core\ISchema.cs" />
+    <Compile Include="Core\KeyInfo.cs" />
+    <Compile Include="Core\sqlite3b.cs" />
+    <Compile Include="Core\StatusEx.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Contoso.Core\Contoso.Core.csproj">
+      <Project>{35E5EAD8-2E49-4732-BE87-9FD19955E473}</Project>
+      <Name>Contoso.Core</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
