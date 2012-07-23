@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{B2BF60DD-EC90-42B0-BD15-00090F33CF31}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Contoso.Data.Btree</RootNamespace>
+    <AssemblyName>Contoso.Data.Btree</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;IOTRACE NO_TCL SQLITE_ASCII SQLITE_DISABLE_LFS SQLITE_HAS_CODEC SQLITE_MEM_POOL SQLITE_MUTEX_W32 SQLITE_THREADSAFE SQLITE_OMIT_AUTHORIZATION SQLITE_OMIT_GET_TABLE SQLITE_OMIT_LOOKASIDE SQLITE_OMIT_UTF16 SQLITE_OMIT_WAL VDBE_PROFILE_OFF</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Core+Btree\Btree+BtreeLock.cs" />
+    <Compile Include="Core+Btree\Btree+Incrblob.cs" />
+    <Compile Include="Core+Btree\Btree+Integrity.cs" />
+    <Compile Include="Core+Btree\Btree+Internal.cs" />
+    <Compile Include="Core+Btree\Btree+Properties.cs" />
+    <Compile Include="Core+Btree\Btree+Public.cs" />
+    <Compile Include="Core+Btree\Btree+SharedCache.cs" />
+    <Compile Include="Core+Btree\Btree.cs" />
+    <Compile Include="Core+Btree\BtreeCursor+Dml.cs" />
+    <Compile Include="Core+Btree\BtreeCursor+Incrblob.cs" />
+    <Compile Include="Core+Btree\BtreeCursor+Move.cs" />
+    <Compile Include="Core+Btree\BtreeCursor+Payload.cs" />
+    <Compile Include="Core+Btree\BtreeCursor+Properties.cs" />
+    <Compile Include="Core+Btree\BtreeCursor+Public.cs" />
+    <Compile Include="Core+Btree\BtreeCursor.cs" />
+    <Compile Include="Core+Btree\BtShared+Alloc.cs" />
+    <Compile Include="Core+Btree\BtShared+Internal.cs" />
+    <Compile Include="Core+Btree\BtShared+Properties.cs" />
+    <Compile Include="Core+Btree\BtShared.cs" />
+    <Compile Include="Core+Btree\MemPage+AutoVacuum.cs" />
+    <Compile Include="Core+Btree\MemPage+Balance.cs" />
+    <Compile Include="Core+Btree\MemPage+Cell.cs" />
+    <Compile Include="Core+Btree\MemPage+CellInfo.cs" />
+    <Compile Include="Core+Btree\MemPage+Page.cs" />
+    <Compile Include="Core+Btree\MemPage.cs" />
+    <Compile Include="Core\IIndex.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Core\IVdbe.cs" />
+    <Compile Include="Core\sqlite3.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Contoso.Core\Contoso.Core.csproj">
+      <Project>{35E5EAD8-2E49-4732-BE87-9FD19955E473}</Project>
+      <Name>Contoso.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Contoso.Data.Pager\Contoso.Data.Pager.csproj">
+      <Project>{60A0794B-3ED6-46D5-AF69-54C8FE17A7C6}</Project>
+      <Name>Contoso.Data.Pager</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
