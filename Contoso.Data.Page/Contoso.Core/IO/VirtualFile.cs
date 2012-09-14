@@ -7,7 +7,7 @@ namespace Contoso.IO
 {
     public partial class VirtualFile
     {
-        public static int MX_CLOSE_ATTEMPT = 3;
+        private static int MX_CLOSE_ATTEMPT = 3;
         internal const long ERROR_FILE_NOT_FOUND = 2L;
         internal const long ERROR_HANDLE_DISK_FULL = 39L;
         internal const long ERROR_NOT_SUPPORTED = 50L;
@@ -72,7 +72,7 @@ namespace Contoso.IO
         public LOCK Locktype;            // Type of lock currently held on this file
         public int SharedLockByte;      // Randomly chosen byte used as a shared lock
         public ulong LastErrno;         // The Windows errno from the last I/O error
-        public ulong SectorSize;        // Sector size of the device file is on
+        protected ulong _sectorSize;        // Sector size of the device file is on
 #if !SQLITE_OMIT_WAL           
         public winShm Shm;           // Instance of shared memory on this file
 #else
@@ -87,21 +87,21 @@ namespace Contoso.IO
             Locktype = 0;
             SharedLockByte = 0;
             LastErrno = 0;
-            SectorSize = 0;
+            _sectorSize = 0;
         }
 
         #region Methods
 
-        public virtual int iVersion
+        public virtual int Version
         {
             get { return 2; }
         }
 
-        public virtual RC xClose()
+        public virtual RC Close()
         {
             Debug.Assert(Shm == null);
-#if SQLITE_DEBUG
-            SysEx.OSTRACE("CLOSE {0} ({1})", fs.GetHashCode(), fs.Name);
+#if DEBUG
+            SysEx.OSTRACE("CLOSE {0} ({1})", S.GetHashCode(), S.Name);
 #endif
             bool rc;
             int cnt = 0;
@@ -113,9 +113,9 @@ namespace Contoso.IO
             return rc ? RC.OK : winLogError(RC.IOERR_CLOSE, "winClose", Path);
         }
 
-        public virtual RC xRead(byte[] buffer, int amount, long offset)
+        public virtual RC Read(byte[] buffer, int amount, long offset)
         {
-            if (buffer == null) buffer = new byte[amount]; 
+            if (buffer == null) buffer = new byte[amount];
 #if DEBUG
             SysEx.OSTRACE("READ {0} lock={1}", S.GetHashCode(), Locktype);
 #endif
@@ -135,7 +135,7 @@ namespace Contoso.IO
             return RC.OK;
         }
 
-        public virtual RC xWrite(byte[] buffer, int amount, long offset)
+        public virtual RC Write(byte[] buffer, int amount, long offset)
         {
             Debug.Assert(amount > 0);
 #if DEBUG
@@ -159,7 +159,7 @@ namespace Contoso.IO
             return RC.OK;
         }
 
-        public virtual RC xTruncate(long size)
+        public virtual RC Truncate(long size)
         {
             var rc = RC.OK;
 #if DEBUG
@@ -175,7 +175,7 @@ namespace Contoso.IO
             return rc;
         }
 
-        public virtual RC xSync(SYNC flags)
+        public virtual RC Sync(SYNC flags)
         {
             // Check that one of SQLITE_SYNC_NORMAL or FULL was passed 
             Debug.Assert(((int)flags & 0x0F) == (int)SYNC.NORMAL || ((int)flags & 0x0F) == (int)SYNC.FULL);
@@ -188,13 +188,13 @@ return SQLITE.OK;
 #endif
         }
 
-        public virtual RC xFileSize(ref long size)
+        public virtual RC FileSize(ref long size)
         {
             size = (S.CanRead ? S.Length : 0);
             return RC.OK;
         }
 
-        public virtual RC xLock(LOCK locktype)
+        public virtual RC Lock(LOCK locktype)
         {
 #if DEBUG
             SysEx.OSTRACE("LOCK {0} {1} was {2}({3})", S.GetHashCode(), locktype, this.Locktype, SharedLockByte);
@@ -297,7 +297,7 @@ return SQLITE.OK;
             return rc;
         }
 
-        public virtual RC xUnlock(LOCK locktype)
+        public virtual RC Unlock(LOCK locktype)
         {
             Debug.Assert(locktype <= LOCK.SHARED);
 #if DEBUG
@@ -326,7 +326,7 @@ return SQLITE.OK;
             return rc;
         }
 
-        public virtual RC xCheckReservedLock(ref int pResOut)
+        public virtual RC CheckReservedLock(ref int pResOut)
         {
             int rc;
             if (Locktype >= LOCK.RESERVED)
@@ -354,7 +354,7 @@ return SQLITE.OK;
             return RC.OK;
         }
 
-        public virtual RC xFileControl(FCNTL op, ref long pArg)
+        public virtual RC SetFileControl(FCNTL op, ref long pArg)
         {
             switch (op)
             {
@@ -369,7 +369,7 @@ return SQLITE.OK;
                     return RC.OK;
                 case FCNTL.SIZE_HINT:
                     var sz = (long)pArg;
-                    xTruncate(sz);
+                    Truncate(sz);
                     return RC.OK;
                 case FCNTL.SYNC_OMITTED:
                     return RC.OK;
@@ -377,9 +377,13 @@ return SQLITE.OK;
             return RC.NOTFOUND;
         }
 
-        public virtual int xSectorSize() { return (int)SectorSize; }
+        public virtual uint SectorSize
+        {
+            get { return (uint)_sectorSize; }
+            set { _sectorSize = value; }
+        }
 
-        public virtual IOCAP xDeviceCharacteristics() { return 0; }
+        public virtual IOCAP DeviceCharacteristics { get { return 0; } }
 
         #endregion
 

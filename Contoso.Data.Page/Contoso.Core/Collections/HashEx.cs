@@ -2,13 +2,13 @@
 {
     public class HashEx
     {
-        public class _ht
+        private class _ht
         {            
-            public int count;
-            public HashElem chain;
+            public int Count;
+            public HashElem Chain;
         }
 
-        public class HashElem
+        private class HashElem
         {
             public HashElem next;
             public HashElem prev;
@@ -17,11 +17,11 @@
             public int nKey;
         }
 
-        public uint htsize = 31;
-        public uint count; 
-        public HashElem first;
-        public _ht[] ht;
+        private uint htsize = 31;
+        private uint count;
+        private HashElem first;
+        private _ht[] ht;
 
-        public HashEx Clone() { return (HashEx)MemberwiseClone(); }
+        private HashEx Clone() { return (HashEx)MemberwiseClone(); }
     }
 }

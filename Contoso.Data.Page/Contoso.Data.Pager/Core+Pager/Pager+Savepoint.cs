@@ -19,9 +19,9 @@ namespace Contoso.Core
             Debug.Assert(this.eState != PAGER.ERROR);
             Debug.Assert(this.eState >= PAGER.WRITER_LOCKED);
             // Allocate a bitvec to use to store the set of pages rolled back
-            Bitvec pDone = null;     // Bitvec to ensure pages played back only once
+            BitArray pDone = null;     // Bitvec to ensure pages played back only once
             if (pSavepoint != null)
-                pDone = new Bitvec(pSavepoint.nOrig);
+                pDone = new BitArray(pSavepoint.nOrig);
             // Set the database size back to the value it was before the savepoint being reverted was opened.
             this.dbSize = pSavepoint != null ? pSavepoint.nOrig : this.dbOrigSize;
             this.changeCountDone = this.tempFile;
@@ -77,7 +77,7 @@ namespace Contoso.Core
                 }
                 Debug.Assert(rc != RC.DONE);
             }
-            Bitvec.sqlite3BitvecDestroy(ref pDone);
+            BitArray.Destroy(ref pDone);
             if (rc == RC.OK)
                 this.journalOff = (int)szJ;
             return rc;
@@ -86,7 +86,7 @@ namespace Contoso.Core
         private void releaseAllSavepoints()
         {
             for (var ii = 0; ii < nSavepoint; ii++)
-                Bitvec.sqlite3BitvecDestroy(ref aSavepoint[ii].pInSavepoint);
+                BitArray.Destroy(ref aSavepoint[ii].pInSavepoint);
             if (!exclusiveMode || sjfd is MemJournalFile)
                 FileEx.sqlite3OsClose(sjfd);
             aSavepoint = null;
@@ -102,7 +102,7 @@ namespace Contoso.Core
                 var p = aSavepoint[ii];
                 if (pgno <= p.nOrig)
                 {
-                    rc |= p.pInSavepoint.sqlite3BitvecSet(pgno);
+                    rc |= p.pInSavepoint.Set(pgno);
                     Debug.Assert(rc == RC.OK || rc == RC.NOMEM);
                 }
             }
@@ -129,7 +129,7 @@ namespace Contoso.Core
                     aNew[ii].nOrig = this.dbSize;
                     aNew[ii].iOffset = (this.jfd.IsOpen && this.journalOff > 0 ? this.journalOff : (int)JOURNAL_HDR_SZ(this));
                     aNew[ii].iSubRec = this.nSubRec;
-                    aNew[ii].pInSavepoint = new Bitvec(this.dbSize);
+                    aNew[ii].pInSavepoint = new BitArray(this.dbSize);
                     if (pagerUseWal())
                         this.pWal.Savepoint(aNew[ii].aWalData);
                     this.nSavepoint = ii + 1;
@@ -152,7 +152,7 @@ namespace Contoso.Core
                 // with any savepoints that are destroyed by this operation.
                 var nNew = iSavepoint + ((op == SAVEPOINT.RELEASE) ? 0 : 1); // Number of remaining savepoints after this op.
                 for (var ii = nNew; ii < this.nSavepoint; ii++)
-                    Bitvec.sqlite3BitvecDestroy(ref this.aSavepoint[ii].pInSavepoint);
+                    BitArray.Destroy(ref this.aSavepoint[ii].pInSavepoint);
                 this.nSavepoint = nNew;
                 // If this is a release of the outermost savepoint, truncate the sub-journal to zero bytes in size.
                 if (op == SAVEPOINT.RELEASE)
@@ -161,7 +161,7 @@ namespace Contoso.Core
                         // Only truncate if it is an in-memory sub-journal.
                         if (this.sjfd is MemJournalFile)
                         {
-                            rc = this.sjfd.xTruncate(0);
+                            rc = this.sjfd.Truncate(0);
                             Debug.Assert(rc == RC.OK);
                         }
                         this.nSubRec = 0;

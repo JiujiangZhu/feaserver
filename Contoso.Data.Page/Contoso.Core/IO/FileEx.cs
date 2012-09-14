@@ -6,7 +6,7 @@ namespace Contoso.IO
         public static RC sqlite3OsClose(VirtualFile id)
         {
             var rc = RC.OK;
-            if (id.IsOpen) { rc = id.xClose(); id.IsOpen = false; }
+            if (id.IsOpen) { rc = id.Close(); id.IsOpen = false; }
             return rc;
         }
         public static RC sqlite3OsCloseFree(VirtualFile id)

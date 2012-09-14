@@ -84,7 +84,7 @@ namespace Contoso.Core
             if (rc == RC.OK && 0 == isInWal)
             {
                 long iOffset = (pgno - 1) * (long)pPager.pageSize;
-                rc = pPager.fd.xRead(pPg.Data, pgsz, iOffset);
+                rc = pPager.fd.Read(pPg.Data, pgsz, iOffset);
                 if (rc == RC.IOERR_SHORT_READ)
                     rc = RC.OK;
             }
@@ -125,7 +125,7 @@ namespace Contoso.Core
                 Debug.Assert(this.fd.IsOpen || this.tempFile);
                 if (this.fd.IsOpen)
                 {
-                    var rc = this.fd.xFileSize(ref n);
+                    var rc = this.fd.FileSize(ref n);
                     if (rc != RC.OK)
                         return rc;
                 }
@@ -162,7 +162,7 @@ namespace Contoso.Core
             if (this.fd.IsOpen)
             {
                 SysEx.IOTRACE("DBHDR {0} 0 {1}", this.GetHashCode(), N);
-                rc = this.fd.xRead(pDest, N, 0);
+                rc = this.fd.Read(pDest, N, 0);
                 if (rc == RC.IOERR_SHORT_READ)
                     rc = RC.OK;
             }
@@ -296,7 +296,7 @@ namespace Contoso.Core
                     if (nPage > 0)
                     {
                         SysEx.IOTRACE("CKVERS {0} {1}\n", this, dbFileVers.Length);
-                        rc = this.fd.xRead(dbFileVers, dbFileVers.Length, 24);
+                        rc = this.fd.Read(dbFileVers, dbFileVers.Length, 24);
                         if (rc != RC.OK)
                             goto failed;
                     }
@@ -515,7 +515,7 @@ namespace Contoso.Core
 0 == this.memDb
 #endif
 );
-                rc = this.fd.xSync(this.syncFlags);
+                rc = this.fd.Sync(this.syncFlags);
             }
             else if (this.fd.IsOpen)
             {
@@ -527,7 +527,7 @@ namespace Contoso.Core
 #endif
 );
                 var refArg = 0L;
-                this.fd.xFileControl(VirtualFile.FCNTL.SYNC_OMITTED, ref refArg);
+                this.fd.SetFileControl(VirtualFile.FCNTL.SYNC_OMITTED, ref refArg);
                 rc = (RC)refArg;
             }
             return rc;

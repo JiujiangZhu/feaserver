@@ -27,7 +27,7 @@ namespace Contoso.Core
             for (var i = 0; i < pPager.nSavepoint; i++)
             {
                 var p = pPager.aSavepoint[i];
-                if (p.nOrig >= pgno && p.pInSavepoint.sqlite3BitvecTest(pgno) == 0)
+                if (p.nOrig >= pgno && p.pInSavepoint.Get(pgno) == 0)
                     return true;
             }
             return false;
@@ -35,7 +35,7 @@ namespace Contoso.Core
 
         private static bool pageInJournal(PgHdr pPg)
         {
-            return pPg.Pager.pInJournal.sqlite3BitvecTest(pPg.ID) != 0;
+            return pPg.Pager.pInJournal.Get(pPg.ID) != 0;
         }
 
         private static RC readMasterJournal(VirtualFile pJrnl, byte[] zMaster, uint nMaster)
@@ -46,14 +46,14 @@ namespace Contoso.Core
             zMaster[0] = 0;
             var aMagic = new byte[8];   // A buffer to hold the magic header
             RC rc;
-            if (RC.OK != (rc = pJrnl.xFileSize(ref szJ))
+            if (RC.OK != (rc = pJrnl.FileSize(ref szJ))
                 || szJ < 16
-                || RC.OK != (rc = pJrnl.read32bits((int)(szJ - 16), ref len))
+                || RC.OK != (rc = pJrnl.ReadByte((int)(szJ - 16), ref len))
                 || len >= nMaster
-                || RC.OK != (rc = pJrnl.read32bits(szJ - 12, ref cksum))
-                || RC.OK != (rc = pJrnl.xRead(aMagic, 8, szJ - 8))
+                || RC.OK != (rc = pJrnl.ReadByte(szJ - 12, ref cksum))
+                || RC.OK != (rc = pJrnl.Read(aMagic, 8, szJ - 8))
                 || ArrayEx.Compare(aMagic, aJournalMagic, 8) != 0
-                || RC.OK != (rc = pJrnl.xRead(zMaster, len, (long)(szJ - 16 - len))))
+                || RC.OK != (rc = pJrnl.Read(zMaster, len, (long)(szJ - 16 - len))))
                 return rc;
             // See if the checksum matches the master journal name
             for (var u = 0; u < len; u++)
@@ -93,23 +93,23 @@ namespace Contoso.Core
                 var iLimit = this.journalSizeLimit; // Local cache of jsl
                 SysEx.IOTRACE("JZEROHDR {0:x}", this.GetHashCode());
                 if (doTruncate != 0 || iLimit == 0)
-                    rc = this.jfd.xTruncate(0);
+                    rc = this.jfd.Truncate(0);
                 else
                 {
                     var zeroHdr = new byte[28];
-                    rc = this.jfd.xWrite(zeroHdr, zeroHdr.Length, 0);
+                    rc = this.jfd.Write(zeroHdr, zeroHdr.Length, 0);
                 }
                 if (rc == RC.OK && !this.noSync)
-                    rc = this.jfd.xSync(VirtualFile.SYNC.DATAONLY | this.syncFlags);
+                    rc = this.jfd.Sync(VirtualFile.SYNC.DATAONLY | this.syncFlags);
                 // At this point the transaction is committed but the write lock is still held on the file. If there is a size limit configured for
                 // the persistent journal and the journal file currently consumes more space than that limit allows for, truncate it now. There is no need
                 // to sync the file following this operation.
                 if (rc == RC.OK && iLimit > 0)
                 {
                     long sz = 0;
-                    rc = this.jfd.xFileSize(ref sz);
+                    rc = this.jfd.FileSize(ref sz);
                     if (rc == RC.OK && sz > iLimit)
-                        rc = this.jfd.xTruncate(iLimit);
+                        rc = this.jfd.Truncate(iLimit);
                 }
             }
             return rc;
@@ -137,7 +137,7 @@ namespace Contoso.Core
             //   * When the SQLITE_IOCAP_SAFE_APPEND flag is set. This guarantees that garbage data is never appended to the journal file.
             Debug.Assert(this.fd.IsOpen || this.noSync);
             var zHeader = this.pTmpSpace;  // Temporary space used to build header
-            if (this.noSync || (this.journalMode == JOURNALMODE.MEMORY) || (this.fd.xDeviceCharacteristics() & VirtualFile.IOCAP.SAFE_APPEND) != 0)
+            if (this.noSync || (this.journalMode == JOURNALMODE.MEMORY) || (this.fd.DeviceCharacteristics & VirtualFile.IOCAP.SAFE_APPEND) != 0)
             {
                 aJournalMagic.CopyTo(zHeader, 0);
                 ConvertEx.Put4(zHeader, aJournalMagic.Length, 0xffffffff);
@@ -170,7 +170,7 @@ namespace Contoso.Core
             for (uint nWrite = 0; rc == RC.OK && nWrite < JOURNAL_HDR_SZ(this); nWrite += nHeader)
             {
                 SysEx.IOTRACE("JHDR {0:x} {1,11} {2}", this.GetHashCode(), this.journalHdr, nHeader);
-                rc = this.jfd.xWrite(zHeader, (int)nHeader, this.journalOff);
+                rc = this.jfd.Write(zHeader, (int)nHeader, this.journalOff);
                 Debug.Assert(this.journalHdr <= this.journalOff);
                 this.journalOff += (int)nHeader;
             }
@@ -194,7 +194,7 @@ namespace Contoso.Core
             RC rc;
             if (isHot != 0 || iHdrOff != this.journalHdr)
             {
-                rc = this.jfd.xRead(aMagic, aMagic.Length, iHdrOff);
+                rc = this.jfd.Read(aMagic, aMagic.Length, iHdrOff);
                 if (rc != RC.OK)
                     return rc;
                 if (ArrayEx.Compare(aMagic, aJournalMagic, aMagic.Length) != 0)
@@ -202,17 +202,17 @@ namespace Contoso.Core
             }
             // Read the first three 32-bit fields of the journal header: The nRec field, the checksum-initializer and the database size at the start
             // of the transaction. Return an error code if anything goes wrong.
-            if (RC.OK != (rc = this.jfd.read32bits(iHdrOff + 8, ref pNRec))
-                || RC.OK != (rc = this.jfd.read32bits(iHdrOff + 12, ref this.cksumInit))
-                || RC.OK != (rc = this.jfd.read32bits(iHdrOff + 16, ref pDbSize)))
+            if (RC.OK != (rc = this.jfd.ReadByte(iHdrOff + 8, ref pNRec))
+                || RC.OK != (rc = this.jfd.ReadByte(iHdrOff + 12, ref this.cksumInit))
+                || RC.OK != (rc = this.jfd.ReadByte(iHdrOff + 16, ref pDbSize)))
                 return rc;
             if (this.journalOff == 0)
             {
                 // Read the page-size and sector-size journal header fields.
                 uint iPageSize = 0;     // Page-size field of journal header
                 uint iSectorSize = 0;   // Sector-size field of journal header
-                if (RC.OK != (rc = this.jfd.read32bits(iHdrOff + 20, ref iSectorSize))
-                    || RC.OK != (rc = this.jfd.read32bits(iHdrOff + 24, ref iPageSize)))
+                if (RC.OK != (rc = this.jfd.ReadByte(iHdrOff + 20, ref iSectorSize))
+                    || RC.OK != (rc = this.jfd.ReadByte(iHdrOff + 24, ref iPageSize)))
                     return rc;
                 // Versions of SQLite prior to 3.5.8 set the page-size field of the journal header to zero. In this case, assume that the Pager.pageSize
                 // variable is already set to the correct page size.
@@ -261,11 +261,11 @@ namespace Contoso.Core
             var iHdrOff = this.journalOff; // Offset of header in journal file
             // Write the master journal data to the end of the journal file. If an error occurs, return the error code to the caller.
             RC rc;
-            if (RC.OK != (rc = this.jfd.write32bits(iHdrOff, (uint)PAGER_MJ_PGNO(this)))
-                || RC.OK != (rc = this.jfd.xWrite(Encoding.UTF8.GetBytes(zMaster), nMaster, iHdrOff + 4))
-                || RC.OK != (rc = this.jfd.write32bits(iHdrOff + 4 + nMaster, (uint)nMaster))
-                || RC.OK != (rc = this.jfd.write32bits(iHdrOff + 4 + nMaster + 4, cksum))
-                || RC.OK != (rc = this.jfd.xWrite(aJournalMagic, 8, iHdrOff + 4 + nMaster + 8)))
+            if (RC.OK != (rc = this.jfd.WriteByte(iHdrOff, (uint)PAGER_MJ_PGNO(this)))
+                || RC.OK != (rc = this.jfd.Write(Encoding.UTF8.GetBytes(zMaster), nMaster, iHdrOff + 4))
+                || RC.OK != (rc = this.jfd.WriteByte(iHdrOff + 4 + nMaster, (uint)nMaster))
+                || RC.OK != (rc = this.jfd.WriteByte(iHdrOff + 4 + nMaster + 4, cksum))
+                || RC.OK != (rc = this.jfd.Write(aJournalMagic, 8, iHdrOff + 4 + nMaster + 8)))
                 return rc;
             this.journalOff += nMaster + 20;
             // If the pager is in peristent-journal mode, then the physical journal-file may extend past the end of the master-journal name
@@ -273,8 +273,8 @@ namespace Contoso.Core
             // will not be able to find the master-journal name to determine whether or not the journal is hot.
             // Easiest thing to do in this scenario is to truncate the journal file to the required size.
             long jrnlSize = 0;  // Size of journal file on disk
-            if (RC.OK == (rc = this.jfd.xFileSize(ref jrnlSize)) && jrnlSize > this.journalOff)
-                rc = this.jfd.xTruncate(this.journalOff);
+            if (RC.OK == (rc = this.jfd.FileSize(ref jrnlSize)) && jrnlSize > this.journalOff)
+                rc = this.jfd.Truncate(this.journalOff);
             return rc;
         }
 
@@ -282,9 +282,9 @@ namespace Contoso.Core
         {
             var rc = RC.OK;
             if (!this.noSync)
-                rc = this.jfd.xSync(VirtualFile.SYNC.NORMAL);
+                rc = this.jfd.Sync(VirtualFile.SYNC.NORMAL);
             if (rc == RC.OK)
-                rc = this.jfd.xFileSize(ref this.journalHdr);
+                rc = this.jfd.FileSize(ref this.journalHdr);
             return rc;
         }
 
@@ -302,7 +302,7 @@ namespace Contoso.Core
                 Debug.Assert(!this.tempFile);
                 if (this.jfd.IsOpen && this.journalMode != JOURNALMODE.MEMORY)
                 {
-                    var iDc = this.fd.xDeviceCharacteristics();
+                    var iDc = this.fd.DeviceCharacteristics;
                     Debug.Assert(this.jfd.IsOpen);
                     if (0 == (iDc & VirtualFile.IOCAP.SAFE_APPEND))
                     {
@@ -321,11 +321,11 @@ namespace Contoso.Core
                         ConvertEx.Put4(zHeader, aJournalMagic.Length, this.nRec);
                         var iNextHdrOffset = journalHdrOffset();
                         var aMagic = new byte[8];
-                        rc = this.jfd.xRead(aMagic, 8, iNextHdrOffset);
+                        rc = this.jfd.Read(aMagic, 8, iNextHdrOffset);
                         if (rc == RC.OK && 0 == ArrayEx.Compare(aMagic, aJournalMagic, 8))
                         {
                             var zerobyte = new byte[1];
-                            rc = this.jfd.xWrite(zerobyte, 1, iNextHdrOffset);
+                            rc = this.jfd.Write(zerobyte, 1, iNextHdrOffset);
                         }
                         if (rc != RC.OK && rc != RC.IOERR_SHORT_READ)
                             return rc;
@@ -338,12 +338,12 @@ namespace Contoso.Core
                         {
                             PAGERTRACE("SYNC journal of {0}", PAGERID(this));
                             SysEx.IOTRACE("JSYNC {0:x}", this.GetHashCode());
-                            rc = this.jfd.xSync(this.syncFlags);
+                            rc = this.jfd.Sync(this.syncFlags);
                             if (rc != RC.OK)
                                 return rc;
                         }
                         SysEx.IOTRACE("JHDR {0:x} {1,11}", this.GetHashCode(), this.journalHdr);
-                        rc = this.jfd.xWrite(zHeader, zHeader.Length, this.journalHdr);
+                        rc = this.jfd.Write(zHeader, zHeader.Length, this.journalHdr);
                         if (rc != RC.OK)
                             return rc;
                     }
@@ -351,7 +351,7 @@ namespace Contoso.Core
                     {
                         PAGERTRACE("SYNC journal of {0}", PAGERID(this));
                         SysEx.IOTRACE("JSYNC {0:x}", this.GetHashCode());
-                        rc = this.jfd.xSync(this.syncFlags | (this.syncFlags == VirtualFile.SYNC.FULL ? VirtualFile.SYNC.DATAONLY : 0));
+                        rc = this.jfd.Sync(this.syncFlags | (this.syncFlags == VirtualFile.SYNC.FULL ? VirtualFile.SYNC.DATAONLY : 0));
                         if (rc != RC.OK)
                             return rc;
                     }
@@ -408,9 +408,9 @@ namespace Contoso.Core
                     if (CODEC2(pPager, pData, pPg.ID, codec_ctx.ENCRYPT_READ_CTX, ref pData2))
                         return RC.NOMEM;
                     PAGERTRACE("STMT-JOURNAL {0} page {1}", PAGERID(pPager), pPg.ID);
-                    rc = pPager.sjfd.write32bits(offset, pPg.ID);
+                    rc = pPager.sjfd.WriteByte(offset, pPg.ID);
                     if (rc == RC.OK)
-                        rc = pPager.sjfd.xWrite(pData2, pPager.pageSize, offset + 4);
+                        rc = pPager.sjfd.Write(pData2, pPager.pageSize, offset + 4);
                 }
             }
             if (rc == RC.OK)
@@ -430,7 +430,7 @@ namespace Contoso.Core
             Debug.Assert(this.useJournal != 0);
             Debug.Assert(this.fd.IsOpen);
             Debug.Assert(this.eState == PAGER.OPEN);
-            Debug.Assert(jrnlOpen == 0 || (this.jfd.xDeviceCharacteristics() & VirtualFile.IOCAP.UNDELETABLE_WHEN_OPEN) != 0);
+            Debug.Assert(jrnlOpen == 0 || (this.jfd.DeviceCharacteristics & VirtualFile.IOCAP.UNDELETABLE_WHEN_OPEN) != 0);
             pExists = 0;
             var rc = RC.OK;
             var exists = 1;               // True if a journal file is present
@@ -443,7 +443,7 @@ namespace Contoso.Core
                 // call above, but then delete the journal and drop the lock before we get to the following sqlite3OsCheckReservedLock() call.  If that
                 // is the case, this routine might think there is a hot journal when in fact there is none.  This results in a false-positive which will
                 // be dealt with by the playback routine.
-                rc = this.fd.xCheckReservedLock(ref locked);
+                rc = this.fd.CheckReservedLock(ref locked);
                 if (rc == RC.OK && locked == 0)
                 {
                     Pgno nPage = 0; // Number of pages in database file
@@ -475,7 +475,7 @@ namespace Contoso.Core
                             if (rc == RC.OK)
                             {
                                 var first = new byte[1];
-                                rc = this.jfd.xRead(first, 1, 0);
+                                rc = this.jfd.Read(first, 1, 0);
                                 if (rc == RC.IOERR_SHORT_READ)
                                     rc = RC.OK;
                                 if (0 == jrnlOpen)

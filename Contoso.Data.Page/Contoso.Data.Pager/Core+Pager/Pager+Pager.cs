@@ -22,7 +22,7 @@ namespace Contoso.Core
                 return this.errCode;
             if (!this.pagerUseWal() && this.journalMode != JOURNALMODE.OFF)
             {
-                this.pInJournal = new Bitvec(this.dbSize);
+                this.pInJournal = new BitArray(this.dbSize);
                 // Open the journal file if it is not already open.
                 if (!this.jfd.IsOpen)
                 {
@@ -54,7 +54,7 @@ namespace Contoso.Core
             }
             if (rc != RC.OK)
             {
-                Bitvec.sqlite3BitvecDestroy(ref this.pInJournal);
+                BitArray.Destroy(ref this.pInJournal);
                 this.pInJournal = null;
             }
             else
@@ -85,7 +85,7 @@ namespace Contoso.Core
             Debug.Assert(this.eState == PAGER.READER
                 || this.eState == PAGER.OPEN
                 || this.eState == PAGER.ERROR);
-            Bitvec.sqlite3BitvecDestroy(ref this.pInJournal);
+            BitArray.Destroy(ref this.pInJournal);
             this.pInJournal = null;
             releaseAllSavepoints();
             if (pagerUseWal())
@@ -96,7 +96,7 @@ namespace Contoso.Core
             }
             else if (!this.exclusiveMode)
             {
-                var iDc = (this.fd.IsOpen ? this.fd.xDeviceCharacteristics() : 0);
+                var iDc = (this.fd.IsOpen ? this.fd.DeviceCharacteristics : 0);
                 // If the operating system support deletion of open files, then close the journal file when dropping the database lock.  Otherwise
                 // another connection with journal_mode=delete might delete the file out from under us.
                 Debug.Assert(((int)JOURNALMODE.MEMORY & 5) != 1);
@@ -183,7 +183,7 @@ namespace Contoso.Core
                 }
                 else if (this.journalMode == JOURNALMODE.TRUNCATE)
                 {
-                    rc = (this.journalOff == 0 ? RC.OK : this.jfd.xTruncate(0));
+                    rc = (this.journalOff == 0 ? RC.OK : this.jfd.Truncate(0));
                     this.journalOff = 0;
                 }
                 else if (this.journalMode == JOURNALMODE.PERSIST || (this.exclusiveMode && this.journalMode != JOURNALMODE.WAL))
@@ -213,7 +213,7 @@ namespace Contoso.Core
                 }
             }
 #endif
-            Bitvec.sqlite3BitvecDestroy(ref this.pInJournal);
+            BitArray.Destroy(ref this.pInJournal);
             this.pInJournal = null;
             this.nRec = 0;
             this.pPCache.CleanAllPages();
@@ -248,7 +248,7 @@ namespace Contoso.Core
             return cksum;
         }
 
-        private RC pager_playback_one_page(ref long pOffset, Bitvec pDone, int isMainJrnl, int isSavepnt)
+        private RC pager_playback_one_page(ref long pOffset, BitArray pDone, int isMainJrnl, int isSavepnt)
         {
             Debug.Assert((isMainJrnl & ~1) == 0);       // isMainJrnl is 0 or 1
             Debug.Assert((isSavepnt & ~1) == 0);        // isSavepnt is 0 or 1
@@ -265,10 +265,10 @@ namespace Contoso.Core
             // Read the page number and page data from the journal or sub-journal file. Return an error code to the caller if an IO error occurs.
             var jfd = (isMainJrnl != 0 ? this.jfd : this.sjfd); // The file descriptor for the journal file
             Pgno pgno = 0;  // The page number of a page in journal
-            var rc = jfd.read32bits(pOffset, ref pgno);
+            var rc = jfd.ReadByte(pOffset, ref pgno);
             if (rc != RC.OK)
                 return rc;
-            rc = jfd.xRead(aData, this.pageSize, pOffset + 4);
+            rc = jfd.Read(aData, this.pageSize, pOffset + 4);
             if (rc != RC.OK)
                 return rc;
             pOffset += this.pageSize + 4 + isMainJrnl * 4;
@@ -279,19 +279,19 @@ namespace Contoso.Core
                 Debug.Assert(0 == isSavepnt);
                 return RC.DONE;
             }
-            if (pgno > this.dbSize || pDone.sqlite3BitvecTest(pgno) != 0)
+            if (pgno > this.dbSize || pDone.Get(pgno) != 0)
                 return RC.OK;
             uint cksum = 0;         // Checksum used for sanity checking
             if (isMainJrnl != 0)
             {
-                rc = jfd.read32bits((pOffset) - 4, ref cksum);
+                rc = jfd.ReadByte((pOffset) - 4, ref cksum);
                 if (rc != RC.OK)
                     return rc;
                 if (0 == isSavepnt && pager_cksum(aData) != cksum)
                     return RC.DONE;
             }
             // If this page has already been played by before during the current rollback, then don't bother to play it back again.
-            if (pDone != null && (rc = pDone.sqlite3BitvecSet(pgno)) != RC.OK)
+            if (pDone != null && (rc = pDone.Set(pgno)) != RC.OK)
                 return rc;
             // When playing back page 1, restore the nReserve setting
             if (pgno == 1 && this.nReserve != aData[20])
@@ -318,7 +318,7 @@ namespace Contoso.Core
             {
                 long ofst = (pgno - 1) * this.pageSize;
                 Debug.Assert(!pagerUseWal());
-                rc = this.fd.xWrite(aData, this.pageSize, ofst);
+                rc = this.fd.Write(aData, this.pageSize, ofst);
                 if (pgno > this.dbFileSize)
                     this.dbFileSize = pgno;
                 if (this.pBackup != null)
@@ -467,17 +467,17 @@ namespace Contoso.Core
                 Debug.Assert(this.eLock == VFSLOCK.EXCLUSIVE);
                 // TODO: Is it safe to use Pager.dbFileSize here?
                 long currentSize = 0;
-                rc = this.fd.xFileSize(ref currentSize);
+                rc = this.fd.FileSize(ref currentSize);
                 var newSize = szPage * nPage;
                 if (rc == RC.OK && currentSize != newSize)
                 {
                     if (currentSize > newSize)
-                        rc = this.fd.xTruncate(newSize);
+                        rc = this.fd.Truncate(newSize);
                     else
                     {
                         var pTmp = this.pTmpSpace;
                         Array.Clear(pTmp, 0, szPage);
-                        rc = this.fd.xWrite(pTmp, szPage, newSize - szPage);
+                        rc = this.fd.Write(pTmp, szPage, newSize - szPage);
                     }
                     if (rc == RC.OK)
                         this.dbSize = nPage;
@@ -494,7 +494,7 @@ namespace Contoso.Core
             long szJ = 0;            // Size of the journal file in bytes
             var res = 1;             // Value returned by sqlite3OsAccess()
             var zMaster = new byte[this.pVfs.mxPathname + 1]; // Name of master journal file if any
-            var rc = this.jfd.xFileSize(ref szJ);
+            var rc = this.jfd.FileSize(ref szJ);
             if (rc != RC.OK)
                 goto end_playback;
             // Read the master journal name from the journal, if it is present. If a master journal file name is specified, but the file is not
@@ -584,7 +584,7 @@ namespace Contoso.Core
             // Following a rollback, the database file should be back in its original state prior to the start of the transaction, so invoke the
             // SQLITE_FCNTL_DB_UNCHANGED file-control method to disable the assertion that the transaction counter was modified.
             long iDummy = 0;
-            Debug.Assert(!this.fd.IsOpen || this.fd.xFileControl(VirtualFile.FCNTL.DB_UNCHANGED, ref iDummy) >= RC.OK);
+            Debug.Assert(!this.fd.IsOpen || this.fd.SetFileControl(VirtualFile.FCNTL.DB_UNCHANGED, ref iDummy) >= RC.OK);
             // If this playback is happening automatically as a result of an IO or malloc error that occurred after the change-counter was updated but
             // before the transaction was committed, then the change-counter modification may just have been reverted. If this happens in exclusive
             // mode, then subsequent transactions performed by the connection will not update the change-counter at all. This may lead to cache inconsistency
@@ -650,7 +650,7 @@ namespace Contoso.Core
             if (rc == RC.OK && this.dbSize > this.dbHintSize)
             {
                 long szFile = this.pageSize * (long)this.dbSize;
-                this.fd.xFileControl(VirtualFile.FCNTL.SIZE_HINT, ref szFile);
+                this.fd.SetFileControl(VirtualFile.FCNTL.SIZE_HINT, ref szFile);
                 this.dbHintSize = this.dbSize;
             }
             while (rc == RC.OK && pList)
@@ -670,7 +670,7 @@ namespace Contoso.Core
                         return RC.NOMEM;
                     // Write out the page data.
                     long offset = (pList.ID - 1) * (long)this.pageSize;   // Offset to write
-                    rc = this.fd.xWrite(pData, this.pageSize, offset);
+                    rc = this.fd.Write(pData, this.pageSize, offset);
                     // If page 1 was just written, update Pager.dbFileVers to match the value now stored in the database file. If writing this
                     // page caused the database file to grow, update dbFileSize.
                     if (pgno == 1)
@@ -747,13 +747,13 @@ CHECK_PAGE(pPg);
                         // Otherwise, when the transaction is rolled back, the logic in playback_one_page() will think that the page needs to be restored
                         // in the database file. And if an IO error occurs while doing so, then corruption may follow.
                         pPg.Flags |= PgHdr.PGHDR.NEED_SYNC;
-                        rc = pPager.jfd.write32bits(iOff, pPg.ID);
+                        rc = pPager.jfd.WriteByte(iOff, pPg.ID);
                         if (rc != RC.OK)
                             return rc;
-                        rc = pPager.jfd.xWrite(pData2, pPager.pageSize, iOff + 4);
+                        rc = pPager.jfd.Write(pData2, pPager.pageSize, iOff + 4);
                         if (rc != RC.OK)
                             return rc;
-                        rc = pPager.jfd.write32bits(iOff + pPager.pageSize + 4, cksum);
+                        rc = pPager.jfd.WriteByte(iOff + pPager.pageSize + 4, cksum);
                         if (rc != RC.OK)
                             return rc;
                         SysEx.IOTRACE("JOUT {0:x} {1} {2,11} {3}", pPager.GetHashCode(), pPg.ID, pPager.journalOff, pPager.pageSize);
@@ -761,7 +761,7 @@ CHECK_PAGE(pPg);
                         pPager.journalOff += 8 + pPager.pageSize;
                         pPager.nRec++;
                         Debug.Assert(pPager.pInJournal != null);
-                        rc = pPager.pInJournal.sqlite3BitvecSet(pPg.ID);
+                        rc = pPager.pInJournal.Set(pPg.ID);
                         Debug.Assert(rc == RC.OK || rc == RC.NOMEM);
                         rc |= pPager.addToSavepointBitvecs(pPg.ID);
                         if (rc != RC.OK)
@@ -827,7 +827,7 @@ CHECK_PAGE(pPg);
                         if (CODEC2(this, pPgHdr.Data, 1, codec_ctx.ENCRYPT_WRITE_CTX, ref zBuf))
                             return rc = RC.NOMEM;
                         if (rc == RC.OK)
-                            rc = this.fd.xWrite(zBuf, this.pageSize, 0);
+                            rc = this.fd.Write(zBuf, this.pageSize, 0);
                         if (rc == RC.OK)
                             this.changeCountDone = true;
                     }

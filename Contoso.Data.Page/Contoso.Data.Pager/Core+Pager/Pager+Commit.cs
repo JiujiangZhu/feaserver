@@ -98,7 +98,7 @@ namespace Contoso.Core
                         var lastDbSize = this.dbSize;       // Database image size
                         this.dbSize = dbOrigSize;
                         for (Pgno i = lastDbSize + 1; i <= dbOrigSize; i++)
-                            if (0 == pInJournal.sqlite3BitvecTest(i) && i != iSkip)
+                            if (0 == pInJournal.Get(i) && i != iSkip)
                             {
                                 PgHdr pPage = null;             // Page to journal
                                 rc = Get(i, ref pPage);
@@ -328,7 +328,7 @@ this.memDb != 0
                     {
                         Debug.Assert(this.pTmpSpace != null);
                         var pTemp = new uint[this.pTmpSpace.Length];
-                        this.pInJournal.sqlite3BitvecClear(needSyncPgno, pTemp);
+                        this.pInJournal.Clear(needSyncPgno, pTemp);
                     }
                     return rc;
                 }

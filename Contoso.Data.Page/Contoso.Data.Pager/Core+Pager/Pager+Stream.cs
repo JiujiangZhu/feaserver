@@ -104,7 +104,7 @@ namespace Contoso.Core
                 {
                     var pg = (Pgno)(pg1 + ii);
                     var pPage = new PgHdr();
-                    if (pg == pPg.ID || pPager.pInJournal.sqlite3BitvecTest(pg) == 0)
+                    if (pg == pPg.ID || pPager.pInJournal.Get(pg) == 0)
                     {
                         if (pg != ((VirtualFile.PENDING_BYTE / (pPager.pageSize)) + 1))
                         {
