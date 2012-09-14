@@ -35,7 +35,7 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Collections\Bitvec.cs" />
+    <Compile Include="Collections\BitArray.cs" />
     <Compile Include="Security\cipher_ctx.cs" />
     <Compile Include="IO\FileEx+Vfs.cs" />
     <Compile Include="IO\FileEx.cs" />

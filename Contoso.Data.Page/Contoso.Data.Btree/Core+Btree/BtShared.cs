@@ -37,7 +37,7 @@ namespace Contoso.Core
         public ISchema Schema;          // Pointer to space allocated by sqlite3BtreeSchema()
         public Action<ISchema> xFreeSchema; // Destructor for BtShared.pSchema
         public sqlite3_mutex Mutex;     // Non-recursive mutex required to access this object
-        public Bitvec HasContent;       // Set of pages moved to free-list this transaction
+        public BitArray HasContent;       // Set of pages moved to free-list this transaction
 #if !SQLITE_OMIT_SHARED_CACHE
         public int nRef;                // Number of references to this structure
         public BtShared Next;           // Next on a list of sharable BtShared structs

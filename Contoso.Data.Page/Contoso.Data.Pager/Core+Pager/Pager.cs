@@ -91,7 +91,7 @@ namespace Contoso.Core
         public int nRec;                    // Pages journalled since last j-header written 
         public uint cksumInit;              // Quasi-random value added to every checksum 
         public uint nSubRec;                // Number of records written to sub-journal 
-        public Bitvec pInJournal;           // One bit for each page in the database file 
+        public BitArray pInJournal;           // One bit for each page in the database file 
         public VirtualFile fd;             // File descriptor for database 
         public VirtualFile jfd;            // File descriptor for main journal 
         public VirtualFile sjfd;           // File descriptor for sub-journal 

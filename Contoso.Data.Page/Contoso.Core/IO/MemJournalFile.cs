@@ -29,11 +29,11 @@ namespace Contoso.IO
 
         #region Methods
 
-        public override int iVersion { get { return 1; } }
+        public override int Version { get { return 1; } }
 
-        public override RC xClose() { xTruncate(0); return RC.OK; }
+        public override RC Close() { Truncate(0); return RC.OK; }
 
-        public override RC xRead(byte[] zBuf, int iAmt, long iOfst)
+        public override RC Read(byte[] zBuf, int iAmt, long iOfst)
         {
             // SQLite never tries to read past the end of a rollback journal file 
             Debug.Assert(iOfst + iAmt <= endpoint.iOffset);
@@ -63,7 +63,7 @@ namespace Contoso.IO
             return RC.OK;
         }
 
-        public override RC xWrite(byte[] zBuf, int iAmt, long iOfst)
+        public override RC Write(byte[] zBuf, int iAmt, long iOfst)
         {
             SysEx.UNUSED_PARAMETER(iOfst);
             // An in-memory journal file should only ever be appended to. Random access writes are not required by sqlite.
@@ -93,7 +93,7 @@ namespace Contoso.IO
             return RC.OK;
         }
 
-        public override RC xTruncate(long size)
+        public override RC Truncate(long size)
         {
             SysEx.UNUSED_PARAMETER(size);
             Debug.Assert(size == 0);
@@ -110,15 +110,19 @@ namespace Contoso.IO
             return RC.OK;
         }
 
-        public override RC xSync(SYNC NotUsed2) { SysEx.UNUSED_PARAMETER(NotUsed2); return RC.OK; }
-        public override RC xFileSize(ref long pSize) { pSize = endpoint.iOffset; return RC.OK; }
+        public override RC Sync(SYNC NotUsed2) { SysEx.UNUSED_PARAMETER(NotUsed2); return RC.OK; }
+        public override RC FileSize(ref long pSize) { pSize = endpoint.iOffset; return RC.OK; }
 
-        public override RC xLock(LOCK locktype) { return RC.OK; }
-        public override RC xUnlock(LOCK locktype) { return RC.OK; }
-        public override RC xCheckReservedLock(ref int pResOut) { return RC.OK; }
-        public override RC xFileControl(FCNTL op, ref long pArg) { return RC.NOTFOUND; }
-        public override int xSectorSize() { return (int)SectorSize; }
-        public override IOCAP xDeviceCharacteristics() { return 0; }
+        public override RC Lock(LOCK locktype) { return RC.OK; }
+        public override RC Unlock(LOCK locktype) { return RC.OK; }
+        public override RC CheckReservedLock(ref int pResOut) { return RC.OK; }
+        public override RC SetFileControl(FCNTL op, ref long pArg) { return RC.NOTFOUND; }
+        public override uint SectorSize
+        {
+            get { return (uint)_sectorSize; }
+            set { _sectorSize = value; }
+        }
+        public override IOCAP DeviceCharacteristics { get { return 0; } }
         //
         public override RC xShmMap(int iPg, int pgsz, int pInt, out object pvolatile) { pvolatile = null; return RC.OK; }
         public override RC xShmLock(int offset, int n, int flags) { return RC.OK; }

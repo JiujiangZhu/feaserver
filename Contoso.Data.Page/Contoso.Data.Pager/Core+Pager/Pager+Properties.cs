@@ -26,7 +26,7 @@ namespace Contoso.Core
             {
                 // Sector size doesn't matter for temporary files. Also, the file may not have been opened yet, in which case the OsSectorSize()
                 // call will segfault.
-                this.sectorSize = (Pgno)this.fd.xSectorSize();
+                this.sectorSize = (Pgno)this.fd.SectorSize;
             }
             if (this.sectorSize < 32)
             {
@@ -91,7 +91,7 @@ namespace Contoso.Core
             {
                 long nByte = 0;
                 if (this.eState > PAGER.OPEN && this.fd.IsOpen)
-                    rc = this.fd.xFileSize(ref nByte);
+                    rc = this.fd.FileSize(ref nByte);
                 if (rc == RC.OK)
                 {
                     pager_reset();

@@ -181,7 +181,7 @@ pFile.lastErrno = 1;
             pFile.Vfs = this;
             pFile.Shm = null;
             pFile.Path = zName;
-            pFile.SectorSize = (ulong)getSectorSize(zName);
+            pFile.SectorSize = (uint)getSectorSize(zName);
             return rc;
         }
 

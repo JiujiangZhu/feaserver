@@ -64,7 +64,7 @@ memDb != 0
                         // a bit in a bit vector.
                         MallocEx.sqlite3BeginBenignMalloc();
                         if (pgno <= dbOrigSize)
-                            pInJournal.sqlite3BitvecSet(pgno);
+                            pInJournal.Set(pgno);
                         addToSavepointBitvecs(pgno);
                         MallocEx.sqlite3EndBenignMalloc();
                     }

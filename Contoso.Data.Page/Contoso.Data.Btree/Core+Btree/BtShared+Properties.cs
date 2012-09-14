@@ -13,22 +13,22 @@ namespace Contoso.Core
             if (this.HasContent == null)
             {
                 Debug.Assert(pgno <= this.Pages);
-                this.HasContent = new Bitvec(this.Pages);
+                this.HasContent = new BitArray(this.Pages);
             }
-            if (rc == RC.OK && pgno <= this.HasContent.sqlite3BitvecSize())
-                rc = this.HasContent.sqlite3BitvecSet(pgno);
+            if (rc == RC.OK && pgno <= this.HasContent.Length)
+                rc = this.HasContent.Set(pgno);
             return rc;
         }
 
         internal bool btreeGetHasContent(Pgno pgno)
         {
             var p = this.HasContent;
-            return (p != null && (pgno > p.sqlite3BitvecSize() || p.sqlite3BitvecTest(pgno) != 0));
+            return (p != null && (pgno > p.Length || p.Get(pgno) != 0));
         }
 
         internal void btreeClearHasContent()
         {
-            Bitvec.sqlite3BitvecDestroy(ref this.HasContent);
+            BitArray.Destroy(ref this.HasContent);
             this.HasContent = null;
         }
 

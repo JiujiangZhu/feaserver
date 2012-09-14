@@ -2,95 +2,96 @@
 using System.Diagnostics;
 namespace Contoso.Collections
 {
-    public class Bitvec
+    public class BitArray
     {
-        static int BITVEC_SZ = 512;
-        static int BITVEC_USIZE = (((BITVEC_SZ - (3 * sizeof(uint))) / 4) * 4);
-        const int BITVEC_SZELEM = 8;
-        static int BITVEC_NELEM = (int)(BITVEC_USIZE / sizeof(byte));
-        static int BITVEC_NBIT = (BITVEC_NELEM * BITVEC_SZELEM);
-        static uint BITVEC_NINT = (uint)(BITVEC_USIZE / sizeof(uint));
-        static int BITVEC_MXHASH = (int)(BITVEC_NINT / 2);
-        static uint BITVEC_HASH(uint X) { return (uint)(((X) * 1) % BITVEC_NINT); }
-        static int BITVEC_NPTR = (int)(BITVEC_USIZE / 4);
+        private static int BITVEC_SZ = 512;
+        private static int BITVEC_USIZE = (((BITVEC_SZ - (3 * sizeof(uint))) / 4) * 4);
+        private const int BITVEC_SZELEM = 8;
+        private static int BITVEC_NELEM = (int)(BITVEC_USIZE / sizeof(byte));
+        private static int BITVEC_NBIT = (BITVEC_NELEM * BITVEC_SZELEM);
+        private static uint BITVEC_NINT = (uint)(BITVEC_USIZE / sizeof(uint));
+        private static int BITVEC_MXHASH = (int)(BITVEC_NINT / 2);
+        private static uint BITVEC_HASH(uint X) { return (uint)(((X) * 1) % BITVEC_NINT); }
+        private static int BITVEC_NPTR = (int)(BITVEC_USIZE / 4);
 
-        public uint iSize;      // Maximum bit index.  Max iSize is 4,294,967,296.
-        public uint nSet;       // Number of bits that are set - only valid for aHash element.  Max is BITVEC_NINT.  For BITVEC_SZ of 512, this would be 125.
-        public uint iDivisor;   // Number of bits handled by each apSub[] entry.
+        private uint iSize;      // Maximum bit index.  Max iSize is 4,294,967,296.
+        private uint nSet;       // Number of bits that are set - only valid for aHash element.  Max is BITVEC_NINT.  For BITVEC_SZ of 512, this would be 125.
+        private uint iDivisor;   // Number of bits handled by each apSub[] entry.
         // Should >=0 for apSub element.
         // Max iDivisor is max(u32) / BITVEC_NPTR + 1.
         // For a BITVEC_SZ of 512, this would be 34,359,739.
-        public class _u
+        private class _u
         {
             public byte[] aBitmap = new byte[BITVEC_NELEM]; // Bitmap representation
             public uint[] aHash = new uint[BITVEC_NINT];              // Hash table representation
-            public Bitvec[] apSub = new Bitvec[BITVEC_NPTR];        // Recursive representation
+            public BitArray[] apSub = new BitArray[BITVEC_NPTR];        // Recursive representation
         }
-        public _u u = new _u();
+        private _u u = new _u();
 
-        public Bitvec(uint iSize)
+        public BitArray(uint iSize)
         {
             this.iSize = iSize;
         }
 
-        public static void sqlite3BitvecDestroy(ref Bitvec p)
+        public static void Destroy(ref BitArray p)
         {
             if (p == null)
                 return;
             if (p.iDivisor != 0)
                 for (uint i = 0; i < BITVEC_NPTR; i++)
-                    sqlite3BitvecDestroy(ref p.u.apSub[i]);
+                    Destroy(ref p.u.apSub[i]);
         }
 
-        public uint sqlite3BitvecSize() { return iSize; }
-        public static implicit operator bool(Bitvec b) { return (b != null); }
+        public uint Length { get { return iSize; } }
 
-        public int sqlite3BitvecTest(uint i)
+        public static implicit operator bool(BitArray b) { return (b != null); }
+
+        public int Get(uint index)
         {
-            if (i == 0 || i > iSize)
+            if (index == 0 || index > iSize)
                 return 0;
-            i--;
+            index--;
             var p = this;
             while (iDivisor != 0)
             {
-                uint bin = i / p.iDivisor;
-                i %= p.iDivisor;
+                uint bin = index / p.iDivisor;
+                index %= p.iDivisor;
                 p = p.u.apSub[bin];
                 if (p == null)
                     return 0;
             }
             if (p.iSize <= BITVEC_NBIT)
-                return (((p.u.aBitmap[i / BITVEC_SZELEM] & (1 << (int)(i & (BITVEC_SZELEM - 1)))) != 0) ? 1 : 0);
-            uint h = BITVEC_HASH(i++);
+                return (((p.u.aBitmap[index / BITVEC_SZELEM] & (1 << (int)(index & (BITVEC_SZELEM - 1)))) != 0) ? 1 : 0);
+            uint h = BITVEC_HASH(index++);
             while (p.u.aHash[h] != 0)
             {
-                if (p.u.aHash[h] == i)
+                if (p.u.aHash[h] == index)
                     return 1;
                 h = (h + 1) % BITVEC_NINT;
             }
             return 0;
         }
 
-        public RC sqlite3BitvecSet(uint i)
+        public RC Set(uint index)
         {
-            Debug.Assert(i > 0);
-            Debug.Assert(i <= iSize);
-            i--;
+            Debug.Assert(index > 0);
+            Debug.Assert(index <= iSize);
+            index--;
             var p = this;
             while (iSize > BITVEC_NBIT && iDivisor != 0)
             {
-                uint bin = i / p.iDivisor;
-                i %= p.iDivisor;
+                uint bin = index / p.iDivisor;
+                index %= p.iDivisor;
                 if (p.u.apSub[bin] == null)
-                    p.u.apSub[bin] = new Bitvec(p.iDivisor);
+                    p.u.apSub[bin] = new BitArray(p.iDivisor);
                 p = p.u.apSub[bin];
             }
             if (p.iSize <= BITVEC_NBIT)
             {
-                p.u.aBitmap[i / BITVEC_SZELEM] |= (byte)(1 << (int)(i & (BITVEC_SZELEM - 1)));
+                p.u.aBitmap[index / BITVEC_SZELEM] |= (byte)(1 << (int)(index & (BITVEC_SZELEM - 1)));
                 return RC.OK;
             }
-            var h = BITVEC_HASH(i++);
+            var h = BITVEC_HASH(index++);
             // if there wasn't a hash collision, and this doesn't completely fill the hash, then just add it without worring about sub-dividing and re-hashing.
             if (p.u.aHash[h] == 0)
                 if (p.nSet < (BITVEC_NINT - 1))
@@ -100,7 +101,7 @@ namespace Contoso.Collections
             // there was a collision, check to see if it's already in hash, if not, try to find a spot for it 
             do
             {
-                if (p.u.aHash[h] == i)
+                if (p.u.aHash[h] == index)
                     return RC.OK;
                 h++;
                 if (h >= BITVEC_NINT)
@@ -112,43 +113,43 @@ namespace Contoso.Collections
             {
                 var aiValues = new uint[BITVEC_NINT];
                 Buffer.BlockCopy(p.u.aHash, 0, aiValues, 0, aiValues.Length * (sizeof(uint)));
-                p.u.apSub = new Bitvec[BITVEC_NPTR];
+                p.u.apSub = new BitArray[BITVEC_NPTR];
                 p.iDivisor = (uint)((p.iSize + BITVEC_NPTR - 1) / BITVEC_NPTR);
-                var rc = p.sqlite3BitvecSet(i);
+                var rc = p.Set(index);
                 for (uint j = 0; j < BITVEC_NINT; j++)
                     if (aiValues[j] != 0)
-                        rc |= p.sqlite3BitvecSet(aiValues[j]);
+                        rc |= p.Set(aiValues[j]);
                 return rc;
             }
         bitvec_set_end:
             p.nSet++;
-            p.u.aHash[h] = i;
+            p.u.aHash[h] = index;
             return RC.OK;
         }
 
-        public void sqlite3BitvecClear(uint i, uint[] pBuf)
+        public void Clear(uint index, uint[] buffer)
         {
-            Debug.Assert(i > 0);
-            i--;
+            Debug.Assert(index > 0);
+            index--;
             var p = this;
             while (p.iDivisor != 0)
             {
-                uint bin = i / p.iDivisor;
-                i %= p.iDivisor;
+                uint bin = index / p.iDivisor;
+                index %= p.iDivisor;
                 p = p.u.apSub[bin];
                 if (null == p)
                     return;
             }
             if (p.iSize <= BITVEC_NBIT)
-                p.u.aBitmap[i / BITVEC_SZELEM] &= (byte)~((1 << (int)(i & (BITVEC_SZELEM - 1))));
+                p.u.aBitmap[index / BITVEC_SZELEM] &= (byte)~((1 << (int)(index & (BITVEC_SZELEM - 1))));
             else
             {
-                var aiValues = pBuf;
+                var aiValues = buffer;
                 Array.Copy(p.u.aHash, aiValues, p.u.aHash.Length);
                 p.u.aHash = new uint[aiValues.Length];
                 p.nSet = 0;
                 for (uint j = 0; j < BITVEC_NINT; j++)
-                    if (aiValues[j] != 0 && aiValues[j] != (i + 1))
+                    if (aiValues[j] != 0 && aiValues[j] != (index + 1))
                     {
                         var h = BITVEC_HASH(aiValues[j] - 1);
                         p.nSet++;
